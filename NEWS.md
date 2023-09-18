@@ -1,4 +1,4 @@
-# shapr (development version)
+# shapr (development version) 
 
 * Release a Python wrapper (`shaprpyr`, [#325](https://github.com/NorskRegnesentral/shapr/pull/325)) for explaining predictions from Python models (from Python) utilizing almost all functionality of `shapr`. The wrapper moves back and forth back and forth between Python and R, doing the prediction in Python, and almost everything else in R. This simplifies maintenance of `shaprpy` significantly. The wrapper is available [here](https://github.com/NorskRegnesentral/shapr/tree/master/python).
 * Complete restructuring motivated by introducing the Python wrapper. The restructuring splits the explanation tasks into smaller pieces, which was necessary to allow the Python wrapper to move back and forth between R and Python.
@@ -35,6 +35,7 @@ Also allow the method to be used on models with categorical data  ([#315](https:
 Now heavily utilizing [snapshots](https://testthat.r-lib.org/articles/snapshotting.html) on a large set of benchmark calls to `explain`, also using [vdiffr](https://vdiffr.r-lib.org/) for plot tests. 
 Test functions are only written for exported core functions. Internal functions are only tested through the exported ones. 
 * Update GitHub actions ([#335](https://github.com/NorskRegnesentral/shapr/pull/335)).
+* Avoid unnecessary computation of inverse for weight matrix ([#280](https://github.com/NorskRegnesentral/shapr/issues/280))
 
 
 ## Minor improvements and bug fixes

@@ -251,5 +251,6 @@ to get back to strictly positive values when using the VAEAC model to impute mis
 \item{vaeac.seed}{Integer. Seed for reproducibility.}
 }
 \description{
-The different choices of \code{approach} takes different (optional) parameters, which are forwarded from \code{\link[=explain]{explain()}}.
+The different choices of \code{approach} takes different (optional) parameters,
+which are forwarded from \code{\link[=explain]{explain()}}.
 }
