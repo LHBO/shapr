@@ -9,10 +9,43 @@
 finalize_explanation <- function(vS_list, internal) {
   keep_samp_for_vS <- internal$parameters$keep_samp_for_vS
 
-  processed_vS_list <- postprocess_vS_list(
-    vS_list = vS_list,
-    internal = internal
-  )
+  if (is.null(internal$parameters$precomputed_vS) && !is.null(vS_list)) {
+    processed_vS_list <- postprocess_vS_list(
+      vS_list = vS_list,
+      internal = internal
+    )
+  } else {
+    # Current S matrix
+    matrix1 = internal$objects$S
+
+    # Get the number of features
+    m = internal$parameters$n_features
+
+    # Create the S matrix if we had used all combinations
+    matrix2 = shapr::feature_matrix_cpp(
+      features = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE),
+      m = m
+    )
+
+    # Get a mapping from the indices of the current set of combinations/coalitions to the indices
+    # in the version where we use all 2^M combinations/coalitions.
+    current_combination_idx_in_all_combinations =
+      sapply(seq(nrow(matrix1)), function(idx) which(apply(matrix2, 1, function(x) identical(x, matrix1[idx,]))))
+
+    # print(current_combination_idx_in_all_combinations)
+
+    # Use the pre-computed v(S) data provided by the user
+    processed_vS_list = internal$parameters$precomputed_vS
+
+    # print(processed_vS_list)
+
+    # Extract only the relevant rows (combinations) from the
+    processed_vS_list$dt_vS = processed_vS_list$dt_vS[current_combination_idx_in_all_combinations,]
+
+    # print(processed_vS_list)
+
+    # message("Loaded the precomputed v(S) from the user provided `precomputed_vS`.\n")
+  }
 
   # Extract the predictions we are explaining
   p <- get_p(processed_vS_list$dt_vS, internal)

@@ -187,15 +187,17 @@ check_n_combinations <- function(internal) {
       }
     }
   } else {
-    if (!is_groupwise) {
-      if (n_combinations <= n_features) {
-        stop("`n_combinations` has to be greater than the number of features.")
-      }
-    } else {
-      if (n_combinations <= n_groups) {
-        stop("`n_combinations` has to be greater than the number of groups.")
-      }
-    }
+    # Remove this in this branch as I want to include situations with fewer combinations.
+    # The minimum I can use is 2 (empty and full coalitions). Code works for that edge case.
+    # if (!is_groupwise) {
+    #   if (n_combinations <= n_features) {
+    #     stop("`n_combinations` has to be greater than the number of features.")
+    #   }
+    # } else {
+    #   if (n_combinations <= n_groups) {
+    #     stop("`n_combinations` has to be greater than the number of groups.")
+    #   }
+    # }
   }
 }
 

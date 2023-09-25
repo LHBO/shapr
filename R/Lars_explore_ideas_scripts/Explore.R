@@ -651,6 +651,7 @@ if (FALSE) {
 
   explanation$internal$output$dt_vS
 
+  internal = explanation$internal
 
 
   compute_vS(internal, model, predict_model, method = method)
@@ -668,6 +669,7 @@ if (FALSE) {
   dt_kshap <- data.table::as.data.table(kshap)
 
   dt_kshap
+  explanation$shapley_values
 
 
   W
@@ -793,11 +795,11 @@ if (FALSE) {
   colnames(data_train) = paste("X", seq(M), sep = "")
   colnames(data_test) = paste("X", seq(M), sep = "")
 
-  # True model: Y = 1 + 1*X1 + 0*X2 - 2*X3 + 1.5*X4*X5 #OLD
-  # True model: Y = 15 + 1*X1 + 0*X2 - 5*X3 + 1.5*X4*X5^2
-  response_train = unlist(1 + 1*data_train[,1] + 0*data_train[,2] - 2*data_train[,3] + 1.5*data_train[,4]*data_train[,5])
-  response_test = unlist(1 + 1*data_test[,1] + 0*data_test[,2] - 2*data_test[,3] + 1.5*data_test[,4]*data_test[,5])
+  # # True model: Y = 1 + 1*X1 + 0*X2 - 2*X3 + 1.5*X4*X5 #OLD
+  # response_train = unlist(1 + 1*data_train[,1] + 0*data_train[,2] - 2*data_train[,3] + 1.5*data_train[,4]*data_train[,5])
+  # response_test = unlist(1 + 1*data_test[,1] + 0*data_test[,2] - 2*data_test[,3] + 1.5*data_test[,4]*data_test[,5])
 
+  # True model: Y = 15 + 1*X1 + 0*X2 - 5*X3 + 1.5*X4*X5^2
   response_train = unlist(15 + 1*data_train[,1] + 0*data_train[,2] - 5*data_train[,3] + 1.5*data_train[,4]*data_train[,5]^2)
   response_test = unlist(15 + 1*data_test[,1] + 0*data_test[,2] - 5*data_test[,3] + 1.5*data_test[,4]*data_test[,5]^2)
 
@@ -826,6 +828,7 @@ if (FALSE) {
   mean((predict(predictive_model_s, data_test_with_response) - data_test_with_response$y)^2)
   mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)
 
+  plot(data_test_with_response$y, predict(predictive_model_s, data_test_with_response))
   plot(data_test_with_response$y, predict(predictive_model, data_test_with_response))
 
 
@@ -844,6 +847,35 @@ if (FALSE) {
     n_samples = 1000
   )
 
+  explanation_20_coalitions_pre <- explain(
+    model = predictive_model,
+    x_explain = data_test,
+    x_train = data_train,
+    approach = "gaussian",
+    prediction_zero = prediction_zero,
+    keep_samp_for_vS = TRUE,
+    n_combinations = 20,
+    n_batches = 1,
+    n_samples = 1000,
+    precomputed_vS = explanation_all_coalitions$internal$output
+  )
+
+  mean_absolute_and_squared_errors(explanation_all_coalitions$shapley_values, explanation_20_coalitions$shapley_values)$mae
+  mean_absolute_and_squared_errors(explanation_all_coalitions$shapley_values, explanation_20_coalitions_pre$shapley_values)$mae
+
+
+  explanation_2_coalitions <- explain(
+    model = predictive_model,
+    x_explain = data_test,
+    x_train = data_train,
+    approach = "gaussian",
+    prediction_zero = prediction_zero,
+    keep_samp_for_vS = TRUE,
+    n_combinations = 2,
+    n_batches = 1,
+    n_samples = 1000
+  )
+
   explanation_6_coalitions <- explain(
     model = predictive_model,
     x_explain = data_test,
@@ -852,6 +884,7 @@ if (FALSE) {
     prediction_zero = prediction_zero,
     keep_samp_for_vS = TRUE,
     n_combinations = 6,
+    n_batches = 1,
     n_samples = 1000
   )
 
@@ -866,8 +899,11 @@ if (FALSE) {
     prediction_zero = prediction_zero,
     keep_samp_for_vS = TRUE,
     n_combinations = 10,
+    n_batches = 1,
     n_samples = 1000
   )
+
+
 
   explanation_20_coalitions <- explain(
     model = predictive_model,
@@ -877,6 +913,7 @@ if (FALSE) {
     prediction_zero = prediction_zero,
     keep_samp_for_vS = TRUE,
     n_combinations = 20,
+    n_batches = 1,
     n_samples = 1000
   )
 
@@ -890,6 +927,7 @@ if (FALSE) {
     keep_samp_for_vS = TRUE,
     n_combinations = 20,
     n_samples = 1000,
+    n_batches = 1,
     seed = 12345
   )
 
@@ -901,6 +939,7 @@ if (FALSE) {
     prediction_zero = prediction_zero,
     keep_samp_for_vS = TRUE,
     n_combinations = 25,
+    n_batches = 1,
     n_samples = 1000
   )
 
@@ -921,6 +960,11 @@ if (FALSE) {
   errors_all = mean_absolute_and_squared_errors(explanation_all_coalitions$shapley_values, explanation_all_coalitions$shapley_values)
   errors_20_v2  = mean_absolute_and_squared_errors(explanation_all_coalitions$shapley_values, explanation_20_coalitions_v2$shapley_values)
 
+  errors = list(errors_6,errors_10,errors_20,errors_25,errors_all)
+  errors_mae_individual = sapply(errors, "[[", "mae_individual")
+  matplot(t(errors_mae_individual), type = "l")
+  matplot(t(apply(errors_mae_individual, 2, function(x) {c(quantile(x, c(0.05, 0.5, 0.95)))})), type = "l")
+
   print(object.size(explanation_all_coalitions), unit = "MB")
   print(object.size(explanation_all_coalitions$internal$output$dt_samp_for_vS), unit = "MB")
 
@@ -939,8 +983,6 @@ if (FALSE) {
   explanation_all_coalitions$internal$objects$X
 
   explanation_all_coalitions$internal$output$dt_vS
-
-
 
 
 
@@ -1145,8 +1187,9 @@ if (FALSE) {
 
   # look at which coalitions index is which coalition
   # All the coalitions with the low min and high max are the coalitions where x3 is known, i.e., in S.
-  # THis makes sense as it is a very important feature in our model.
-  explanation_all_coalitions$internal$objects$S[order(dt_vS_summarized[,1]), ]
+  # This makes sense as it is a very important feature in our model.
+  explanation_all_coalitions$internal$objects$S[order(dt_vS_summarized[,1], decreasing = FALSE), ] # HERE WE LOOK AT MIN
+  explanation_all_coalitions$internal$objects$S[order(dt_vS_summarized[,7], decreasing = TRUE), ]  # HERE WE LOOK AT MAX
 
   # We see that x3 are included most in the minimum (the maximum will be ish identical)
   apply(explanation_all_coalitions$internal$objects$S[order(dt_vS_summarized[,1]), ], 2, cumsum)
@@ -1271,8 +1314,10 @@ if (FALSE) {
     par(mfrow = c(2,1))
     matplot(1:2^M, sapply(R_matrix_list_all_individuals, "[", investigate_feature_number+1,), type = "b", lty = 1, pch = 1,
             xlab = "Coalition index", ylab = "R elements/terms", main = paste("Elements/terms for Phi_",investigate_feature_number," for all test observation", sep = ""))
+    abline(h = 0)
     matplot(1:2^M, abs(sapply(R_matrix_list_all_individuals, "[", investigate_feature_number+1,)), type = "b", lty = 1, pch = 1,
             xlab = "Coalition index", ylab = "Absolute R elements/terms", main = paste("Absolute Elements/terms for Phi_",investigate_feature_number," for all test observation", sep = ""))
+    abline(h = 0)
 
     # Here we have removed the v(empty) and v(M) since they are not estimated by the method.
     # But it is nice to include them to see their effect/magnitude.
@@ -1292,27 +1337,26 @@ if (FALSE) {
     par(mfrow = c(2,3))
     for (investigate_feature_idx in seq(0,M)) {
       matplot(1:2^M, sapply(R_matrix_list_all_individuals, "[", investigate_feature_idx+1,), type = "b", lty = 1, pch = 1,
-              xlab = "Coalition index", ylab = "R elements/terms", main = paste("Elements/terms for Phi_",investigate_feature_idx ," for all test observation", sep = ""))
+              xlab = "Coalition index", ylab = "R elements/terms"
+              , main = paste("Elements/terms for Phi_",investigate_feature_idx ," for all test observation", sep = ""))
     }
 
     for (investigate_feature_idx in seq(0,M)) {
       R_matrix_list_all_individuals_one_feature = sapply(R_matrix_list_all_individuals, "[", investigate_feature_idx+1,)
-
-
       matplot(1:2^M, rowMeans(R_matrix_list_all_individuals_one_feature), type = "b", lty = 1, pch = 1,
-              xlab = "Coalition index", ylab = "R elements/terms", main = paste("Elements/terms for Phi_",investigate_feature_idx ," for all test observation", sep = ""))
+              xlab = "Coalition index", ylab = "R elements/terms",
+              main = paste("Elements/terms for Phi_",investigate_feature_idx ," for all test observation", sep = ""))
+      abline(h = 0)
     }
-
 
     rowMeans(R_matrix_list_all_individuals_one_feature) + rev(rowMeans(R_matrix_list_all_individuals_one_feature))
 
-
-
     for (investigate_feature_idx in seq(0,M)) {
       matplot(1:2^M, abs(sapply(R_matrix_list_all_individuals, "[", investigate_feature_idx+1,)), type = "b", lty = 1, pch = 1,
-              xlab = "Coalition index", ylab = "Absolute R elements/terms", main = paste("Absolute Elements/terms for Phi_",investigate_feature_idx ," for all test observation", sep = ""))
+              xlab = "Coalition index", ylab = "Absolute R elements/terms",
+              main = paste("Absolute Elements/terms for Phi_", investigate_feature_idx ," for all test observation", sep = ""))
+      abline(h = 0)
     }
-
   }
 
 
@@ -1350,6 +1394,480 @@ if (FALSE) {
 
   explanation_all_coalitions$internal$data$x_explain[test_obs_idx,]
   explanation_all_coalitions$internal$objects$S[14,]
+
+
+
+
+
+
+
+
+
+  ## Look at which coalitions are included ---------------------------------------------------------------------------
+  list_of_explanations = list()
+  for (idx in seq(M+1, 2^M)) {
+    list_of_explanations[[idx]] = explain(
+      model = predictive_model,
+      x_explain = data_test[1,],
+      x_train = data_train,
+      approach = "gaussian",
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = FALSE,
+      n_combinations = idx,
+      n_samples = 10,
+      n_batches = 1,
+      seed = 1
+    )
+  }
+  list_of_explanations[[6]]$internal$objects$X
+  list_of_explanations[[7]]$internal$objects$X
+  list_of_explanations[[8]]$internal$objects$X
+
+
+
+
+  model = predictive_model
+  x_explain = data_test[1,]
+  x_train = data_train
+  approach = "gaussian"
+  prediction_zero = prediction_zero
+  keep_samp_for_vS = FALSE
+  n_combinations = idx
+  n_samples = 10
+  n_batches = 1
+  seed = 1
+
+
+# New sampling methods --------------------------------------------------------------------------------------------
+  sampling_methods = c("unique",
+                      "unique_paired",
+                      "non-unique",
+                      "chronological_order_increasing",
+                      "chronological_order_decreasing",
+                      "largest_weights",
+                      "largest_weights_combination_size",
+                      "smallest_weights",
+                      "smallest_weights_combination_size")
+
+  list_repeated_runs_different_methods = list()
+  for (sampling_method in sampling_methods) {
+
+  }
+
+
+  list_repeated_runs_different_methods = list("unique" = repeated_runs_250,
+                                              "unique_paired" = repeated_runs_paired_250,
+                                              "largest_weights" = repeated_runs_largest_250,
+                                              "smallest_weights" = repeated_runs_smallest_250,
+                                              "chronological_order_increasing" = repeated_runs_chronological_increasing_250)
+
+  plot_results = aggregate_and_plot_results(repeated_explanations_list = list_repeated_runs_different_methods,
+                                            true_explanations = true_explanations_n_samples_5000_seed_2,
+                                            evaluation_criterion = "MAE",
+                                            level = 0.95,
+                                            plot_figures = TRUE)
+
+
+  true_explanations_n_samples_5000_seed_2$internal$output
+  true_explanations$internal$output
+
+  repeated_runs_250 = List_list_of_explanations_unique_250
+
+  repeated_runs_paired_250 = repeated_explanations(model = predictive_model,
+                                                   x_explain = data_test[1:100,],
+                                                   x_train = data_train,
+                                                   approach = "gaussian",
+                                                   gaussian.cov_mat = sigma,
+                                                   gaussian.mu = mu,
+                                                   prediction_zero = prediction_zero,
+                                                   keep_samp_for_vS = FALSE,
+                                                   n_repetitions = 10,
+                                                   n_samples = 250,
+                                                   n_batches = 4,
+                                                   seed_start_value = 1,
+                                                   n_combinations_increment = 2,
+                                                   sampling_method = "unique_paired")
+
+  repeated_runs_largest_250 = repeated_explanations(model = predictive_model,
+                                                   x_explain = data_test[1:100,],
+                                                   x_train = data_train,
+                                                   approach = "gaussian",
+                                                   gaussian.cov_mat = sigma,
+                                                   gaussian.mu = mu,
+                                                   prediction_zero = prediction_zero,
+                                                   keep_samp_for_vS = FALSE,
+                                                   n_repetitions = 10,
+                                                   n_samples = 250,
+                                                   n_batches = 1,
+                                                   seed_start_value = 1,
+                                                   n_combinations_increment = 2,
+                                                   sampling_method = "largest_weights")
+
+  repeated_runs_smallest_250 = repeated_explanations(model = predictive_model,
+                                                    x_explain = data_test[1:100,],
+                                                    x_train = data_train,
+                                                    approach = "gaussian",
+                                                    gaussian.cov_mat = sigma,
+                                                    gaussian.mu = mu,
+                                                    prediction_zero = prediction_zero,
+                                                    keep_samp_for_vS = FALSE,
+                                                    n_repetitions = 10,
+                                                    n_samples = 250,
+                                                    n_batches = 1,
+                                                    seed_start_value = 1,
+                                                    n_combinations_increment = 2,
+                                                    sampling_method = "smallest_weights")
+
+  repeated_runs_chronological_increasing_250 = repeated_explanations(model = predictive_model,
+                                                     x_explain = data_test[1:100,],
+                                                     x_train = data_train,
+                                                     approach = "gaussian",
+                                                     gaussian.cov_mat = sigma,
+                                                     gaussian.mu = mu,
+                                                     prediction_zero = prediction_zero,
+                                                     keep_samp_for_vS = FALSE,
+                                                     n_repetitions = 10,
+                                                     n_samples = 250,
+                                                     n_batches = 1,
+                                                     seed_start_value = 1,
+                                                     n_combinations_increment = 1,
+                                                     sampling_method = "chronological_order_increasing")
+
+
+  repeated_runs_chronological_increasing_250_v2 = repeated_explanations(model = predictive_model,
+                                                                     x_explain = data_test[1:100,],
+                                                                     x_train = data_train,
+                                                                     approach = "gaussian",
+                                                                     gaussian.cov_mat = sigma,
+                                                                     gaussian.mu = mu,
+                                                                     prediction_zero = prediction_zero,
+                                                                     keep_samp_for_vS = FALSE,
+                                                                     n_repetitions = 10,
+                                                                     n_samples = 10,
+                                                                     n_batches = 1,
+                                                                     seed_start_value = 1,
+                                                                     n_combinations_from = 2,
+                                                                     n_combinations_increment = 1,
+                                                                     use_precomputed_vS = TRUE,
+                                                                     sampling_method = c("unique",
+                                                                                         "unique_paired"))
+
+  test_fig = aggregate_and_plot_results(repeated_runs_chronological_increasing_250_v2,
+                             true_explanations,
+                             plot_figures = TRUE)
+  test_fig$figures$figure_lines
+  test_fig$figures$figure_boxplot
+
+  repeated_runs_chronological_increasing_250_v2
+
+
+  repeated_runs_paired_250
+
+  tmp = sapply(repeated_runs_paired_250, function(y) {
+    sapply(y, function(x) {
+      mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+    })
+  })
+  matplot(cbind(tmp, res_largest), type = "l", lty = 1)
+
+  matplot(cbind(tmp, res_largest))
+  matplot(tmp[,1:5])
+  mean_cl_boot(tmp)
+
+
+  repeated_runs_paired_250[[1]][[6]]$internal$objects$X
+  repeated_runs_paired_250[[1]][[8]]$internal$objects$X
+  repeated_runs_paired_250[[1]][[10]]$internal$objects$X
+  repeated_runs_paired_250[[1]][[12]]$internal$objects$X
+  repeated_runs_paired_250[[1]][[14]]$internal$objects$X
+
+
+  tmp
+  median_hilow(tmp[6,])
+  apply(tmp, 1, median)
+  median_and_ci = apply(tmp, 1, quantile, 0.976, p = c(0.025, 0.5, 0.975))
+  tmp_dt = data.table(id = seq(2^M), CI_lower = median_and_ci[1,], median = median_and_ci[2,], CI_upper = median_and_ci[3,])
+
+  tmp_dt2 = tmp_dt[!is.na(tmp_dt$median)]
+
+  ggplot(tmp_dt2, aes(x = id, y = median)) +
+    geom_line(na.rm = TRUE) +
+    geom_ribbon(aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.3)
+
+
+
+  tmp_list = list("M1" = tmp, "M2" = tmp2)
+
+  repeated_explanations_list = list("Unique" = repeated_runs_250,
+                                    "Unique_paired" = repeated_runs_paired_250)
+  a = 1
+  b = 2
+  ll = list(a, b)
+
+
+
+
+
+
+
+  tmp_dt_comb6 = rbindlist(lapply(tmp_list, function(x) {
+    median_and_ci = apply(x, 1, quantile, p = c(0.025, 0.5, 0.975))
+    tmp_dt = data.table(n_coalitions = seq(nrow(x)), CI_lower = median_and_ci[1,], median = median_and_ci[2,], CI_upper = median_and_ci[3,])
+  }), idcol = "Sampling")
+
+  ggplot(tmp_dt_comb[!is.na(tmp_dt_comb$median)], aes(x = n_coalitions, y = median, col = Sampling)) +
+    geom_line() +
+    geom_ribbon(aes(ymin = CI_lower, ymax = CI_upper, fill = Sampling), alpha = 0.3)
+
+
+  quantile(0:10, 0.95)
+
+  library(progressr)
+  progressr::handlers(global = TRUE)
+  progressr::handlers('cli')
+
+
+  List_list_of_explanations_unique_250 = list()
+  for (rep in seq(10)) {
+    list_of_explanations_unique_250 = list()
+    for (idx in unique(c(seq(M+1, 2^M, 1), 2^M))) {
+      print(idx)
+      list_of_explanations_unique_250[[idx]] = explain(
+        model = predictive_model,
+        x_explain = data_test[1:100,],
+        x_train = data_train,
+        approach = "gaussian",
+        prediction_zero = prediction_zero,
+        keep_samp_for_vS = FALSE,
+        n_combinations = idx,
+        n_samples = 250,
+        n_batches = 1,
+        seed = rep,
+        gaussian.cov_mat = sigma,
+        gaussian.mu = mu,
+        sampling_method = "unique"
+      )
+    }
+    List_list_of_explanations_unique_250[[rep]] = list_of_explanations_unique_250
+  }
+
+
+  list_of_explanations_unique_paired_250 = list()
+  for (idx in unique(c(seq(M+1, 2^M, 2), 2^M))) {
+    print(idx)
+    list_of_explanations_unique_paired_250[[idx]] = explain(
+      model = predictive_model,
+      x_explain = data_test[1:100,],
+      x_train = data_train,
+      approach = "gaussian",
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = FALSE,
+      n_combinations = idx,
+      n_samples = 250,
+      n_batches = 1,
+      seed = 1,
+      gaussian.cov_mat = sigma,
+      gaussian.mu = mu,
+      sampling_method = "unique_paired"
+    )
+  }
+
+  list_of_explanations_smallest_weights_250 = list()
+  for (idx in unique(c(seq(M+1, 2^M, 1), 2^M))) {
+    print(idx)
+    list_of_explanations_smallest_weights_250[[idx]] = explain(
+      model = predictive_model,
+      x_explain = data_test[1:100,],
+      x_train = data_train,
+      approach = "gaussian",
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = FALSE,
+      n_combinations = idx,
+      n_samples = 250,
+      n_batches = 1,
+      seed = 1,
+      gaussian.cov_mat = sigma,
+      gaussian.mu = mu,
+      sampling_method = "smallest_weights"
+    )
+  }
+
+  list_of_explanations_smallest_weights_constant_SW_250 = list()
+  for (idx in unique(c(seq(M+1, 2^M, 1), 2^M))) {
+    print(idx)
+    list_of_explanations_smallest_weights_constant_SW_250[[idx]] = explain(
+      model = predictive_model,
+      x_explain = data_test[1:100,],
+      x_train = data_train,
+      approach = "gaussian",
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = FALSE,
+      n_combinations = idx,
+      n_samples = 250,
+      n_batches = 1,
+      seed = 1,
+      gaussian.cov_mat = sigma,
+      gaussian.mu = mu,
+      sampling_method = "smallest_weights_constant_SW"
+    )
+  }
+
+  list_of_explanations_chronological_order_increasing_250 = list()
+  for (idx in unique(c(seq(M+1, 2^M, 1), 2^M))) {
+    print(idx)
+    list_of_explanations_chronological_order_increasing_250[[idx]] = explain(
+      model = predictive_model,
+      x_explain = data_test[1:100,],
+      x_train = data_train,
+      approach = "gaussian",
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = FALSE,
+      n_combinations = idx,
+      n_samples = 250,
+      n_batches = 1,
+      seed = 1,
+      gaussian.cov_mat = sigma,
+      gaussian.mu = mu,
+      sampling_method = "chronological_order_increasing"
+    )
+  }
+
+  list_of_explanations_chronological_order_decreasing_250 = list()
+  for (idx in unique(c(seq(M+1, 2^M, 1), 2^M))) {
+    print(idx)
+    list_of_explanations_chronological_order_decreasing_250[[idx]] = explain(
+      model = predictive_model,
+      x_explain = data_test[1:100,],
+      x_train = data_train,
+      approach = "gaussian",
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = FALSE,
+      n_combinations = idx,
+      n_samples = 250,
+      n_batches = 1,
+      seed = 1,
+      gaussian.cov_mat = sigma,
+      gaussian.mu = mu,
+      sampling_method = "chronological_order_decreasing"
+    )
+  }
+
+  list_of_explanations_largest_weights_1000 = list()
+  for (idx in unique(c(seq(M+1, 2^M, 1), 2^M))) {
+    print(idx)
+    list_of_explanations_largest_weights_1000[[idx]] = explain(
+      model = predictive_model,
+      x_explain = data_test[1:100,],
+      x_train = data_train,
+      approach = "gaussian",
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = FALSE,
+      n_combinations = idx,
+      n_samples = 1000,
+      n_batches = 5,
+      seed = 1,
+      gaussian.cov_mat = sigma,
+      gaussian.mu = mu,
+      sampling_method = "largest_weights"
+    )
+  }
+
+
+  true_explanations_n_samples_5000_seed_2 = explain(
+    model = predictive_model,
+    x_explain = data_test[1:100,],
+    x_train = data_train,
+    approach = "gaussian",
+    prediction_zero = prediction_zero,
+    keep_samp_for_vS = FALSE,
+    n_combinations = idx,
+    n_samples = 5000,
+    n_batches = 1,
+    seed = 2,
+    gaussian.cov_mat = sigma,
+    gaussian.mu = mu
+  )
+  #true_explanations_n_samples_5000_seed_2_backup = true_explanations_n_samples_5000_seed_2
+  #true_explanations_n_samples_5000_seed_2 = true_explanations_n_samples_5000_seed_2_backup
+  true_explanations_n_samples_5000_seed_2 = list_of_explanations_unique_250[[32]]
+  sapply(list_of_explanations_chronological_order_increasing, function(x) {
+    mean_absolute_and_squared_errors(true_explanations$shapley_values, x$shapley_values)$mae
+  })
+
+  sapply(list_of_explanations_chronological_order_increasing_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations$shapley_values, x$shapley_values)$mae
+  })
+
+
+  res_unique = sapply(list_of_explanations_unique_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+
+  res_unique_repeated = sapply(List_list_of_explanations_unique_250, function(y) {
+    sapply(y, function(x) {
+      mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+    })
+  })
+  matplot(cbind(res_unique_repeated, res_largest), type = "l", lty = 1)
+
+
+  res_unique_paired = sapply(list_of_explanations_unique_paired_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+  res_chron_incre = sapply(list_of_explanations_chronological_order_increasing_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+  res_chron_decre = sapply(list_of_explanations_chronological_order_decreasing_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+
+
+  res_largest = sapply(list_of_explanations_largest_weights_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+  res_largest_1000 = sapply(list_of_explanations_largest_weights_1000, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+  res_smallest = sapply(list_of_explanations_smallest_weights_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+  res_smallest_constant_SW = sapply(list_of_explanations_smallest_weights_constant_SW_250, function(x) {
+    mean_absolute_and_squared_errors(true_explanations_n_samples_5000_seed_2$shapley_values, x$shapley_values)$mae
+  })
+
+
+
+  matplot(cbind(res_unique, res_chron, res_largest, res_smallest, res_largest_1000), type = "l", lty = 1, lwd = 2, ylim = c(0, 1.5))
+
+  lines(seq_along(res_unique_paired)[!is.na(res_unique_paired)], res_unique_paired[!is.na(res_unique_paired)], lty = 2)
+
+
+
+  dt_res = data.table(res_unique, res_unique_paired, res_chron_incre, res_chron_decre, res_largest, res_largest_1000, res_smallest,res_smallest_constant_SW)
+  dt_res = data.table(res_smallest,res_smallest_constant_SW)
+  dt_res[, n_combinations := .I]
+  dt_res
+  dt_res_long = melt(data = dt_res,
+                     id.vars = "n_combinations",
+                     variable.name = "Sampling_method",
+                     value.name = "MAE",
+                     na.rm = TRUE)
+  ggplot(data = dt_res_long, aes(x = n_combinations, y = MAE)) +
+    geom_line(linetype = "solid", ggplot2::aes(group = Sampling_method, col = Sampling_method))
+
+
+
+
+# Other stuff -----------------------------------------------------------------------------------------------------
+
+
 
 
 
@@ -1420,40 +1938,4 @@ if (FALSE) {
 
 
 }
-
-
-mean_absolute_and_squared_errors = function(dt_true, dt_approx, include_none = FALSE) {
-
-  # Remove the 'none' column if we are not to include them
-  if (!include_none) {
-    dt_true = dt_true[,-1]
-    dt_approx = dt_approx[,-1]
-  }
-
-  # Compute the MSE and MAE error averaged over the features
-  mse_error_individual = apply((dt_true - dt_approx)^2, 1, mean)
-  mae_error_individual = apply(abs(dt_true - dt_approx), 1, mean)
-
-  # Compute the MSE and MAE error averaged over the observations
-  mse_error_feature = apply((dt_true - dt_approx)^2, 2, mean)
-  mae_error_feature = apply(abs(dt_true - dt_approx), 2, mean)
-
-  # Compute the MSE and MAE error averaged both over the features and observations
-  mse_error = mean(mse_error_individual)
-  mae_error = mean(mae_error_individual)
-
-  # # Compute the relative error
-  # apply(abs((dt_true - dt_approx) / dt_true), 2, mean, trim = 0.01)
-  # apply(abs((dt_true - dt_approx) / dt_true), 1, mean)
-
-  # Return the results
-  return(list(mse = mse_error,
-              mae = mae_error,
-              mse_individual = mse_error_individual,
-              mae_individual = mae_error_individual,
-              mse_feature = mse_error_feature,
-              mae_feature = mae_error_feature))
-}
-
-
 

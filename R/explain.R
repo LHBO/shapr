@@ -315,14 +315,22 @@ explain <- function(model,
   timing_list$setup_computation <- Sys.time()
 
 
-  # Compute the v(S):
-  # Get the samples for the conditional distributions with the specified approach
-  # Predict with these samples
-  # Perform MC integration on these to estimate the conditional expectation (v(S))
-  vS_list <- compute_vS(internal, model, predict_model)
+
+  if (is.null(internal$parameters$precomputed_vS)) {
+    # Compute the v(S):
+    # Get the samples for the conditional distributions with the specified approach
+    # Predict with these samples
+    # Perform MC integration on these to estimate the conditional expectation (v(S))
+    vS_list <- compute_vS(internal, model, predict_model)
+  } else {
+    # Here the user has provided vS from a run with all coalitions,
+    # Such that we only need to extract the relevant combinations/coalitions.
+    # This is done in `finalize_explanation()`.
+    vS_list = NULL
+    # message("Skip computing v(S) and load them from the user provided `precomputed_vS`.\n")
+  }
 
   timing_list$compute_vS <- Sys.time()
-
 
   # Compute Shapley values based on conditional expectations (v(S))
   # Organize function output

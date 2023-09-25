@@ -142,7 +142,8 @@ shapley_setup <- function(internal) {
     exact = exact,
     n_combinations = n_combinations,
     weight_zero_m = 10^6,
-    group_num = group_num
+    group_num = group_num,
+    internal = internal
   )
 
   # Get weighted matrix ----------------
@@ -192,6 +193,7 @@ shapley_setup <- function(internal) {
 #' weights when doing numerical operations.
 #' @param group_num List. Contains vector of integers indicating the feature numbers for the
 #' different groups.
+#' @param internal List. Containing objects used internally in the package.
 #'
 #' @return A data.table that contains the following columns:
 #' \describe{
@@ -217,7 +219,8 @@ shapley_setup <- function(internal) {
 #'
 #' # Subsample of combinations
 #' x <- feature_combinations(exact = FALSE, m = 10, n_combinations = 1e2)
-feature_combinations <- function(m, exact = TRUE, n_combinations = 200, weight_zero_m = 10^6, group_num = NULL) {
+feature_combinations <- function(m, exact = TRUE, n_combinations = 200, weight_zero_m = 10^6, group_num = NULL,
+                                 internal = NULL) {
   m_group <- length(group_num) # The number of groups
 
   # Force user to use a natural number for n_combinations if m > 13
@@ -285,7 +288,14 @@ feature_combinations <- function(m, exact = TRUE, n_combinations = 200, weight_z
     if (exact) {
       dt <- feature_exact(m, weight_zero_m)
     } else {
-      dt <- feature_not_exact(m, n_combinations, weight_zero_m)
+
+      # If user has not specified, then we use the default one.
+      if (is.null(internal$parameters$sampling_method)) internal$parameters$sampling_method = "unique"
+
+      dt <- feature_not_exact(m = m,
+                              n_combinations = n_combinations,
+                              weight_zero_m = weight_zero_m,
+                              sampling_method = internal$parameters$sampling_method)
       stopifnot(
         data.table::is.data.table(dt),
         !is.null(dt[["p"]])
@@ -323,92 +333,349 @@ feature_exact <- function(m, weight_zero_m = 10^6) {
 }
 
 #' @keywords internal
-feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6, unique_sampling = TRUE) {
-  # Find weights for given number of features ----------
+feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
+                              sampling_method = c("unique",
+                                                  "unique_SW",
+                                                  "unique_paired",
+                                                  "unique_paired_SW",
+                                                  "non_unique",
+                                                  "non_unique_SW",
+                                                  "chronological_order_increasing",
+                                                  "chronological_order_decreasing",
+                                                  "largest_weights",
+                                                  "largest_weights_combination_size",
+                                                  "smallest_weights",
+                                                  "smallest_weights_constant_SW",
+                                                  "smallest_weights_combination_size")) {
+
+  # Get the sampling method. The `unique` method is the default one in master.
+  # The `non_unique` method is the version that was default in the first version in `shapr`.
+  # Lars test some new ones.
+  # The `chronological_order_increasing` version just takes the `n_combinations` first
+  # combinations from internal
+  sampling_method <- match.arg(sampling_method)
+
+  # Find weights for given number of features
   n_features <- seq(m - 1)
   n <- sapply(n_features, choose, n = m)
   w <- shapley_weights(m = m, N = n, n_features) * n
   p <- w / sum(w)
 
-  feature_sample_all <- list()
-  unique_samples <- 0
 
+  # Check if any of "unique", "unique_paired", "non_unique", "unique_SW", "unique_paired_SW", "non_unique_SW"
+  if (sampling_method %in% c("unique", "unique_paired", "non_unique","unique_SW", "unique_paired_SW", "non_unique_SW")) {
+    # This is the version that is in the Shapr master branch, except for `unique_paired`.
 
-  if (unique_sampling) {
-    while (unique_samples < n_combinations - 2) {
-      # Sample number of chosen features ----------
+    feature_sample_all <- list()
+    unique_samples <- 0
+
+    if (sampling_method %in% c("unique", "unique_SW")) {
+      # unique ----------------------------------------------------------------------------------------------------------
+      while (unique_samples < n_combinations - 2) {
+        n_features_sample <- sample(
+          x = n_features,
+          size = n_combinations - unique_samples - 2, # Sample -2 as we add zero and m samples below
+          replace = TRUE,
+          prob = p
+        )
+
+        # Sample specific set of features
+        feature_sample <- sample_features_cpp(m, n_features_sample)
+        feature_sample_all <- c(feature_sample_all, feature_sample)
+        unique_samples <- length(unique(feature_sample_all))
+      }
+    } else if (sampling_method  %in% c("unique_paired", "unique_paired_SW")) {
+      # unique paired ---------------------------------------------------------------------------------------------------
+      while (unique_samples < n_combinations - 2) {
+
+        n_features_sample <- sample(
+          x = n_features,
+          size = (n_combinations - unique_samples - 2)/2, # Sample -2 as we add zero and m samples below. Divide by two due to paired sampling
+          replace = TRUE,
+          prob = p
+        )
+
+        feature_sample <- sample_features_cpp(m, n_features_sample)
+        feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
+        feature_sample_all <- c(feature_sample_all, feature_sample, feature_sample_paired)
+        unique_samples <- length(unique(feature_sample_all))
+
+      }
+    } else {
+      # non_unique ------------------------------------------------------------------------------------------------------
       n_features_sample <- sample(
         x = n_features,
-        size = n_combinations - unique_samples - 2, # Sample -2 as we add zero and m samples below
+        size = n_combinations - 2, # Sample -2 as we add zero and m samples below
         replace = TRUE,
         prob = p
       )
-
-      # Sample specific set of features -------
-      feature_sample <- sample_features_cpp(m, n_features_sample)
-      feature_sample_all <- c(feature_sample_all, feature_sample)
-      unique_samples <- length(unique(feature_sample_all))
+      feature_sample_all <- sample_features_cpp(m, n_features_sample)
     }
-  } else {
-    n_features_sample <- sample(
-      x = n_features,
-      size = n_combinations - 2, # Sample -2 as we add zero and m samples below
-      replace = TRUE,
-      prob = p
-    )
-    feature_sample_all <- sample_features_cpp(m, n_features_sample)
+    feature_sample_all
+
+    # Add zero and m features
+    feature_sample_all <- c(list(integer(0)), feature_sample_all, list(c(1:m)))
+    X <- data.table(n_features = sapply(feature_sample_all, length))
+    X[, n_features := as.integer(n_features)]
+
+    # Get number of occurences and duplicated rows
+    is_duplicate <- NULL # due to NSE notes in R CMD check
+    r <- helper_feature(m, feature_sample_all)
+    X[, is_duplicate := r[["is_duplicate"]]]
+
+    # When we sample combinations the Shapley weight is equal
+    # to the frequency of the given combination
+    X[, shapley_weight := r[["sample_frequence"]]]
+
+
+    # Populate table and remove duplicated rows
+    X[, features := feature_sample_all]
+    if (any(X[["is_duplicate"]])) {
+      X <- X[is_duplicate == FALSE]
+    }
+    X[, is_duplicate := NULL]
+    data.table::setkeyv(X, "n_features")
+
+    # Make feature list into character
+    X[, features_tmp := sapply(features, paste, collapse = " ")]
+
+    # Aggregate weights by how many samples of a combination we observe
+    X <- X[, .(
+      n_features = data.table::first(n_features),
+      shapley_weight = sum(shapley_weight),
+      features = features[1]
+    ), features_tmp]
+
+    X[, features_tmp := NULL]
+    data.table::setorder(X, n_features)
+
+    # Add shapley weight and number of combinations
+    X[c(1, .N), shapley_weight := weight_zero_m]
+    X[, N := 1]
+    ind <- X[, .I[data.table::between(n_features, 1, m - 1)]]
+    X[ind, p := p[n_features]]
+    X[ind, N := n[n_features]]
+
+    # Set column order and key table
+    data.table::setkeyv(X, "n_features")
+    X[, id_combination := .I]
+    X[, N := as.integer(N)]
+    nms <- c("id_combination", "features", "n_features", "N", "shapley_weight", "p")
+    data.table::setcolorder(X, nms)
+
+    dt = X
+
+    # Overwrite the frequency Shapley kernel weights with the exact ones
+    if (sampling_method %in% c("unique_SW", "unique_paired_SW", "non_unique_SW")) {
+      X$shapley_weight
+
+      dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+    }
+
+
+  } else if (sampling_method == "chronological_order_increasing") {
+    # chronological_order_increasing ----------------------------------------------------------------------------------
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+
+    # TODO: we can be more clever here. Do not need to make all combinations and then extract only the relevant.
+    # Based on the value of `n_combinations`, we do not need to use `0:m`, but look at `n` and then choose the
+    # smallest `m'` such that we only need to use `0:m'`. Note that we need need to add the last one manually.
+    # Mostly useful if `m` is large, i.e., 20+.
+    dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+       [c(seq(1, n_combinations-1), 2^m)]]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+
+
+  } else if (sampling_method == "chronological_order_decreasing") {
+    # chronological_order_decreasing ----------------------------------------------------------------------------------
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+
+    # We can do similar here as above.
+    dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+       [c(1, seq(2^m-n_combinations+2, 2^m))]]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+
+  } else if (sampling_method == "largest_weights") {
+    # largest_weights -------------------------------------------------------------------------------------------------
+
+    # Create list of all feature combinations
+    combinations = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+
+    # Create a list of the indices
+    indices = seq(1, 2^m)
+
+    # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+    # then the second largest and so on.
+    alternating_indices = c(rbind(indices[1:2^(m-1)], rev(indices[-(1:2^(m-1))])))
+    alternating_indices_relevant = alternating_indices[seq(n_combinations)]
+    alternating_indices_relevant_sort = sort(alternating_indices_relevant)
+    features = combinations[alternating_indices_relevant_sort]
+    features
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+    dt[, features := features]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+
+
+  } else if (sampling_method == "largest_weights_combination_size") {
+    # largest_weights_combination_size --------------------------------------------------------------------------------
+
+    # Create list of all feature combinations
+    combinations = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+
+    alternating_coalition_size_indices_function = function(x) {
+      lower_idx = 1
+      upper_idx = length(x) - 1
+
+      ret_arr = x[c(1, length(x))]
+
+      while (lower_idx < upper_idx) {
+        if (lower_idx + 1 == upper_idx) {
+          ret_arr = c(ret_arr, seq(x[lower_idx] + 1, x[lower_idx+1]))
+        } else {
+          ret_arr = c(ret_arr, seq(x[lower_idx] + 1, x[lower_idx+1]))
+          ret_arr = c(ret_arr, seq(x[upper_idx], x[upper_idx-1] + 1))
+        }
+
+        # Increase and lower the indices
+        lower_idx = lower_idx + 1
+        upper_idx = upper_idx - 1
+      }
+      return(ret_arr)
+    }
+    alternating_coalition_size_indices = alternating_coalition_size_indices_function(cumsum(c(1, n, 1)))
+    alternating_coalition_size_indices_relevant = alternating_coalition_size_indices[seq(n_combinations)]
+    alternating_coalition_size_indices_relevant_sort = sort(alternating_coalition_size_indices_relevant)
+    features = combinations[alternating_coalition_size_indices_relevant_sort]
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+    dt[, features := features]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+
+
+  } else if (sampling_method == "smallest_weights") {
+    # smallest_weights ------------------------------------------------------------------------------------------------
+
+    # Create list of all feature combinations
+    combinations = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+
+    # Create a list of the indices
+    indices = seq(2, 2^m-1)
+
+    # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+    # then the second largest and so on.
+    alternating_indices = c(1, 2^m, rev(c(rbind(indices[1:(2^(m-1)-1)], rev(indices[-(1:(2^(m-1)-1))])))))
+    alternating_indices_relevant = alternating_indices[seq(n_combinations)]
+    alternating_indices_relevant_sort = sort(alternating_indices_relevant)
+    features = combinations[alternating_indices_relevant_sort]
+    features
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+    dt[, features := features]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+    dt
+
+
+
+  } else if (sampling_method == "smallest_weights_constant_SW") {
+    # smallest_weights ------------------------------------------------------------------------------------------------
+
+    # Create list of all feature combinations
+    combinations = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+
+    # Create a list of the indices
+    indices = seq(2, 2^m-1)
+
+    # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+    # then the second largest and so on.
+    alternating_indices = c(1, 2^m, rev(c(rbind(indices[1:(2^(m-1)-1)], rev(indices[-(1:(2^(m-1)-1))])))))
+    alternating_indices_relevant = alternating_indices[seq(n_combinations)]
+    alternating_indices_relevant_sort = sort(alternating_indices_relevant)
+    features = combinations[alternating_indices_relevant_sort]
+    features
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+    dt[, features := features]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := 1]
+    dt
+
+
+
+  } else if (sampling_method == "smallest_weights_combination_size") {
+    # smallest_weights_combination_size -------------------------------------------------------------------------------
+
+    # Create list of all feature combinations
+    combinations = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+
+    alternating_coalition_size_indices_function_rev = function(x) {
+      lower_idx = 1
+      upper_idx = length(x) - 1
+
+      ret_arr = c()
+
+      while (lower_idx < upper_idx) {
+        if (lower_idx + 1 == upper_idx) {
+          ret_arr = c(ret_arr, seq(x[lower_idx] + 1, x[lower_idx+1]))
+        } else {
+          ret_arr = c(ret_arr, seq(x[lower_idx] + 1, x[lower_idx+1]))
+          ret_arr = c(ret_arr, seq(x[upper_idx], x[upper_idx-1] + 1))
+        }
+
+        # Increase and lower the indices
+        lower_idx = lower_idx + 1
+        upper_idx = upper_idx - 1
+      }
+      ret_arr = rev(ret_arr)
+      ret_arr = c(x[c(1, length(x))], ret_arr)
+      return(ret_arr)
+    }
+    alternating_coalition_size_indices = alternating_coalition_size_indices_function_rev(cumsum(c(1, n, 1)))
+    alternating_coalition_size_indices_relevant = alternating_coalition_size_indices[seq(n_combinations)]
+    alternating_coalition_size_indices_relevant_sort = sort(alternating_coalition_size_indices_relevant)
+    features = combinations[alternating_coalition_size_indices_relevant_sort]
+
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+    dt[, features := features]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+
+
   }
 
-  # Add zero and m features
-  feature_sample_all <- c(list(integer(0)), feature_sample_all, list(c(1:m)))
-  X <- data.table(n_features = sapply(feature_sample_all, length))
-  X[, n_features := as.integer(n_features)]
+  # TODO: LARS sjekk at disse funker over. Se på hvordan Shapley MAE feilen utvikler seg med disse når vi øker `n_combinations`,
+  if (is.null(dt$p)) dt[,p:=NA]
 
-  # Get number of occurences and duplicated rows-------
-  is_duplicate <- NULL # due to NSE notes in R CMD check
-  r <- helper_feature(m, feature_sample_all)
-  X[, is_duplicate := r[["is_duplicate"]]]
-
-  # When we sample combinations the Shapley weight is equal
-  # to the frequency of the given combination
-  X[, shapley_weight := r[["sample_frequence"]]]
-
-  # Populate table and remove duplicated rows -------
-  X[, features := feature_sample_all]
-  if (any(X[["is_duplicate"]])) {
-    X <- X[is_duplicate == FALSE]
-  }
-  X[, is_duplicate := NULL]
-  data.table::setkeyv(X, "n_features")
-
-  # Make feature list into character
-  X[, features_tmp := sapply(features, paste, collapse = " ")]
-
-  # Aggregate weights by how many samples of a combination we observe
-  X <- X[, .(
-    n_features = data.table::first(n_features),
-    shapley_weight = sum(shapley_weight),
-    features = features[1]
-  ), features_tmp]
-
-  X[, features_tmp := NULL]
-  data.table::setorder(X, n_features)
-
-  # Add shapley weight and number of combinations
-  X[c(1, .N), shapley_weight := weight_zero_m]
-  X[, N := 1]
-  ind <- X[, .I[data.table::between(n_features, 1, m - 1)]]
-  X[ind, p := p[n_features]]
-  X[ind, N := n[n_features]]
-
-  # Set column order and key table
-  data.table::setkeyv(X, "n_features")
-  X[, id_combination := .I]
-  X[, N := as.integer(N)]
-  nms <- c("id_combination", "features", "n_features", "N", "shapley_weight", "p")
-  data.table::setcolorder(X, nms)
-
-  return(X)
+  return(dt)
 }
 
 #' Calculate Shapley weight

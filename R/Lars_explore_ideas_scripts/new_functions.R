@@ -1,0 +1,587 @@
+#' Compute MAE and MSE errors
+#'
+#' @description
+#' Function computes the MSE and MAE error averaged over the features, averaged over
+#' the observations, and averaged over both the features and observations.
+#'
+#' @param dt_true data.table. A data.table containing the true Shapley values.
+#' @param dt_approx data.table. A data.table containing the estimated
+#' Shapley values obtained from the [sharp::explain()] function.
+#' @param include_none If we are to include `none`
+#' (i.e., the phi0 which is computed independently of the approach).
+#'
+#' @return List of the different evaluation scores
+#' @export
+mean_absolute_and_squared_errors = function(dt_true, dt_approx, include_none = FALSE) {
+
+  # Remove the 'none' column if we are not to include them
+  if (!include_none) {
+    dt_true = dt_true[,-1]
+    dt_approx = dt_approx[,-1]
+  }
+
+  # Compute the MSE and MAE error averaged over the features
+  mse_error_individual = apply((dt_true - dt_approx)^2, 1, mean)
+  mae_error_individual = apply(abs(dt_true - dt_approx), 1, mean)
+
+  # Compute the MSE and MAE error averaged over the observations
+  mse_error_feature = apply((dt_true - dt_approx)^2, 2, mean)
+  mae_error_feature = apply(abs(dt_true - dt_approx), 2, mean)
+
+  # Compute the MSE and MAE error averaged both over the features and observations
+  mse_error = mean(mse_error_individual)
+  mae_error = mean(mae_error_individual)
+
+  # # Compute the relative error
+  # apply(abs((dt_true - dt_approx) / dt_true), 2, mean, trim = 0.01)
+  # apply(abs((dt_true - dt_approx) / dt_true), 1, mean)
+
+  # Return the results
+  return(list(mse = mse_error,
+              mae = mae_error,
+              mse_individual = mse_error_individual,
+              mae_individual = mae_error_individual,
+              mse_feature = mse_error_feature,
+              mae_feature = mae_error_feature))
+}
+
+
+#' Repeatedly explain the output of ML models with conditional Shapley values
+#'
+#' @description
+#' This function repeatedly calls the [shapr::explain()] function with different seeds.
+#'
+#' @param model The model whose predictions we want to explain. Run [shapr::get_supported_models()] for a table of
+#' which models `explain` supports natively. Unsupported models can still be explained by passing `predict_model` and
+#' (optionally) `get_model_specs`, see details in [shapr::explain()] for more information.
+#' @param x_explain A matrix or data.frame/data.table.
+#' Contains the the features, whose predictions ought to be explained.
+#' @param x_train Matrix or data.frame/data.table. Contains the data used to estimate the (conditional) distributions
+#' for the features needed to properly estimate the conditional expectations in the Shapley formula.
+#' @param approach Character vector of length `1` or `n_features`.
+#' `n_features` equals the total number of features in the model. All elements should,
+#' either be `"gaussian"`, `"copula"`, `"empirical"`, `"ctree"`, `"categorical"`, `"timeseries"`, or `"independence"`.
+#' See details for more information.
+#' @param prediction_zero Numeric. The prediction value for unseen data, i.e. an estimate of the expected prediction
+#' without conditioning on any features. Typically we set this value equal to the mean of the response variable in our
+#' training data, but other choices such as the mean of the predictions in the training data are also reasonable.
+#' @param keep_samp_for_vS Logical. Indicates whether the samples used in the Monte Carlo estimation of v_S should be
+#' returned (in `internal$output`).
+#' @param n_samples Positive integer. Indicating the maximum number of samples to use in the Monte Carlo integration
+#' for every conditional expectation.
+#' @param n_batches Positive integer (or NULL).
+#' Specifies how many batches the total number of feature combinations should be split into when calculating the
+#' contribution function for each test observation.
+#' The default value is NULL which uses a reasonable trade-off between RAM allocation and computation speed,
+#' which depends on `approach` and `n_combinations`.
+#' For models with many features, increasing the number of batches reduces the RAM allocation significantly.
+#' This typically comes with a small increase in computation time.
+#' @param n_repetitions Integer. The number of repetitions to do.
+#' @param seed_start_value Integer. For reproducibility the user can set the seed. It will increment with one
+#' in each repetition to ensure different results in the stochastic sampling procedures of the MC samples.
+#' @param n_combinations_from Integer. The starting value of the sequence of values for `n_combinations`.
+#' @param n_combinations_to Integer. The (maximal) end value of the sequence of values for `n_combinations`.
+#' @param n_combinations_increment Integer. The increment of the sequence of values for `n_combinations`.
+#' @param ... Arguments passed on to the different approaches.
+#' @param sampling_methods String or vector of strings. The string, or strings, has/have to be valid samplig methods.
+#' @param use_precomputed_vS Logical. If we are to only compute the v(S) once for each repetition and use them
+#' for all coalition sampling schemes, as this saves a lot of time.
+#' @param save_path String. A save path where to save the results after each repetition.
+#'
+#' @return List of objects of class `c("shapr", "list")`. Contains the following items:
+#' \describe{
+#'   \item{shapley_values}{data.table with the estimated Shapley values}
+#'   \item{internal}{List with the different parameters, data and functions used internally}
+#'   \item{pred_explain}{Numeric vector with the predictions for the explained observations.}
+#' }
+#' See [shapr::explain()] for more details.
+#' @export
+#'
+#' @examples
+repeated_explanations = function(model,
+                                 x_explain,
+                                 x_train,
+                                 approach,
+                                 prediction_zero,
+                                 keep_samp_for_vS,
+                                 n_samples,
+                                 n_batches,
+                                 sampling_methods = c("unique",
+                                                      "unique_paired",
+                                                      "non_unique",
+                                                      "chronological_order_increasing",
+                                                      "chronological_order_decreasing",
+                                                      "largest_weights",
+                                                      "largest_weights_combination_size",
+                                                      "smallest_weights",
+                                                      "smallest_weights_combination_size"),
+                                 n_repetitions = 10,
+                                 use_precomputed_vS = TRUE,
+                                 seed_start_value = 1,
+                                 n_combinations_from = 2, #ncol(x_explain) + 1,
+                                 n_combinations_to = 2^ncol(x_explain),
+                                 n_combinations_increment = 1,
+                                 save_path = NULL,
+                                 ...) {
+
+  # Check for valid sampling methods
+  sampling_methods = match.arg(sampling_methods, several.ok = TRUE)
+
+  # Create a list to store the results
+  result_list = lapply(sampling_methods, function(x) list())
+  names(result_list) = sampling_methods
+
+  # Get the values of `n_combinations` we are to consider
+  sequence_n_combinations = unique(c(seq(n_combinations_from, n_combinations_to, n_combinations_increment),
+                                     n_combinations_to))
+
+  # Extract the seed value
+  seed = seed_start_value
+
+  # Iterate over the number of iterations
+  for (idx_rep in seq(n_repetitions)) {
+
+    # If we are to use precomputed
+    if (use_precomputed_vS) {
+      if (ncol(x_explain) > 10) message("Computing `precomputed_vS` might take some time due to many featueres.\n")
+
+      # Small message to user
+      cat(sprintf("Creating the `precomputed_vS` for repetition %d of %d.\n",idx_rep, n_repetitions))
+
+      # Do not want any warnings
+      precomputed_vS = suppressMessages({
+        explain(
+          model = model,
+          x_explain = x_explain,
+          x_train = x_train,
+          approach = approach,
+          prediction_zero = prediction_zero,
+          keep_samp_for_vS = keep_samp_for_vS,
+          n_combinations = 2^ncol(x_explain),
+          n_samples = n_samples,
+          n_batches = n_batches,
+          seed = seed,
+          sampling_method = sampling_method,
+          ...
+        )})$internal$output
+    } else {
+      precomputed_vS = NULL
+    }
+
+    # Iterate over the sampling methods
+    for (sampling_method in sampling_methods) {
+
+      # A string used in the result list
+      idx_rep_str = paste0("repetition_", idx_rep)
+
+      # Add a new empyt sub sub list in the result list
+      result_list[[sampling_method]][[idx_rep_str]] = list()
+
+      # Iterate over the n_combinations sequence.
+      for (n_combinations in sequence_n_combinations) {
+
+        # A string used in the result list
+        n_combinations_str = paste0("n_combinations_", n_combinations)
+
+        # If we are using a paired method, then we skip interactions where n_combinations is odd
+        if (grepl("paired", sampling_method) && n_combinations %% 2 == 1) next
+
+        # Small printout to the user
+        cat(sprintf("Repetition %d of %d. Sampling method: %s. N_combination %d.\n",
+                    idx_rep, n_repetitions, sampling_method, n_combinations))
+
+        # Create the explanations and save the shapr objects to the results list
+        result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]] = explain(
+          model = model,
+          x_explain = x_explain,
+          x_train = x_train,
+          approach = approach,
+          prediction_zero = prediction_zero,
+          keep_samp_for_vS = keep_samp_for_vS,
+          n_combinations = n_combinations,
+          n_samples = n_samples,
+          n_batches = min(n_combinations-1, n_batches),
+          seed = seed,
+          sampling_method = sampling_method,
+          precomputed_vS = precomputed_vS,
+          ...
+        )
+      }
+    }
+
+    # Update the seed value
+    seed = seed + 1
+
+    if (!is_null(save_path)) {
+      saveRDS(result_list, save_path)
+    }
+  }
+
+  # return the results
+  return(result_list)
+}
+
+
+
+#' Aggregate the results of repeated explanations and plot them
+#'
+#' @param repeated_explanations_list List. Output from the [shapr::repeated_explanations()] function.
+#' @param true_explanations Shapr object.
+#' Output from the [shapr::explain()] function containing the true Shapley values.
+#' @param evaluation_criterion String. Either "MAE" or "MSE". Default is `MAE`.
+#' @param level Numeric. The confidence level required. Default is `0.95`.
+#' @param plot_figures Logic. If `TRUE`, then plot the figures.
+#' @param return_figures Logic. If `TRUE`, then return the figures.
+#' @param return_dt Logic. If `TRUE`, then return the data.tables containing the results.
+#' @param ggplot_theme A [ggplot2::theme()] object to customize the non-data components of the plots:
+#' i.e. titles, labels, fonts, background, gridlines, and legends. Themes can be used to give plots
+#' a consistent customized look. Use the themes available in \code{\link[ggplot2:theme_bw]{ggplot2::ggtheme()}}.
+#' if you would like to use a complete theme such as `theme_bw()`, `theme_minimal()`, and more.
+#' @param brewer_palette String. Name of one of the color palettes from [RColorBrewer::RColorBrewer()].
+#'  If `NULL`, then the function uses the default [ggplot2::ggplot()] color scheme.
+#' The following palettes are available for use with these scales:
+#' \describe{
+#'    \item{Diverging}{BrBG, PiYG, PRGn, PuOr, RdBu, RdGy, RdYlBu, RdYlGn, Spectral}
+#'    \item{Qualitative}{Accent, Dark2, Paired, Pastel1, Pastel2, Set1, Set2, Set3}
+#'    \item{Sequential}{Blues, BuGn, BuPu, GnBu, Greens, Greys, Oranges,
+#'      OrRd, PuBu, PuBuGn, PuRd, Purples, RdPu, Reds, YlGn, YlGnBu, YlOrBr, YlOrRd}
+#' }
+#' @param brewer_direction Sets the order of colors in the scale. If 1, the default,
+#' colors are as output by \code{\link[RColorBrewer:ColorBrewer]{RColorBrewer::brewer.pal()}}.
+#' If -1, the order of colors is reversed.
+#' @param flip_coordinates Boolean. Flip Cartesian coordinates so that the methods are on the y-axis.
+#' This is primarily useful for converting geoms and statistics which display y conditional on x, to x conditional on y.
+#' See [ggplot2::coord_flip()].
+#' @param legend_position String or numeric vector `c(x,y)`. The allowed string values for the
+#' argument `legend_position` are: `left`,`top`, `right`, `bottom`, and `none`. Note that, the argument
+#' `legend_position` can be also a numeric vector `c(x,y)`. In this case it is possible to position
+#' the legend inside the plotting area. `x` and `y` are the coordinates of the legend box.
+#' Their values should be between `0` and `1`, where `c(0,0)` corresponds to the "bottom left"
+#' and `c(1,1)` corresponds to the "top right" position.
+#' @param index_combinations Integer vector. Which of the coalitions (combinations) to plot.
+#' E.g. if you we only want combinations with even number of coalitions, we can set
+#' `index_combinations = seq(4, 2^{n_features}, 2)`.
+#'
+#' @return Depends on the values of `return_figures` and `return_dt`.
+#' @export
+#'
+#' @examples
+aggregate_and_plot_results = function(repeated_explanations_list,
+                                      true_explanations,
+                                      index_combinations = NULL,
+                                      evaluation_criterion = c("MAE", "MSE"),
+                                      level = 0.95,
+                                      plot_figures = FALSE,
+                                      return_figures = TRUE,
+                                      return_dt = TRUE,
+                                      ggplot_theme = NULL,
+                                      brewer_palette = NULL,
+                                      brewer_direction = 1,
+                                      flip_coordinates = FALSE,
+                                      legend_position = NULL) {
+  # Setup and checks ----------------------------------------------------------------------------
+  # Check that ggplot2 is installed
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("ggplot2 is not installed. Please run install.packages('ggplot2')")
+  }
+
+  # Check if user only provided a single explanation and did not put it in a list
+  if ("shapr" %in% class(repeated_explanations_list)) {
+    # Put it in a list
+    repeated_explanations_list <- list(repeated_explanations_list)
+  }
+
+  # Provide names for the sampling methods if not provided by the user
+  if (is.null(names(repeated_explanations_list))) {
+    names(repeated_explanations_list) = paste("Sampling Method", seq(length(repeated_explanations_list)))
+    message(paste0("The `repeated_explanations_list` was not a named list. Set the names to be: '",
+                   paste(names(repeated_explanations_list), collapse = "', '"), "'."))
+  }
+
+  # Extract which evaluation criterion we are going to plot
+  evaluation_criterion = match.arg(evaluation_criterion)
+
+  # Get the number of repetitions
+  n_repetitions = length(repeated_explanations_list[[1]])
+
+
+  # Make data.tables ------------------------------------------------------------------------------------------------
+  # Create list where each entry is a `n_coalitions` times `n_repetitions` matrix containing
+  # the overall evaluation criterion (MAE or MSE) between the true Shapley values
+  # (using all coalitions and a high value of `n_combinations`) and the repeated runs
+  # (different seed values) with different sampling methods and number of used coalitions.
+  results_list =
+    lapply(repeated_explanations_list, function (ith_method) {
+      sapply(ith_method, function(ith_method_jth_repetition) {
+        sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
+          mean_absolute_and_squared_errors(
+            true_explanations$shapley_values,
+            ith_method_jth_repetition_kth_coalition$shapley_values)[[tolower(evaluation_criterion)]]
+        })
+      })
+    })
+
+  # For each method and `n_combination` value, compute the median and the quantile confidence interval
+  # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
+  results_dt_with_missing_entries =
+    rbindlist(
+      lapply(results_list, function(ith_method) {
+        median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
+        tmp_dt = data.table(n_combinations =
+                              as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
+                            CI_lower = median_and_ci[1,],
+                            median = median_and_ci[2,],
+                            CI_upper = median_and_ci[3,],
+                            mean = apply(ith_method, 1, mean),
+                            min = apply(ith_method, 1, min),
+                            max = apply(ith_method, 1, max))
+      }), idcol = "sampling")
+  results_dt_with_missing_entries$sampling = factor(results_dt_with_missing_entries$sampling,
+                                                    levels = names(repeated_explanations_list),
+                                                    ordered = TRUE)
+
+  # Remove the rows with missing entries
+  results_dt = results_dt_with_missing_entries[!is.na(results_dt_with_missing_entries$median)]
+
+  # Only keep the desired combinations
+  if (!is.null(index_combinations)) {
+    results_dt <- results_dt[n_combinations %in% index_combinations]
+  }
+
+  # We also compute some alternative aggregated versions of the data not needed to make the figure.
+  # Create an alternative aggregated results data.table
+  result_dt_alternative =
+    rbindlist(
+      lapply(results_list, function(ith_method) {
+        data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
+                   ith_method)
+      }), idcol = "sampling")
+
+
+  # Convert the sampling column to a factor
+  result_dt_alternative$sampling = factor(result_dt_alternative$sampling,
+                                          levels = names(repeated_explanations_list),
+                                          ordered = TRUE)
+
+  # Remove rows with missing entries
+  result_dt_alternative = result_dt_alternative[!is.na(result_dt_alternative$repetition_1)]
+
+  # Change the column names
+  data.table::setnames(result_dt_alternative, c(names(result_dt_alternative)[1:2], paste(seq(n_repetitions))))
+
+  # Convert from a wide to long data.table
+  result_dt_alternative_long = melt(data = result_dt_alternative,
+                                    id.vars = c("sampling", "n_combinations"),
+                                    variable.name = "repetition",
+                                    value.name = "evaluation_criterion")
+
+  # Only keep the desired combinations
+  if (!is.null(index_combinations)) {
+    result_dt_alternative_long <- result_dt_alternative_long[n_combinations %in% index_combinations]
+  }
+
+  # For the box plots to work we need the combinations to be a factor
+  result_dt_alternative_long_combination_factor = copy(result_dt_alternative_long)
+  result_dt_alternative_long_combination_factor$n_combinations =
+    factor(result_dt_alternative_long_combination_factor$n_combinations)
+
+
+  # Make the figures ------------------------------------------------------------------------------------------------
+  # A list to store the figures
+  figure_list = list()
+
+  # Plot the results
+  figure_list[["figure_CI"]] =
+    ggplot2::ggplot(results_dt, ggplot2::aes(x = n_combinations, y = median, col = sampling)) +
+    ggplot2::geom_line() +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper, fill = sampling), alpha = 0.3) +
+    ggplot2::labs(
+      x = "Number of coalitions",
+      y = paste0(evaluation_criterion, " (median + ", level*100,  "% CI)"),
+      col = "Sampling method",
+      fill = "Sampling method") +
+    ggplot2::expand_limits(y = 0) +
+    {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+    {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                              direction = brewer_direction)} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                               direction = brewer_direction)} +
+    {if (!is.null(ggplot_theme)) ggplot_theme} +
+    {if (flip_coordinates) ggplot2::coord_flip()} +
+    {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+
+
+  # linetype = c(as.numeric(results_dt$sampling) %% 3)
+  # linetype[linetype == 0] = 3
+  # results_dt[,linetype := linetype]
+
+  figure_list[["figure_mean"]] =
+    ggplot2::ggplot(results_dt, ggplot2::aes(x = n_combinations, y = mean, col = sampling)) +
+    ggplot2::geom_line()
+    ggplot2::labs(
+      x = "Number of coalitions",
+      y = paste(evaluation_criterion, "(mean)"),
+      col = "Sampling method",
+      fill = "Sampling method") +
+    ggplot2::expand_limits(y = 0) +
+    {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                               direction = brewer_direction)} +
+    {if (!is.null(ggplot_theme)) ggplot_theme} +
+    {if (flip_coordinates) ggplot2::coord_flip()} +
+    {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+
+  figure_list[["figure_median"]] =
+    ggplot2::ggplot(results_dt, ggplot2::aes(x = n_combinations, y = median, col = sampling)) +
+    ggplot2::geom_line() +
+    ggplot2::labs(
+      x = "Number of coalitions",
+      y = paste(evaluation_criterion, "(median)"),
+      col = "Sampling method",
+      fill = "Sampling method") +
+    ggplot2::expand_limits(y = 0) +
+    {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                               direction = brewer_direction)} +
+    {if (!is.null(ggplot_theme)) ggplot_theme} +
+    {if (flip_coordinates) ggplot2::coord_flip()} +
+    {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+
+  figure_list[["figure_lines"]] =
+    ggplot2::ggplot(result_dt_alternative_long,
+                    ggplot2::aes(x = n_combinations,
+                                 y = evaluation_criterion,
+                                 color = repetition,
+                                 linetype = sampling,
+                                 group = interaction(sampling, repetition))) +
+    ggplot2::geom_line() +
+    ggplot2::labs(
+      x = "Number of coalitions",
+      y = evaluation_criterion,
+      col = "Repetition",
+      linetype = "Sampling method") +
+    ggplot2::expand_limits(y = 0) +
+    ggplot2::guides(
+      linetype = ggplot2::guide_legend(order = 1),
+      color = ggplot2::guide_legend(order = 2)) +
+    {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                               direction = brewer_direction)} +
+    {if (!is.null(ggplot_theme)) ggplot_theme} +
+    {if (flip_coordinates) ggplot2::coord_flip()} +
+    {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+
+
+  figure_list[["figure_boxplot"]] =
+    ggplot2::ggplot(result_dt_alternative_long_combination_factor,
+                    ggplot2::aes(x = n_combinations,
+                                 y = evaluation_criterion,
+                                 fill = sampling)) +
+    ggplot2::geom_boxplot() +
+    ggplot2::labs(
+      x = "Number of coalitions",
+      y = evaluation_criterion,
+      fill = "Sampling method") +
+    ggplot2::expand_limits(y = 0) +
+    {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+    {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                              direction = brewer_direction)} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                               direction = brewer_direction)} +
+    {if (!is.null(ggplot_theme)) ggplot_theme} +
+    {if (flip_coordinates) ggplot2::coord_flip()} +
+    {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+
+
+  figure_list[["figure_lines_boxplot"]] =
+    ggplot2::ggplot(result_dt_alternative_long_combination_factor,
+                    ggplot2::aes(x = n_combinations,
+                                 y = evaluation_criterion,
+                                 fill = sampling)) +
+    ggplot2::geom_line(ggplot2::aes(linetype = sampling,
+                                    color = repetition,
+                                    group = interaction(sampling, repetition))) +
+    ggplot2::geom_boxplot() +
+    ggplot2::labs(
+      x = "Number of coalitions",
+      y = evaluation_criterion,
+      col = "Repetition",
+      fill = "Sampling method",
+      linetype = "Sampling method") +
+    ggplot2::expand_limits(y = 0) +
+    ggplot2::guides(
+      fill = ggplot2::guide_legend(order = 1),
+      linetype = ggplot2::guide_legend(order = 2),
+      color = ggplot2::guide_legend(order = 3)) +
+    {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+    {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                              direction = brewer_direction)} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                               direction = brewer_direction)} +
+    {if (!is.null(ggplot_theme)) ggplot_theme} +
+    {if (flip_coordinates) ggplot2::coord_flip()} +
+    {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+
+
+  figure_list[["figure_boxplot_lines"]] =
+    ggplot2::ggplot(result_dt_alternative_long_combination_factor,
+                    ggplot2::aes(x = n_combinations,
+                                 y = evaluation_criterion,
+                                 fill = sampling)) +
+    ggplot2::geom_boxplot() +
+    ggplot2::geom_line(ggplot2::aes(linetype = sampling,
+                                    color = repetition,
+                                    group = interaction(sampling, repetition))) +
+    ggplot2::labs(
+      x = "Number of coalitions",
+      y = evaluation_criterion,
+      col = "Repetition",
+      fill = "Sampling method",
+      linetype = "Sampling method") +
+    ggplot2::expand_limits(y = 0) +
+    ggplot2::guides(
+      fill = ggplot2::guide_legend(order = 1),
+      linetype = ggplot2::guide_legend(order = 2),
+      color = ggplot2::guide_legend(order = 3)) +
+    {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+    {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                              direction = brewer_direction)} +
+    {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                               direction = brewer_direction)} +
+    {if (!is.null(ggplot_theme)) ggplot_theme} +
+    {if (flip_coordinates) ggplot2::coord_flip()} +
+    {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+
+
+  # If plot figures, then plot the figures
+  if (plot_figures) lapply(rev(figure_list), plot)
+
+  # Return the results ---------------------------------------------------------------------------------------------
+  # Check if we are to return figure or data.table
+  if (return_figures || return_dt) {
+    # Create a list to store the objects to return.
+    return_list = list()
+
+    # If return figure, than add the figure to the return list
+    if (return_figures) return_list[["figures"]] = figure_list
+
+    # If return data.table, than add the data.table to the return list
+    if (return_dt) {
+      return_list[["dt"]] = list("dt_CI" = results_dt,
+                                 "dt_wide" = result_dt_alternative,
+                                 "dt_long" = result_dt_alternative_long)
+    }
+
+    # If we are only returning one object we do not use a list.
+    if (length(return_list) == 1) {
+      return(return_list[[1]])
+    } else {
+      return(return_list)
+    }
+  }
+}
+
