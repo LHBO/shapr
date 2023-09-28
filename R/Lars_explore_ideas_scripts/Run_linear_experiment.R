@@ -11,7 +11,7 @@
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
-if (length(args) < 9) {
+if (length(args) < 10) {
   stop("Must provide if we run onlyon UiO(boolean), do setup(boolean), compute true Shapley values(boolean), do sampling(boolean),
        do regression(boolean), do evaluation(boolean), and the correlations rho or scale burr_p.\n", call.=FALSE)
 }
@@ -66,13 +66,28 @@ n_samples = as.numeric(args[9])
 #                   n_workers, n_max_workers))
 # }
 
+# Extract the correlation level
+betas = args[10]
+if (betas == "NULL") {
+  betas = unlist(strsplit(args[10], ","))
+  if (length(betas) > 1) {
+    betas = unname(sapply(betas, function(i) as.numeric(i)))
+  } else {
+    betas = as.numeric(betas)
+  }
+} else {
+  # Create the beta vector
+  betas = c(0, rep(1, M))
+  betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2)
+  betas = betas[seq(M+1)]
+}
 
 
 
 
 
 # Setup -----------------------------------------------------------------------------------------------------------
-# Get the name of the computer we are woring on
+# Get the name of the computer we are working on
 hostname = R.utils::System$getHostname()
 cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
 
@@ -120,11 +135,6 @@ library(cli)
 # Fixed parameters ------------------------------------------------------------------------------------------------------
 # Mean of the multivariate Gaussian distribution
 mu = rep(0, times = M)
-
-# Create the beta vector
-betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2)
-betas = c(0, rep(1, M))
-betas = betas[seq(M+1)]
 
 # Which coalition/combination sampling schemes to use
 sampling_methods = c("unique",
@@ -252,7 +262,7 @@ for (rho_idx in seq_along(rhos)) {
       keep_samp_for_vS = FALSE,
       n_combinations = 2^M,
       n_samples = 2500,
-      n_batches = 32,
+      n_batches = 64,
       gaussian.mu = mu,
       gaussian.cov_mat = sigma,
       seed = 1
