@@ -292,6 +292,8 @@ aggregate_and_plot_results = function(repeated_explanations_list,
                                       brewer_direction = 1,
                                       flip_coordinates = FALSE,
                                       legend_position = NULL,
+                                      scale_y_log10 = FALSE,
+                                      scale_x_log10 = FALSE,
                                       dt_CI = NULL,
                                       dt_long = NULL,
                                       only_these_sampling_methods = NULL) {
@@ -433,7 +435,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       y = paste0(evaluation_criterion, " (median + ", level*100,  "% CI)"),
       col = "Sampling method",
       fill = "Sampling method") +
-    ggplot2::expand_limits(y = 0) +
+    {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+    {if (scale_y_log10) ggplot2::scale_y_log10()} +
+    {if (scale_x_log10) ggplot2::scale_x_log10()} +
     {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
     {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
     {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
@@ -451,13 +455,15 @@ aggregate_and_plot_results = function(repeated_explanations_list,
 
   figure_list[["figure_mean"]] =
     ggplot2::ggplot(results_dt, ggplot2::aes(x = n_combinations, y = mean, col = sampling)) +
-    ggplot2::geom_line()
+    ggplot2::geom_line() +
     ggplot2::labs(
       x = "Number of coalitions",
       y = paste(evaluation_criterion, "(mean)"),
       col = "Sampling method",
       fill = "Sampling method") +
-    ggplot2::expand_limits(y = 0) +
+    {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+    {if (scale_y_log10) ggplot2::scale_y_log10()} +
+    {if (scale_x_log10) ggplot2::scale_x_log10()} +
     {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
     {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
                                                                direction = brewer_direction)} +
@@ -473,7 +479,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       y = paste(evaluation_criterion, "(median)"),
       col = "Sampling method",
       fill = "Sampling method") +
-    ggplot2::expand_limits(y = 0) +
+    {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+    {if (scale_y_log10) ggplot2::scale_y_log10()} +
+    {if (scale_x_log10) ggplot2::scale_x_log10()} +
     {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
     {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
                                                                direction = brewer_direction)} +
@@ -494,7 +502,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       y = evaluation_criterion,
       col = "Repetition",
       linetype = "Sampling method") +
-    ggplot2::expand_limits(y = 0) +
+    {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+    {if (scale_y_log10) ggplot2::scale_y_log10()} +
+    {if (scale_x_log10) ggplot2::scale_x_log10()} +
     ggplot2::guides(
       linetype = ggplot2::guide_legend(order = 1),
       color = ggplot2::guide_legend(order = 2)) +
@@ -516,7 +526,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       x = "Number of coalitions",
       y = evaluation_criterion,
       fill = "Sampling method") +
-    ggplot2::expand_limits(y = 0) +
+    {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+    {if (scale_y_log10) ggplot2::scale_y_log10()} +
+    {if (scale_x_log10) ggplot2::scale_x_log10()} +
     {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
     {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
     {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
@@ -543,7 +555,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       col = "Repetition",
       fill = "Sampling method",
       linetype = "Sampling method") +
-    ggplot2::expand_limits(y = 0) +
+    {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+    {if (scale_y_log10) ggplot2::scale_y_log10()} +
+    {if (scale_x_log10) ggplot2::scale_x_log10()} +
     ggplot2::guides(
       fill = ggplot2::guide_legend(order = 1),
       linetype = ggplot2::guide_legend(order = 2),
@@ -574,7 +588,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       col = "Repetition",
       fill = "Sampling method",
       linetype = "Sampling method") +
-    ggplot2::expand_limits(y = 0) +
+    {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+    {if (scale_y_log10) ggplot2::scale_y_log10()} +
+    {if (scale_x_log10) ggplot2::scale_x_log10()} +
     ggplot2::guides(
       fill = ggplot2::guide_legend(order = 1),
       linetype = ggplot2::guide_legend(order = 2),

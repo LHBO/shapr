@@ -7,7 +7,7 @@
 M = 10
 
 # The correlation level
-rhos = 0.0
+rhos = 0.9
 
 # The number of training observations
 n_train = 1000
@@ -104,9 +104,10 @@ for (rho_idx in seq_along(rhos)) {
 
 # Figures ---------------------------------------------------------------------------------------------------------
 
-result_figures = aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list$rho_0.5,
-                                            true_explanations = true_explanations_list$rho_0.5,
+result_figures = aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                                            true_explanations = true_explanations_list[[1]],
                                             evaluation_criterion = "MAE",
+                                            scale_y_log10 = TRUE,
                                             plot_figures = FALSE,
                                             return_figures = TRUE,
                                             return_dt = TRUE)
@@ -117,12 +118,13 @@ result_figures$figures$figure_lines
 result_figures$figures$figure_boxplot
 
 # We see that it is better to use the paired version
-aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list$rho_0.5,
-                           true_explanations = true_explanations_list$rho_0.5,
+aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                           true_explanations = true_explanations_list[[1]],
                            evaluation_criterion = "MAE",
                            plot_figures = FALSE,
                            return_figures = TRUE,
                            return_dt = FALSE,
+                           scale_y_log10 = TRUE,
                            dt_CI = result_figures$dt$dt_CI,
                            dt_long = result_figures$dt$dt_long,
                            only_these_sampling_methods = c("unique",
@@ -130,12 +132,13 @@ aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_li
                                                            "unique_paired"))$figure_CI
 
 # We see that it is better to use the paired version
-aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list$rho_0.5,
-                           true_explanations = true_explanations_list$rho_0.5,
+aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                           true_explanations = true_explanations_list[[1]],
                            evaluation_criterion = "MAE",
                            plot_figures = FALSE,
                            return_figures = TRUE,
                            return_dt = FALSE,
+                           scale_y_log10 = TRUE,
                            dt_CI = result_figures$dt$dt_CI,
                            dt_long = result_figures$dt$dt_long,
                            only_these_sampling_methods = c("unique",
@@ -144,12 +147,13 @@ aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_li
                                                            "unique_paired_SW"))$figure_CI
 
 # We see that adding the coalitions in increasing and decreasing order is a bad idea
-aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list$rho_0.5,
-                           true_explanations = true_explanations_list$rho_0.5,
+aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                           true_explanations = true_explanations_list[[1]],
                            evaluation_criterion = "MAE",
                            plot_figures = FALSE,
                            return_figures = TRUE,
                            return_dt = FALSE,
+                           scale_y_log10 = TRUE,
                            dt_CI = result_figures$dt$dt_CI,
                            dt_long = result_figures$dt$dt_long,
                            only_these_sampling_methods = c("unique",
@@ -159,25 +163,28 @@ aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_li
 
 # Smarter to add the coalitions based on larger Shapley kernel weights
 # Here we see that also adding those with small are better,
-aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list$rho_0.5,
-                           true_explanations = true_explanations_list$rho_0.5,
+aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                           true_explanations = true_explanations_list[[1]],
                            evaluation_criterion = "MAE",
                            plot_figures = FALSE,
                            return_figures = TRUE,
                            return_dt = FALSE,
+                           scale_y_log10 = TRUE,
                            dt_CI = result_figures$dt$dt_CI,
                            dt_long = result_figures$dt$dt_long,
                            only_these_sampling_methods = c("unique",
                                                            "unique_paired",
+                                                           "unique_paired_SW",
                                                            "largest_weights",
                                                            "smallest_weights"))$figure_CI
 
-aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list$rho_0.5,
-                           true_explanations = true_explanations_list$rho_0.5,
+aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                           true_explanations = true_explanations_list[[1]],
                            evaluation_criterion = "MAE",
                            plot_figures = FALSE,
                            return_figures = TRUE,
                            return_dt = FALSE,
+                           scale_y_log10 = TRUE,
                            dt_CI = result_figures$dt$dt_CI,
                            dt_long = result_figures$dt$dt_long,
                            only_these_sampling_methods = c("unique",

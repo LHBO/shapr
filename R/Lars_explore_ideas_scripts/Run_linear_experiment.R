@@ -91,7 +91,8 @@ if (hostname == "Larss-MacBook-Pro.local") {
 
 } else if (grepl("uio.no", hostname)) {
   # TBA
-  folder = ""
+  folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
+  folder_save = file.path(folder, "Paper3_rds_saves")
 
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
