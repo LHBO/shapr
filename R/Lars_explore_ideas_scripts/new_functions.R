@@ -109,6 +109,9 @@ repeated_explanations = function(model,
                                  sampling_methods = c("unique",
                                                       "unique_paired",
                                                       "non_unique",
+                                                      "unique_SW",
+                                                      "unique_paired_SW",
+                                                      "non_unique_SW",
                                                       "chronological_order_increasing",
                                                       "chronological_order_decreasing",
                                                       "largest_weights",
@@ -161,7 +164,6 @@ repeated_explanations = function(model,
           n_samples = n_samples,
           n_batches = n_batches,
           seed = seed,
-          sampling_method = sampling_method,
           ...
         )})$internal$output
     } else {
@@ -206,13 +208,21 @@ repeated_explanations = function(model,
           precomputed_vS = precomputed_vS,
           ...
         )
+
+        if (n_combinations != sequence_n_combinations[1]) {
+          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]][["only_save"]] =
+            result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$internal$objects[c(2,3,4)]
+          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$internal = NULL
+          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$timing = NULL
+          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$pred_explain = NULL
+        }
       }
     }
 
     # Update the seed value
     seed = seed + 1
 
-    if (!is_null(save_path)) {
+    if (!is.null(save_path)) {
       saveRDS(result_list, save_path)
     }
   }
@@ -261,6 +271,9 @@ repeated_explanations = function(model,
 #' @param index_combinations Integer vector. Which of the coalitions (combinations) to plot.
 #' E.g. if you we only want combinations with even number of coalitions, we can set
 #' `index_combinations = seq(4, 2^{n_features}, 2)`.
+#' @param dt_CI Data.table. Returned data.table from earlier call to the function.
+#' @param dt_long Data.table Returned data.table from earlier call to the function.
+#' @param only_these_sampling_methods Array of strings. If we are only to use/plot these samping methods.
 #'
 #' @return Depends on the values of `return_figures` and `return_dt`.
 #' @export
@@ -278,7 +291,10 @@ aggregate_and_plot_results = function(repeated_explanations_list,
                                       brewer_palette = NULL,
                                       brewer_direction = 1,
                                       flip_coordinates = FALSE,
-                                      legend_position = NULL) {
+                                      legend_position = NULL,
+                                      dt_CI = NULL,
+                                      dt_long = NULL,
+                                      only_these_sampling_methods = NULL) {
   # Setup and checks ----------------------------------------------------------------------------
   # Check that ggplot2 is installed
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
@@ -306,84 +322,101 @@ aggregate_and_plot_results = function(repeated_explanations_list,
 
 
   # Make data.tables ------------------------------------------------------------------------------------------------
-  # Create list where each entry is a `n_coalitions` times `n_repetitions` matrix containing
-  # the overall evaluation criterion (MAE or MSE) between the true Shapley values
-  # (using all coalitions and a high value of `n_combinations`) and the repeated runs
-  # (different seed values) with different sampling methods and number of used coalitions.
-  results_list =
-    lapply(repeated_explanations_list, function (ith_method) {
-      sapply(ith_method, function(ith_method_jth_repetition) {
-        sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
-          mean_absolute_and_squared_errors(
-            true_explanations$shapley_values,
-            ith_method_jth_repetition_kth_coalition$shapley_values)[[tolower(evaluation_criterion)]]
+  if (is.null(dt_CI)) {
+    # Create list where each entry is a `n_coalitions` times `n_repetitions` matrix containing
+    # the overall evaluation criterion (MAE or MSE) between the true Shapley values
+    # (using all coalitions and a high value of `n_combinations`) and the repeated runs
+    # (different seed values) with different sampling methods and number of used coalitions.
+    results_list =
+      lapply(repeated_explanations_list, function (ith_method) {
+        sapply(ith_method, function(ith_method_jth_repetition) {
+          sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
+            mean_absolute_and_squared_errors(
+              true_explanations$shapley_values,
+              ith_method_jth_repetition_kth_coalition$shapley_values)[[tolower(evaluation_criterion)]]
+          })
         })
       })
-    })
 
-  # For each method and `n_combination` value, compute the median and the quantile confidence interval
-  # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
-  results_dt_with_missing_entries =
-    rbindlist(
-      lapply(results_list, function(ith_method) {
-        median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
-        tmp_dt = data.table(n_combinations =
-                              as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
-                            CI_lower = median_and_ci[1,],
-                            median = median_and_ci[2,],
-                            CI_upper = median_and_ci[3,],
-                            mean = apply(ith_method, 1, mean),
-                            min = apply(ith_method, 1, min),
-                            max = apply(ith_method, 1, max))
-      }), idcol = "sampling")
-  results_dt_with_missing_entries$sampling = factor(results_dt_with_missing_entries$sampling,
-                                                    levels = names(repeated_explanations_list),
-                                                    ordered = TRUE)
+    # For each method and `n_combination` value, compute the median and the quantile confidence interval
+    # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
+    results_dt_with_missing_entries =
+      rbindlist(
+        lapply(results_list, function(ith_method) {
+          median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
+          tmp_dt = data.table(n_combinations =
+                                as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
+                              CI_lower = median_and_ci[1,],
+                              median = median_and_ci[2,],
+                              CI_upper = median_and_ci[3,],
+                              mean = apply(ith_method, 1, mean),
+                              min = apply(ith_method, 1, min),
+                              max = apply(ith_method, 1, max))
+        }), idcol = "sampling")
+    results_dt_with_missing_entries$sampling = factor(results_dt_with_missing_entries$sampling,
+                                                      levels = names(repeated_explanations_list),
+                                                      ordered = TRUE)
 
-  # Remove the rows with missing entries
-  results_dt = results_dt_with_missing_entries[!is.na(results_dt_with_missing_entries$median)]
+    # Remove the rows with missing entries
+    results_dt = results_dt_with_missing_entries[!is.na(results_dt_with_missing_entries$median)]
+  } else {
+    results_dt = dt_CI
+  }
 
   # Only keep the desired combinations
   if (!is.null(index_combinations)) {
     results_dt <- results_dt[n_combinations %in% index_combinations]
   }
 
+
   # We also compute some alternative aggregated versions of the data not needed to make the figure.
   # Create an alternative aggregated results data.table
-  result_dt_alternative =
-    rbindlist(
-      lapply(results_list, function(ith_method) {
-        data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
-                   ith_method)
-      }), idcol = "sampling")
+  if (is.null(dt_long)) {
+    result_dt_alternative =
+      rbindlist(
+        lapply(results_list, function(ith_method) {
+          data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
+                     ith_method)
+        }), idcol = "sampling")
 
 
-  # Convert the sampling column to a factor
-  result_dt_alternative$sampling = factor(result_dt_alternative$sampling,
-                                          levels = names(repeated_explanations_list),
-                                          ordered = TRUE)
+    # Convert the sampling column to a factor
+    result_dt_alternative$sampling = factor(result_dt_alternative$sampling,
+                                            levels = names(repeated_explanations_list),
+                                            ordered = TRUE)
 
-  # Remove rows with missing entries
-  result_dt_alternative = result_dt_alternative[!is.na(result_dt_alternative$repetition_1)]
+    # Remove rows with missing entries
+    result_dt_alternative = result_dt_alternative[!is.na(result_dt_alternative$repetition_1)]
 
-  # Change the column names
-  data.table::setnames(result_dt_alternative, c(names(result_dt_alternative)[1:2], paste(seq(n_repetitions))))
+    # Change the column names
+    data.table::setnames(result_dt_alternative, c(names(result_dt_alternative)[1:2], paste(seq(n_repetitions))))
 
-  # Convert from a wide to long data.table
-  result_dt_alternative_long = melt(data = result_dt_alternative,
-                                    id.vars = c("sampling", "n_combinations"),
-                                    variable.name = "repetition",
-                                    value.name = "evaluation_criterion")
+    # Convert from a wide to long data.table
+    result_dt_alternative_long = melt(data = result_dt_alternative,
+                                      id.vars = c("sampling", "n_combinations"),
+                                      variable.name = "repetition",
+                                      value.name = "evaluation_criterion")
+
+  } else {
+    result_dt_alternative_long = dt_long
+  }
 
   # Only keep the desired combinations
   if (!is.null(index_combinations)) {
     result_dt_alternative_long <- result_dt_alternative_long[n_combinations %in% index_combinations]
   }
 
+  # Only use the specified sampling methods
+  if (!is.null(only_these_sampling_methods)) {
+    result_dt_alternative_long = result_dt_alternative_long[sampling %in% only_these_sampling_methods]
+    results_dt = results_dt[sampling %in% only_these_sampling_methods]
+  }
+
   # For the box plots to work we need the combinations to be a factor
   result_dt_alternative_long_combination_factor = copy(result_dt_alternative_long)
   result_dt_alternative_long_combination_factor$n_combinations =
     factor(result_dt_alternative_long_combination_factor$n_combinations)
+
 
 
   # Make the figures ------------------------------------------------------------------------------------------------
