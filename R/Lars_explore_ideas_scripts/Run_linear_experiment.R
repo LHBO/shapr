@@ -84,8 +84,6 @@ if (betas == "NULL") {
 
 
 
-
-
 # Setup -----------------------------------------------------------------------------------------------------------
 # Get the name of the computer we are working on
 hostname = R.utils::System$getHostname()
