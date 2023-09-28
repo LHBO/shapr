@@ -74,20 +74,23 @@ n_samples = as.numeric(args[9])
 
 # Extract the correlation level
 betas = as.character(args[10])
-if (betas == "NULL") {
-  betas = unlist(strsplit(args[10], ","))
+print(betas)
+if (betas != "NULL") {
+  print("hei")
+  betas = unlist(strsplit(betas, ","))
   if (length(betas) > 1) {
     betas = unname(sapply(betas, function(i) as.numeric(i)))
   } else {
     betas = as.numeric(betas)
   }
+  print(betas)
 } else {
   # Create the beta vector
   betas = c(0, rep(1, M))
   betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2)
   betas = betas[seq(M+1)]
 }
-
+print(betas)
 
 
 # Setup -----------------------------------------------------------------------------------------------------------
@@ -97,12 +100,11 @@ cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
 
 
 # set the working directory and define the correct folder based on system
-if (hostname == "Larss-MacBook-Pro.local") {
+if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
   folder_save = file.path(folder, "Paper3_rds_saves")
   # basename(folder)
   # dirname(folder)
-
 
 } else if (grepl("hpc.uio.no", hostname)) {
   # TBA
