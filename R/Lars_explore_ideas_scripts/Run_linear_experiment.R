@@ -7,6 +7,12 @@
 #Rscript Run_linear_experiment.R 10 0.0 1000 250 TRUE FALSE 1 TRUE 250
 #Rscript Run_linear_experiment.R 10 0.0 1000 250 FALSE TRUE 1:5 FALSE 250
 #Rscript Run_linear_experiment.R 10 0.0 1000 250 FALSE TRUE 6:10 FALSE 250
+#
+#
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
+# git checkout Lars/paper3_ideas
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+# Rscript Run_linear_experiment.R 10 0.0 1000 250 TRUE FALSE 1 TRUE 250 NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -67,7 +73,7 @@ n_samples = as.numeric(args[9])
 # }
 
 # Extract the correlation level
-betas = args[10]
+betas = as.string(args[10])
 if (betas == "NULL") {
   betas = unlist(strsplit(args[10], ","))
   if (length(betas) > 1) {
