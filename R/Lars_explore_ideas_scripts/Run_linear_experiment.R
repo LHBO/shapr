@@ -73,7 +73,7 @@ n_samples = as.numeric(args[9])
 # }
 
 # Extract the correlation level
-betas = as.string(args[10])
+betas = as.character(args[10])
 if (betas == "NULL") {
   betas = unlist(strsplit(args[10], ","))
   if (length(betas) > 1) {
