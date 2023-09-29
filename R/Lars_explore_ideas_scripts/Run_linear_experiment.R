@@ -9,8 +9,8 @@
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
 # git checkout Lars/paper3_ideas
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
-# Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 NULL 1000 250 10 0.0 NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:5 1 250 1000 250 10 0.0 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 5000 NULL 1000 250 10 0.0 NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:5 1 NULL 500 1000 250 10 0.0 NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -49,19 +49,20 @@ if (!(repetitions %in% c("NULL", "NA", "NaN")) {
 n_workers = as.integer(args[5])
 
 # Extract the number of MC samples
-n_samples = as.integer(args[6])
+n_samples_true = as.integer(args[6])
+n_samples = as.integer(args[7])
 
 # Extract the number of training observations
-n_train = as.integer(args[7])
+n_train = as.integer(args[8])
 
 # Extract the number of test observations
-n_test = as.integer(args[8])
+n_test = as.integer(args[9])
 
 # Extract the number of features
-M = as.integer(args[9])
+M = as.integer(args[10])
 
 # Extract the correlation level
-rhos = unlist(strsplit(args[10], ","))
+rhos = unlist(strsplit(args[11], ","))
 if (length(rhos) > 1) {
   rhos = unname(sapply(rhos, function(i) as.numeric(i)))
 } else {
@@ -69,7 +70,7 @@ if (length(rhos) > 1) {
 }
 
 # Extract the correlation level
-betas = as.character(args[11])
+betas = as.character(args[12])
 if (betas != "NULL") {
   print("hei")
   betas = unlist(strsplit(betas, ","))
