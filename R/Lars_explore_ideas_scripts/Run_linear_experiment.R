@@ -10,7 +10,7 @@
 # git checkout Lars/paper3_ideas
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 # Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 5000 NULL 1000 250 10 0.0 NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:5 1 NULL 500 1000 250 10 0.0 NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:5 4 NULL 500 1000 250 10 0.0 NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -18,6 +18,14 @@ args = commandArgs(trailingOnly = TRUE)
 if (length(args) < 11) {
   stop("Must provide all parameters!", call.=FALSE)
 }
+
+do_setup = compute_true_explanations = compute_repeated_explanations = TRUE
+repetitions = 1
+n_workers = 2
+n_samples_true = n_samples = 10
+n_train = n_test = 20
+M = 4
+rhos = 0.5
 
 # Extract if we are to generate the data and model
 do_setup = as.logical(args[1])
@@ -93,6 +101,7 @@ message(sprintf("Set up: rho = [%s] and beta = [%s].\n",
 
 
 
+
 # Setup -----------------------------------------------------------------------------------------------------------
 # Get the name of the computer we are working on
 hostname = R.utils::System$getHostname()
@@ -137,8 +146,8 @@ message("loading my version of the package")
 if (UiO) {
   #devtools::clean_dll()
 }
-#devtools::load_all(".")
-devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+# devtools::load_all(".")
+# devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 library(shapr)
 message("done")
 
@@ -312,6 +321,7 @@ for (rho_idx in seq_along(rhos)) {
     message("Start computing the repeated estimated explanations.")
 
     # Iterate over the repetitions
+    repetition_idx = 1
     for (repetition_idx in seq_along(repetitions)) {
 
       # Get the current repetition
@@ -350,13 +360,30 @@ for (rho_idx in seq_along(rhos)) {
         keep_samp_for_vS = FALSE,
         n_repetitions = 1,
         n_samples = n_samples,
-        n_batches = floor(2^M/20),
+        n_batches = max(1, floor(2^M/20)),
         seed_start_value = seed_start_value_now,
         n_combinations_from = n_combinations_from,
         n_combinations_increment = n_combinations_increment,
         use_precomputed_vS = TRUE,
         sampling_methods = sampling_methods,
         save_path = save_file_name_rep_tmp)
+      # model = predictive_model
+      # x_explain = data_test
+      # x_train = data_train
+      # approach = "gaussian"
+      # gaussian.cov_mat = sigma
+      # gaussian.mu = mu
+      # prediction_zero = prediction_zero
+      # keep_samp_for_vS = FALSE
+      # n_repetitions = 1
+      # n_samples = n_samples
+      # n_batches = floor(2^M/20)
+      # seed_start_value = seed_start_value_now
+      # n_combinations_from = n_combinations_from
+      # n_combinations_increment = n_combinations_increment
+      # use_precomputed_vS = TRUE
+      # sampling_methods = sampling_methods
+      # save_path = save_file_name_rep_tmp
 
       future::plan(sequential)
 

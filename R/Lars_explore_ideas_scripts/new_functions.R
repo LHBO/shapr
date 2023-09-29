@@ -141,7 +141,12 @@ repeated_explanations = function(model,
   # Extract the seed value
   seed = seed_start_value
 
+  # Get the number of sampling methods and
+  n_sampling_methods = length(sampling_methods)
+  n_sequence_n_combinations = length(sequence_n_combinations)
+
   # Iterate over the number of iterations
+  idx_rep = 1
   for (idx_rep in seq(n_repetitions)) {
 
     # If we are to use precomputed
@@ -152,7 +157,9 @@ repeated_explanations = function(model,
       cat(sprintf("Creating the `precomputed_vS` for repetition %d of %d.\n",idx_rep, n_repetitions))
 
       # Do not want any warnings
-      precomputed_vS = suppressMessages({
+      progressr::handlers("cli")
+      progressr::with_progress({
+      precomputed_vS = suppressWarnings(suppressMessages(
         explain(
           model = model,
           x_explain = x_explain,
@@ -165,35 +172,51 @@ repeated_explanations = function(model,
           n_batches = n_batches,
           seed = seed,
           ...
-        )})$internal$output
+        )))$internal$output}, enable = TRUE)
     } else {
       precomputed_vS = NULL
     }
 
+
     # Iterate over the sampling methods
-    for (sampling_method in sampling_methods) {
+    sampling_method_idx = 9
+    for (sampling_method_idx in seq(n_sampling_methods)) {
+      sampling_method = sampling_methods[sampling_method_idx]
+
+      # Small printout to the user
+      cat(sprintf("Rep %d (%d of %d). Method: %s (%d of %d).\n",
+                  idx_rep, idx_rep, n_repetitions,
+                  sampling_method, sampling_method_idx, n_sampling_methods))
 
       # A string used in the result list
       idx_rep_str = paste0("repetition_", idx_rep)
 
-      # Add a new empyt sub sub list in the result list
+      # Add a new empty sub sub list in the result list
       result_list[[sampling_method]][[idx_rep_str]] = list()
 
-      # Iterate over the n_combinations sequence.
-      for (n_combinations in sequence_n_combinations) {
+      # If we are using a paired method, then we skip interactions where n_combinations is odd
+      if (grepl("paired", sampling_method)) {
+        used_sequence_n_combinations = sequence_n_combinations[sequence_n_combinations %% 2 == 0]
+      } else {
+        used_sequence_n_combinations = sequence_n_combinations
+      }
 
-        # A string used in the result list
-        n_combinations_str = paste0("n_combinations_", n_combinations)
-
-        # If we are using a paired method, then we skip interactions where n_combinations is odd
-        if (grepl("paired", sampling_method) && n_combinations %% 2 == 1) next
-
-        # Small printout to the user
-        cat(sprintf("Repetition %d of %d. Sampling method: %s. N_combination %d.\n",
-                    idx_rep, n_repetitions, sampling_method, n_combinations))
-
-        # Create the explanations and save the shapr objects to the results list
-        result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]] = explain(
+      # Create a temp function which computes the shapley values for a specific number of coalitions
+      tmp_function = function(n_combinations,
+                              model,
+                              x_explain,
+                              x_train,
+                              approach,
+                              prediction_zero,
+                              keep_samp_for_vS,
+                              n_samples,
+                              n_batches,
+                              seed,
+                              sampling_method,
+                              precomputed_vS,
+                              progressbar,
+                              ...) {
+        tmp_res = suppressMessages(suppressWarnings(explain(
           model = model,
           x_explain = x_explain,
           x_train = x_train,
@@ -207,16 +230,99 @@ repeated_explanations = function(model,
           sampling_method = sampling_method,
           precomputed_vS = precomputed_vS,
           ...
-        )
+        )))
 
-        if (n_combinations != sequence_n_combinations[1]) {
-          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]][["only_save"]] =
-            result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$internal$objects[c(2,3,4)]
-          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$internal = NULL
-          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$timing = NULL
-          result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$pred_explain = NULL
+        # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
+        if (n_combinations != used_sequence_n_combinations[1]) {
+          tmp_res[["only_save"]] = tmp_res$internal$objects[c(2,3,4)]
+          tmp_res$internal = NULL
+          tmp_res$timing = NULL
+          tmp_res$pred_explain = NULL
         }
+
+        progressbar(message = sprintf("Rep %d (%d of %d). Method: %s (%d of %d). N_comb %d.\n",
+                                      idx_rep, idx_rep, n_repetitions,
+                                      sampling_method, sampling_method_idx, n_sampling_methods,
+                                      n_combinations))
+
+        return(tmp_res)
       }
+
+      # Create a progress bar
+      progressbar = progressr::progressor(steps = length(used_sequence_n_combinations))
+
+      progressr::with_progress({
+      # Iterate over the n_combinations sequence and compute the Shapley values
+      result_list[[sampling_method]][[idx_rep_str]] = suppressWarnings(future.apply::future_lapply(
+        X = as.list(used_sequence_n_combinations),
+        FUN = tmp_function,
+        model = model,
+        x_explain = x_explain,
+        x_train = x_train,
+        approach = approach,
+        prediction_zero = prediction_zero,
+        keep_samp_for_vS = keep_samp_for_vS,
+        n_samples = n_samples,
+        n_batches = n_batches,
+        seed = seed,
+        sampling_method = sampling_method,
+        precomputed_vS = precomputed_vS,
+        progressbar = progressbar,
+        future.seed = 1,
+        ...
+      ))}, enable = TRUE)
+
+      # Update the names
+      names(result_list[[sampling_method]][[idx_rep_str]]) = paste0("n_combinations_", used_sequence_n_combinations)
+
+
+      # # Old version where I used a for loop
+      # n_combinations_idx = 1
+      # for (n_combinations_idx in seq(n_sequence_n_combinations)) {
+      #   n_combinations = sequence_n_combinations[n_combinations_idx]
+      #
+      #   # A string used in the result list
+      #   n_combinations_str = paste0("n_combinations_", n_combinations)
+      #
+      #   # If we are using a paired method, then we skip interactions where n_combinations is odd
+      #   if (grepl("paired", sampling_method) && n_combinations %% 2 == 1) next
+      #
+      #   # # Small printout to the user
+      #   # cat(sprintf("Rep %d (%d of %d). Method: %s (%d of %d). N_comb %d (%d of %d).\n",
+      #   #             idx_rep, idx_rep, n_repetitions,
+      #   #             sampling_method, sampling_method_idx, n_sampling_methods,
+      #   #             n_combinations, n_combinations_idx, n_sequence_n_combinations))
+      #
+      #   # preogressr::progressbar(message = sprintf("Rep %d (%d of %d). Method: %s (%d of %d). N_comb %d (%d of %d).\n",
+      #   #                               idx_rep, idx_rep, n_repetitions,
+      #   #                               sampling_method, sampling_method_idx, n_sampling_methods,
+      #   #                               n_combinations, n_combinations_idx, n_sequence_n_combinations))
+      #
+      #   # Create the explanations and save the shapr objects to the results list
+      #   result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]] = suppressMessages(explain(
+      #     model = model,
+      #     x_explain = x_explain,
+      #     x_train = x_train,
+      #     approach = approach,
+      #     prediction_zero = prediction_zero,
+      #     keep_samp_for_vS = keep_samp_for_vS,
+      #     n_combinations = n_combinations,
+      #     n_samples = n_samples,
+      #     n_batches = min(n_combinations-1, n_batches),
+      #     seed = seed,
+      #     sampling_method = sampling_method,
+      #     precomputed_vS = precomputed_vS,
+      #     ...
+      #   ))
+      #
+      #   if (n_combinations != sequence_n_combinations[1]) {
+      #     result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]][["only_save"]] =
+      #       result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$internal$objects[c(2,3,4)]
+      #     result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$internal = NULL
+      #     result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$timing = NULL
+      #     result_list[[sampling_method]][[idx_rep_str]][[n_combinations_str]]$pred_explain = NULL
+      #   }
+      # }
     }
 
     # Update the seed value
