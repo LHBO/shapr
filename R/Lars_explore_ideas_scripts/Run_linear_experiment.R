@@ -99,6 +99,8 @@ print(betas)
 hostname = R.utils::System$getHostname()
 cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
 
+# If we are working on UiO computer or not
+UiO = NULL
 
 # set the working directory and define the correct folder based on system
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
@@ -106,15 +108,20 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder_save = file.path(folder, "Paper3_rds_saves")
   # basename(folder)
   # dirname(folder)
+  UiO = FALSE
 
 } else if (grepl("hpc.uio.no", hostname)) {
   # TBA
   folder = ""
 
+  UiO = TRUE
+
 } else if (grepl("uio.no", hostname)) {
   # TBA
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
   folder_save = file.path(folder, "Paper3_rds_saves")
+
+  UiO = TRUE
 
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
@@ -128,7 +135,9 @@ source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
 message("loading my version of the package")
 #library(shapr)
 #setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
-#devtools::clean_dll()
+if (UiO) {
+  #devtools::clean_dll()
+}
 devtools::load_all(".")
 message("done")
 
