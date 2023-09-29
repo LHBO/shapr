@@ -1,53 +1,35 @@
 # cd ~/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
-# Rscript Run_linear_experiment.R 7 0.5 1000 250 TRUE FALSE 1 TRUE 250
-# Rscript Run_linear_experiment.R 7 0.5 1000 250 FALSE TRUE 1 FALSE 250
-# Rscript Run_linear_experiment.R 7 0.5 1000 250 FALSE TRUE 1:5 FALSE 250
-# Rscript Run_linear_experiment.R 7 0.5 1000 250 FALSE TRUE 6:10 FALSE 250
 
-#Rscript Run_linear_experiment.R 10 0.0 1000 250 TRUE FALSE 1 TRUE 250
-#Rscript Run_linear_experiment.R 10 0.0 1000 250 FALSE TRUE 1:5 FALSE 250
-#Rscript Run_linear_experiment.R 10 0.0 1000 250 FALSE TRUE 6:10 FALSE 250
+
+#Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 250 1000 250 10 0.0 NULL
+
 #
 #
 # module load R/4.2.1-foss-2022a
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
 # git checkout Lars/paper3_ideas
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
-# Rscript Run_linear_experiment.R 10 0.0 1000 250 TRUE FALSE 1 TRUE 250 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 NULL 1000 250 10 0.0 NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:5 1 250 1000 250 10 0.0 NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
-if (length(args) < 10) {
-  stop("Must provide if we run onlyon UiO(boolean), do setup(boolean), compute true Shapley values(boolean), do sampling(boolean),
-       do regression(boolean), do evaluation(boolean), and the correlations rho or scale burr_p.\n", call.=FALSE)
+if (length(args) < 11) {
+  stop("Must provide all parameters!", call.=FALSE)
 }
 
-# Extract the number of features
-M = as.integer(args[1])
-
-# Extract the correlation level
-rhos = unlist(strsplit(args[2], ","))
-if (length(rhos) > 1) {
-  rhos = unname(sapply(rhos, function(i) as.numeric(i)))
-} else {
-  rhos = as.numeric(rhos)
-}
-
-# Extract the number of training observations
-n_train = as.numeric(args[3])
-
-# Extract the number of test observations
-n_test = as.numeric(args[4])
+# Extract if we are to generate the data and model
+do_setup = as.logical(args[1])
 
 # Extract if we are to compute the true Shapley values
-compute_true_explanations = as.logical(args[5])
+compute_true_explanations = as.logical(args[2])
 
 # Extract if we are to compute the repeated estimated Shapley values
-compute_repeated_explanations = as.logical(args[6])
+compute_repeated_explanations = as.logical(args[3])
 
 # Extract which repetition we are to do
-repetitions = as.character(args[7])
+repetitions = as.character(args[4])
 if (grepl(",", repetitions)) {
   repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
 } else {
@@ -59,23 +41,31 @@ if (grepl(",", repetitions)) {
   }
 }
 
-# Extract if we are to generate the data and model
-do_setup = as.logical(args[8])
+# Extract the number of workers / cores to run on
+n_workers = as.integer(args[5])
 
 # Extract the number of MC samples
-n_samples = as.numeric(args[9])
+n_samples = as.integer(args[6])
 
-# # Extract the number of cores
-# n_workers = as.numeric(args[8])
-# n_max_workers = future::availableCores()
-# if (n_workers > n_max_workers) {
-#   warning(sprintf("Too many workers. Change from %d to %d (max available cores).",
-#                   n_workers, n_max_workers))
-# }
+# Extract the number of training observations
+n_train = as.integer(args[7])
+
+# Extract the number of test observations
+n_test = as.integerc(args[8])
+
+# Extract the number of features
+M = as.integer(args[9])
 
 # Extract the correlation level
-betas = as.character(args[10])
-print(betas)
+rhos = unlist(strsplit(args[10], ","))
+if (length(rhos) > 1) {
+  rhos = unname(sapply(rhos, function(i) as.numeric(i)))
+} else {
+  rhos = as.numeric(rhos)
+}
+
+# Extract the correlation level
+betas = as.character(args[11])
 if (betas != "NULL") {
   print("hei")
   betas = unlist(strsplit(betas, ","))
@@ -84,14 +74,18 @@ if (betas != "NULL") {
   } else {
     betas = as.numeric(betas)
   }
-  print(betas)
 } else {
   # Create the beta vector
   betas = c(0, rep(1, M))
   betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2)
   betas = betas[seq(M+1)]
 }
-print(betas)
+
+# Small printout to the user
+message(sprintf("Set up: rho = [%s] and beta = [%s].\n",
+                paste(rhos, collapse = ", "), paste(betas, collapse = ", ")))
+
+
 
 
 # Setup -----------------------------------------------------------------------------------------------------------
@@ -150,6 +144,14 @@ library(progressr)
 library(cli)
 library(future)
 
+
+
+# Small variable check --------------------------------------------------------------------------------------------
+n_max_workers = future::availableCores()
+if (n_workers > n_max_workers) {
+  warning(sprintf("Too many workers. Change from %d to %d (max available cores).",
+                  n_workers, n_max_workers))
+}
 
 
 # Fixed parameters ------------------------------------------------------------------------------------------------------
@@ -252,7 +254,6 @@ for (rho_idx in seq_along(rhos)) {
     saveRDS(save_list, save_file_name_setup)
 
   } else {
-
     message("Load the data and predictive model.")
 
     save_list = readRDS(save_file_name_setup)
