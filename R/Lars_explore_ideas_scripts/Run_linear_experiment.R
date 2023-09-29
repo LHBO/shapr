@@ -281,7 +281,7 @@ for (rho_idx in seq_along(rhos)) {
       keep_samp_for_vS = FALSE,
       n_combinations = 2^M,
       n_samples = 2500,
-      n_batches = 64,
+      n_batches = 2^(M-2),
       gaussian.mu = mu,
       gaussian.cov_mat = sigma,
       seed = 1
