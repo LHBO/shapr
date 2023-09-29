@@ -30,15 +30,19 @@ compute_repeated_explanations = as.logical(args[3])
 
 # Extract which repetition we are to do
 repetitions = as.character(args[4])
-if (grepl(",", repetitions)) {
-  repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
-} else {
-  repetitions = unlist(strsplit(repetitions, ":"))
-  if (length(repetitions) > 1) {
-    repetitions = seq(as.numeric(repetitions[1]), as.numeric(repetitions[2]))
+if (!(repetitions %in% c("NULL", "NA", "NaN")) {
+  if (grepl(",", repetitions)) {
+    repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
   } else {
-    repetitions = as.numeric(repetitions)
+    repetitions = unlist(strsplit(repetitions, ":"))
+    if (length(repetitions) > 1) {
+      repetitions = seq(as.numeric(repetitions[1]), as.numeric(repetitions[2]))
+    } else {
+      repetitions = as.numeric(repetitions)
+    }
   }
+} else {
+  repetitions = NULL
 }
 
 # Extract the number of workers / cores to run on
