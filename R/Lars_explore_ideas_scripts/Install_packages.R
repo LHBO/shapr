@@ -31,3 +31,7 @@ install.packages("ragg", repos = "http://cran.us.r-project.org")
 install.packages("devtools", repos = "http://cran.us.r-project.org")
 install.packages("shapr", repos = "http://cran.us.r-project.org")      # Shapley value framework
 install.packages("mgcv", repos = "http://cran.us.r-project.org")      # Shapley value framework
+
+install.packages("cli", repos = "http://cran.us.r-project.org")
+install.packages("progressr", repos = "http://cran.us.r-project.org")
+
