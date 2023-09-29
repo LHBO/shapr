@@ -30,7 +30,7 @@ compute_repeated_explanations = as.logical(args[3])
 
 # Extract which repetition we are to do
 repetitions = as.character(args[4])
-if (!(repetitions %in% c("NULL", "NA", "NaN")) {
+if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   if (grepl(",", repetitions)) {
     repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
   } else {
