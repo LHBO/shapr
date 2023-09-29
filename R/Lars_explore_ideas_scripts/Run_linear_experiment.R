@@ -123,11 +123,13 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 # Set the working directory
 setwd(folder)
 
-#library(shapr)
-#setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
-pkgload::load_all()
 source("~/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts/new_functions.R")
 
+message("loading my version of the package")
+#library(shapr)
+#setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
+pkgload::load_all(".")
+message("done")
 
 # Libraries -------------------------------------------------------------------------------------------------------
 library(data.table)
