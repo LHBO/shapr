@@ -51,7 +51,7 @@ n_samples = as.integer(args[6])
 n_train = as.integer(args[7])
 
 # Extract the number of test observations
-n_test = as.integerc(args[8])
+n_test = as.integer(args[8])
 
 # Extract the number of features
 M = as.integer(args[9])
