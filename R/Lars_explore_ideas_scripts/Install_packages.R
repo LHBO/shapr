@@ -34,4 +34,6 @@ install.packages("mgcv", repos = "http://cran.us.r-project.org")      # Shapley 
 
 install.packages("cli", repos = "http://cran.us.r-project.org")
 install.packages("progressr", repos = "http://cran.us.r-project.org")
+install.packages("future", repos = "http://cran.us.r-project.org")
+install.packages("future.apply", repos = "http://cran.us.r-project.org")
 

@@ -148,6 +148,7 @@ library(condMVNorm)
 library(mgcv)
 library(progressr)
 library(cli)
+library(future)
 
 
 
@@ -270,6 +271,11 @@ for (rho_idx in seq_along(rhos)) {
 
   if (compute_true_explanations) {
     message("Start computing the true explanations.")
+    if (n_workers > 1) {
+      future::plan(multisession, workers = n_workers)
+    } else {
+      future::plan(sequential)
+    }
     progressr::handlers("cli")
     progressr::with_progress({
       true_explanations <- explain(
@@ -287,6 +293,7 @@ for (rho_idx in seq_along(rhos)) {
       seed = 1
     )}, enable = TRUE)
     message("Start saving the true explanations.")
+    future::plan(sequential)
 
     # Save them just in case
     saveRDS(true_explanations, save_file_name_true)
@@ -318,6 +325,11 @@ for (rho_idx in seq_along(rhos)) {
       tmp_save_path = paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho,
                             "MC", n_samples, "estimated_tmp.rds", sep = "_")
 
+      if (n_workers > 1) {
+        future::plan(multisession, workers = n_workers)
+      } else {
+        future::plan(sequential)
+      }
       # Compute the repeated estimated Shapley values using the different sampling methods
       repeated_estimated_explanations = repeated_explanations(
         model = predictive_model,
@@ -337,6 +349,8 @@ for (rho_idx in seq_along(rhos)) {
         use_precomputed_vS = TRUE,
         sampling_methods = sampling_methods,
         save_path = save_file_name_rep_tmp)
+
+      future::plan(sequential)
 
       # Save them just in case
       saveRDS(repeated_estimated_explanations, save_file_name_rep)
