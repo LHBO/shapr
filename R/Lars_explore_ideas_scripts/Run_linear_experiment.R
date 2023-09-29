@@ -132,7 +132,9 @@ message("loading my version of the package")
 if (UiO) {
   #devtools::clean_dll()
 }
-devtools::load_all(".")
+#devtools::load_all(".")
+devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+library(shapr)
 message("done")
 
 # Libraries -------------------------------------------------------------------------------------------------------
