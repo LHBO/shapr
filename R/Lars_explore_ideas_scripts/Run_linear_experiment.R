@@ -128,7 +128,8 @@ source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
 message("loading my version of the package")
 #library(shapr)
 #setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
-pkgload::load_all(".")
+#devtools::clean_dll()
+devtools::load_all(".")
 message("done")
 
 # Libraries -------------------------------------------------------------------------------------------------------
