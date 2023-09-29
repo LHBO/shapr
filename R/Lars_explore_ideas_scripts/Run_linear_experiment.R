@@ -123,7 +123,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 # Set the working directory
 setwd(folder)
 
-source("~/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts/new_functions.R")
+source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
 
 message("loading my version of the package")
 #library(shapr)
