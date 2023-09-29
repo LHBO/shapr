@@ -9,6 +9,7 @@
 #Rscript Run_linear_experiment.R 10 0.0 1000 250 FALSE TRUE 6:10 FALSE 250
 #
 #
+# module load R/4.2.1-foss-2022a
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
 # git checkout Lars/paper3_ideas
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
