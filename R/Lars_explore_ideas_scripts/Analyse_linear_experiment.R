@@ -15,9 +15,6 @@ n_train = 1000
 # The number of test observations
 n_test = 250
 
-# The number of repetitions
-repetitions = seq(10)
-
 # Where the files are stored
 folder = "/Users/larsolsen/PhD/Paper3/shapr"
 folder_save = file.path(folder, "Paper3_rds_saves")
@@ -56,6 +53,9 @@ for (rho_idx in seq_along(rhos)) {
   save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
   save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
 
+  files_in_dir = list.files(folder_save)
+  relevant_files_in_dir = files_in_dir[grepl(paste0(file_name, "_estimated_repetition_"), files_in_dir)]
+  relevant_repetitions = sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
 
   # Load the model
   setup = readRDS(save_file_name_setup)
@@ -69,14 +69,14 @@ for (rho_idx in seq_along(rhos)) {
 
   # Iterate over the repetitions
   repetition_idx = 1
-  for (repetition_idx in seq_along(repetitions)) {
+  for (repetition_idx in seq_along(relevant_repetitions)) {
 
     # Get the current repetition
-    repetition = repetitions[repetition_idx]
+    repetition = relevant_repetitions[repetition_idx]
 
     # Small printout to the user
     cat(sprintf("Working on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
-                rho, rho_idx, length(rhos), repetition, repetition_idx, length(repetitions)))
+                rho, rho_idx, length(rhos), repetition, repetition_idx, length(relevant_repetitions)))
 
     # Create the save file name
     save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
