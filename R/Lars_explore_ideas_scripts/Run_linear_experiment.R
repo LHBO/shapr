@@ -1,19 +1,19 @@
 # cd ~/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 
 
-# #Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 250 1000 250 10 0.0 NULL
-#  ixion bastet
-# #
+# # #Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 250 1000 250 10 0.0 NULL
+# #  ixion bastet
+# # #
 # tmux new -s paper3
 # module load R/4.2.1-foss-2022a
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
 # git checkout Lars/paper3_ideas
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 # Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 11 5000 NULL 1000 250 10 0.9 NULL
-# # Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:50 6 NULL 500 1000 250 10 0.9 NULL
-# # Rscript Run_linear_experiment.R FALSE FALSE TRUE 51:100 8 NULL 500 1000 250 10 0.5 NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 20 5000 500 1000 250 10 0.6 NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 20 5000 500 1000 250 10 0.3 NULL
+# # # Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:50 6 NULL 500 1000 250 10 0.9 NULL
+# # # Rscript Run_linear_experiment.R FALSE FALSE TRUE 51:100 8 NULL 500 1000 250 10 0.5 NULL
+# # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.6 NULL
+# # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.9 NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
