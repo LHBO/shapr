@@ -7,7 +7,7 @@
 M = 10
 
 # The correlation level
-rhos = 0.9
+rhos = 0.0
 
 # The number of training observations
 n_train = 1000
@@ -18,6 +18,7 @@ n_test = 250
 # Where the files are stored
 folder = "/Users/larsolsen/PhD/Paper3/shapr"
 folder_save = file.path(folder, "Paper3_rds_saves")
+folder_save_figures = file.path(folder, "Paper3_result_figures")
 
 # Set the working directory
 setwd(folder)
@@ -111,6 +112,7 @@ result_figures = aggregate_and_plot_results(repeated_explanations_list = repeate
                                             plot_figures = FALSE,
                                             return_figures = TRUE,
                                             return_dt = TRUE)
+saveRDS(result_figures$dt, file.path(folder_save, paste0(file_name, "_dt.rds")))
 saveRDS(result_figures, file.path(folder_save, paste0(file_name, "_figures_dt.rds")))
 result_figures$figures$figure_CI
 result_figures$figures$figure_mean
@@ -193,7 +195,148 @@ aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_li
                                                            "smallest_weights",
                                                            "smallest_weights_combination_size"))$figure_CI
 
-
-
 repeated_explanations_list$rho_0.5$repetition1$unique$repetition_1
+
+
+
+
+# Load from disk --------------------------------------------------------------------------------------------------
+rho = 0.0
+file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
+                  paste(as.character(betas), collapse = "_"), sep = "_")
+save_obj = readRDS(file.path(folder_save, paste0(file_name, "_dt.rds")))
+
+save_obj = readRDS(file.path(folder_save, paste0(file_name, "_figures_dt.rds")))
+save_obj = readRDS("/Users/larsolsen/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_10_n_train_1000_n_test_250_rho_0_betas_0_1_1_1_1_1_1_1_1_1_1_figures_dt.rds")
+save_obj = save_obj$dt
+
+tmp_fig = aggregate_and_plot_results(repeated_explanations_list = NULL,
+                           true_explanations = NULL,
+                           evaluation_criterion = "MAE",
+                           plot_figures = FALSE,
+                           return_figures = TRUE,
+                           return_dt = FALSE,
+                           scale_y_log10 = TRUE,
+                           dt_CI = save_obj$dt_CI,
+                           dt_long = save_obj$dt_long)$figure_CI +
+  ggplot2::ggtitle(bquote("Resuts for:"~M==.(M)*", "~rho==.(rho)*", and"~beta=="["*.(paste(betas, collapse = ", "))*"]."))
+ggplot2::ggsave(file.path(folder_save_figures, paste0(file_name, "_all_methods.png")),
+                width = 10,
+                height = 5)
+
+tmp_fig = aggregate_and_plot_results(repeated_explanations_list = NULL,
+                                     true_explanations = NULL,
+                                     evaluation_criterion = "MAE",
+                                     plot_figures = FALSE,
+                                     return_figures = TRUE,
+                                     return_dt = FALSE,
+                                     scale_y_log10 = TRUE,
+                                     dt_CI = save_obj$dt_CI,
+                                     dt_long = save_obj$dt_long,
+                                     only_these_sampling_methods = c("unique",
+                                                                     "non_unique",
+                                                                     "unique_paired"))$figure_CI +
+  ggplot2::ggtitle(bquote("Resuts for:"~M==.(M)*", "~rho==.(rho)*", and"~beta=="["*.(paste(betas, collapse = ", "))*"]."))
+ggplot2::ggsave(file.path(folder_save_figures, paste0(file_name, "_old.png")),
+                width = 10,
+                height = 5)
+
+tmp_fig = aggregate_and_plot_results(repeated_explanations_list = NULL,
+                                     true_explanations = NULL,
+                                     evaluation_criterion = "MAE",
+                                     plot_figures = FALSE,
+                                     return_figures = TRUE,
+                                     return_dt = FALSE,
+                                     scale_y_log10 = TRUE,
+                                     dt_CI = save_obj$dt_CI,
+                                     dt_long = save_obj$dt_long,
+                                     only_these_sampling_methods = c("unique",
+                                                                     "unique_SW",
+                                                                     "unique_paired",
+                                                                     "unique_paired_SW"))$figure_CI +
+  ggplot2::ggtitle(bquote("Resuts for:"~M==.(M)*", "~rho==.(rho)*", and"~beta=="["*.(paste(betas, collapse = ", "))*"]."))
+ggplot2::ggsave(file.path(folder_save_figures, paste0(file_name, "_old_sw_or_sampling_frequency.png")),
+                width = 10,
+                height = 5)
+
+tmp_fig = aggregate_and_plot_results(repeated_explanations_list = NULL,
+                                     true_explanations = NULL,
+                                     evaluation_criterion = "MAE",
+                                     plot_figures = FALSE,
+                                     return_figures = TRUE,
+                                     return_dt = FALSE,
+                                     scale_y_log10 = TRUE,
+                                     dt_CI = save_obj$dt_CI,
+                                     dt_long = save_obj$dt_long,
+                                     only_these_sampling_methods = c("unique",
+                                                                     "unique_paired",
+                                                                     "chronological_order_increasing",
+                                                                     "chronological_order_decreasing"))$figure_CI +
+  ggplot2::ggtitle(bquote("Resuts for:"~M==.(M)*", "~rho==.(rho)*", and"~beta=="["*.(paste(betas, collapse = ", "))*"]."))
+ggplot2::ggsave(file.path(folder_save_figures, paste0(file_name, "_chronological_order.png")),
+                width = 10,
+                height = 5)
+
+tmp_fig = aggregate_and_plot_results(repeated_explanations_list = NULL,
+                                     true_explanations = NULL,
+                                     evaluation_criterion = "MAE",
+                                     plot_figures = FALSE,
+                                     return_figures = TRUE,
+                                     return_dt = FALSE,
+                                     scale_y_log10 = TRUE,
+                                     dt_CI = save_obj$dt_CI,
+                                     dt_long = save_obj$dt_long,
+                                     only_these_sampling_methods = c("unique",
+                                                                     "unique_paired",
+                                                                     "unique_paired_SW",
+                                                                     "largest_weights",
+                                                                     "smallest_weights"))$figure_CI +
+  ggplot2::ggtitle(bquote("Resuts for:"~M==.(M)*", "~rho==.(rho)*", and"~beta=="["*.(paste(betas, collapse = ", "))*"]."))
+ggplot2::ggsave(file.path(folder_save_figures, paste0(file_name, "_largest_smallest.png")),
+                width = 10,
+                height = 5)
+
+
+tmp_fig = aggregate_and_plot_results(repeated_explanations_list = NULL,
+                                     true_explanations = NULL,
+                                     evaluation_criterion = "MAE",
+                                     plot_figures = FALSE,
+                                     return_figures = TRUE,
+                                     return_dt = FALSE,
+                                     scale_y_log10 = TRUE,
+                                     dt_CI = save_obj$dt_CI,
+                                     dt_long = save_obj$dt_long,
+                                     only_these_sampling_methods = c("unique",
+                                                                     "unique_paired",
+                                                                     "largest_weights",
+                                                                     "largest_weights_combination_size",
+                                                                     "smallest_weights",
+                                                                     "smallest_weights_combination_size"))$figure_CI +
+  ggplot2::ggtitle(bquote("Resuts for:"~M==.(M)*", "~rho==.(rho)*", and"~beta=="["*.(paste(betas, collapse = ", "))*"]."))
+ggplot2::ggsave(file.path(folder_save_figures, paste0(file_name, "_largest_smallest_combination_size.png")),
+                width = 10,
+                height = 5)
+
+
+tmp_fig = aggregate_and_plot_results(repeated_explanations_list = NULL,
+                                     true_explanations = NULL,
+                                     evaluation_criterion = "MAE",
+                                     plot_figures = FALSE,
+                                     return_figures = TRUE,
+                                     return_dt = FALSE,
+                                     scale_y_log10 = TRUE,
+                                     dt_CI = save_obj$dt_CI,
+                                     dt_long = save_obj$dt_long,
+                                     only_these_sampling_methods = c("unique",
+                                                                     "unique_paired",
+                                                                     "unique_paired_SW",
+                                                                     "largest_weights"))$figure_CI +
+  ggplot2::ggtitle(bquote("Resuts for:"~M==.(M)*", "~rho==.(rho)*", and"~beta=="["*.(paste(betas, collapse = ", "))*"]."))
+ggplot2::ggsave(file.path(folder_save_figures, paste0(file_name, "_most_promising.png")),
+                width = 10,
+                height = 5)
+
+
+
+
 

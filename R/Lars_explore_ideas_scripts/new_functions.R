@@ -416,7 +416,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
   }
 
   # Provide names for the sampling methods if not provided by the user
-  if (is.null(names(repeated_explanations_list))) {
+  if (is.null(names(repeated_explanations_list)) && !is.null(repeated_explanations_list)) {
     names(repeated_explanations_list) = paste("Sampling Method", seq(length(repeated_explanations_list)))
     message(paste0("The `repeated_explanations_list` was not a named list. Set the names to be: '",
                    paste(names(repeated_explanations_list), collapse = "', '"), "'."))
