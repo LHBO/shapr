@@ -402,17 +402,40 @@ aggregate_and_plot_results = function(repeated_explanations_list,
                                       scale_x_log10 = FALSE,
                                       dt_CI = NULL,
                                       dt_long = NULL,
-                                      only_these_sampling_methods = NULL) {
+                                      only_these_sampling_methods = NULL,
+                                      n_workers = 1) {
   # Setup and checks ----------------------------------------------------------------------------
   # Check that ggplot2 is installed
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("ggplot2 is not installed. Please run install.packages('ggplot2')")
+  }
+  if (!requireNamespace("data.table", quietly = TRUE)) {
+    stop("ggplot2 is not installed. Please run install.packages('data.table')")
+  }
+  if (!requireNamespace("future", quietly = TRUE)) {
+    stop("ggplot2 is not installed. Please run install.packages('future')")
+  }
+  if (!requireNamespace("future.apply", quietly = TRUE)) {
+    stop("ggplot2 is not installed. Please run install.packages('future.apply')")
   }
 
   # Check if user only provided a single explanation and did not put it in a list
   if ("shapr" %in% class(repeated_explanations_list)) {
     # Put it in a list
     repeated_explanations_list <- list(repeated_explanations_list)
+  }
+
+  n_max_workers = future::availableCores()
+  if (n_workers > n_max_workers) {
+    warning(sprintf("Too many workers. Change from %d to %d (max available cores).",
+                    n_workers, n_max_workers))
+    n_workers = n_max_workers
+  }
+
+  if (n_workers > 1) {
+    future::plan(multisession, workers = n_workers)
+  } else {
+    future::plan(sequential)
   }
 
   # Provide names for the sampling methods if not provided by the user
@@ -436,7 +459,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
     # (using all coalitions and a high value of `n_combinations`) and the repeated runs
     # (different seed values) with different sampling methods and number of used coalitions.
     results_list =
-      lapply(repeated_explanations_list, function (ith_method) {
+      future.apply::future_lapply(repeated_explanations_list, function (ith_method) {
         sapply(ith_method, function(ith_method_jth_repetition) {
           sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
             mean_absolute_and_squared_errors(
@@ -449,10 +472,10 @@ aggregate_and_plot_results = function(repeated_explanations_list,
     # For each method and `n_combination` value, compute the median and the quantile confidence interval
     # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
     results_dt_with_missing_entries =
-      rbindlist(
-        lapply(results_list, function(ith_method) {
+      data.table::rbindlist(
+        future.apply::future_lapply(results_list, function(ith_method) {
           median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
-          tmp_dt = data.table(n_combinations =
+          tmp_dt = data.table::data.table(n_combinations =
                                 as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
                               CI_lower = median_and_ci[1,],
                               median = median_and_ci[2,],
@@ -481,9 +504,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
   # Create an alternative aggregated results data.table
   if (is.null(dt_long)) {
     result_dt_alternative =
-      rbindlist(
-        lapply(results_list, function(ith_method) {
-          data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
+      data.table::rbindlist(
+        future.apply::future_lapply(results_list, function(ith_method) {
+          data.table::data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
                      ith_method)
         }), idcol = "sampling")
 
@@ -500,7 +523,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
     data.table::setnames(result_dt_alternative, c(names(result_dt_alternative)[1:2], paste(seq(n_repetitions))))
 
     # Convert from a wide to long data.table
-    result_dt_alternative_long = melt(data = result_dt_alternative,
+    result_dt_alternative_long = data.table::melt(data = result_dt_alternative,
                                       id.vars = c("sampling", "n_combinations"),
                                       variable.name = "repetition",
                                       value.name = "evaluation_criterion")
@@ -508,6 +531,8 @@ aggregate_and_plot_results = function(repeated_explanations_list,
   } else {
     result_dt_alternative_long = dt_long
   }
+
+  future::plan(sequential)
 
   # Only keep the desired combinations
   if (!is.null(index_combinations)) {

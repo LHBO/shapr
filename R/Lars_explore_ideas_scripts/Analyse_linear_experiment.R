@@ -1,13 +1,9 @@
-
-
-
-
 # Parameters ------------------------------------------------------------------------------------------------------
 # The number of features
 M = 10
 
 # The correlation level
-rhos = 0.0
+rhos = c(0.0, 0.5, 0.6)
 
 # The number of training observations
 n_train = 1000
@@ -15,36 +11,69 @@ n_train = 1000
 # The number of test observations
 n_test = 250
 
-# Where the files are stored
-folder = "/Users/larsolsen/PhD/Paper3/shapr"
-folder_save = file.path(folder, "Paper3_rds_saves")
-folder_save_figures = file.path(folder, "Paper3_result_figures")
+# Get the name of the computer we are working on
+hostname = R.utils::System$getHostname()
+cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
+
+# If we are working on UiO computer or not
+UiO = NULL
+
+# set the working directory and define the correct folder based on system
+if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
+  # Where the files are stored
+  folder = "/Users/larsolsen/PhD/Paper3/shapr"
+  folder_save = file.path(folder, "Paper3_rds_saves")
+  UiO = FALSE
+
+} else if (grepl("hpc.uio.no", hostname)) {
+  # TBA
+  folder = ""
+
+  UiO = TRUE
+
+} else if (grepl("uio.no", hostname)) {
+  # TBA
+  folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
+  folder_save = file.path(folder, "Paper3_rds_saves")
+
+  UiO = TRUE
+
+} else {
+  stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
+}
 
 # Set the working directory
 setwd(folder)
 
 #library(shapr)
 #setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
-pkgload::load_all()
-source("~/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts/new_functions.R")
+#pkgload::load_all()
+source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
+library(data.table)
+library(future)
+library(future.apply)
+library(ggplot2)
 
 # The beta vector
 betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2)
 betas = c(0, rep(1, M))
 betas = betas[seq(M+1)]
 
+# If we are to remove redundant stuff from the explanations
+memory_efficient = TRUE
 
 
 # Load the results ------------------------------------------------------------------------------------------------
-# Result list
-repeated_explanations_list = list()
-true_explanations_list = list()
 
 # Iterate over the rhos
 rho_idx = 1
 for (rho_idx in seq_along(rhos)) {
   # Get the current rho
   rho = rhos[rho_idx]
+
+  # Result list (moved it inside here as it becomes quite large and takes up many GBs of memory)
+  repeated_explanations_list = list()
+  true_explanations_list = list()
 
   repeated_explanations_list[[paste0("rho_", rho)]] = list()
 
@@ -56,7 +85,11 @@ for (rho_idx in seq_along(rhos)) {
 
   files_in_dir = list.files(folder_save)
   relevant_files_in_dir = files_in_dir[grepl(paste0(file_name, "_estimated_repetition_"), files_in_dir)]
+  relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
   relevant_repetitions = sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
+
+  # Only want the first 50 repetitions
+  relevant_repetitions = relevant_repetitions[seq(min(50, length(relevant_repetitions)))]
 
   # Load the model
   setup = readRDS(save_file_name_setup)
@@ -85,6 +118,29 @@ for (rho_idx in seq_along(rhos)) {
     # Load the rds file
     current_repetition_results = readRDS(save_file_name_rep)
 
+    # We remove all non-essential stuff from the list
+    if (memory_efficient) {
+      cat(sprintf("Using memory efficient version (before): "))
+      print(object.size(current_repetition_results), units = "MB")
+
+      for (met in names(current_repetition_results)) {
+        for (rep in names(current_repetition_results[[met]])) {
+          for (comb in names(current_repetition_results[[met]][[rep]])) {
+            #print(object.size(current_repetition_results[[met]][[rep]][[comb]]), units = "KB")
+            tmp_res = current_repetition_results[[met]][[rep]][[comb]]
+            tmp_res[["only_save"]] = NULL
+            tmp_res$internal = NULL
+            tmp_res$timing = NULL
+            tmp_res$pred_explain = NULL
+            current_repetition_results[[met]][[rep]][[comb]] = tmp_res
+            #print(object.size(current_repetition_results[[met]][[rep]][[comb]]), units = "KB")
+          }
+        }
+      }
+      cat(sprintf("Using memory efficient version (after): "))
+      print(object.size(current_repetition_results), units = "MB")
+    }
+
     if (repetition_idx == 1) {
       repeated_explanations_list[[paste0("rho_", rho)]] = current_repetition_results
     } else {
@@ -99,6 +155,16 @@ for (rho_idx in seq_along(rhos)) {
                                                                      current_repetition_results)
     }
   }
+
+  result_figures = aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                                              true_explanations = true_explanations_list[[1]],
+                                              evaluation_criterion = "MAE",
+                                              scale_y_log10 = TRUE,
+                                              plot_figures = FALSE,
+                                              return_figures = TRUE,
+                                              return_dt = TRUE,
+                                              n_workers = 1)
+  saveRDS(result_figures$dt, file.path(folder_save, paste0(file_name, "_dt.rds")))
 }
 
 
@@ -111,7 +177,10 @@ result_figures = aggregate_and_plot_results(repeated_explanations_list = repeate
                                             scale_y_log10 = TRUE,
                                             plot_figures = FALSE,
                                             return_figures = TRUE,
-                                            return_dt = TRUE)
+                                            return_dt = TRUE,
+                                            n_workers = 1)
+
+
 saveRDS(result_figures$dt, file.path(folder_save, paste0(file_name, "_dt.rds")))
 saveRDS(result_figures, file.path(folder_save, paste0(file_name, "_figures_dt.rds")))
 result_figures$figures$figure_CI

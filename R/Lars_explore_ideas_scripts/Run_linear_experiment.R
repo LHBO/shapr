@@ -173,6 +173,7 @@ n_max_workers = future::availableCores()
 if (n_workers > n_max_workers) {
   warning(sprintf("Too many workers. Change from %d to %d (max available cores).",
                   n_workers, n_max_workers))
+  n_workers = n_max_workers
 }
 
 
