@@ -159,20 +159,20 @@ repeated_explanations = function(model,
       # Do not want any warnings
       progressr::handlers("cli")
       progressr::with_progress({
-      precomputed_vS = suppressWarnings(suppressMessages(
-        explain(
-          model = model,
-          x_explain = x_explain,
-          x_train = x_train,
-          approach = approach,
-          prediction_zero = prediction_zero,
-          keep_samp_for_vS = keep_samp_for_vS,
-          n_combinations = 2^ncol(x_explain),
-          n_samples = n_samples,
-          n_batches = n_batches,
-          seed = seed,
-          ...
-        )))$internal$output}, enable = TRUE)
+        precomputed_vS = suppressWarnings(suppressMessages(
+          explain(
+            model = model,
+            x_explain = x_explain,
+            x_train = x_train,
+            approach = approach,
+            prediction_zero = prediction_zero,
+            keep_samp_for_vS = keep_samp_for_vS,
+            n_combinations = 2^ncol(x_explain),
+            n_samples = n_samples,
+            n_batches = n_batches,
+            seed = seed,
+            ...
+          )))$internal$output}, enable = TRUE)
     } else {
       precomputed_vS = NULL
     }
@@ -252,25 +252,25 @@ repeated_explanations = function(model,
       progressbar = progressr::progressor(steps = length(used_sequence_n_combinations))
 
       progressr::with_progress({
-      # Iterate over the n_combinations sequence and compute the Shapley values
-      result_list[[sampling_method]][[idx_rep_str]] = suppressWarnings(future.apply::future_lapply(
-        X = as.list(used_sequence_n_combinations),
-        FUN = tmp_function,
-        model = model,
-        x_explain = x_explain,
-        x_train = x_train,
-        approach = approach,
-        prediction_zero = prediction_zero,
-        keep_samp_for_vS = keep_samp_for_vS,
-        n_samples = n_samples,
-        n_batches = n_batches,
-        seed = seed,
-        sampling_method = sampling_method,
-        precomputed_vS = precomputed_vS,
-        progressbar = progressbar,
-        future.seed = 1,
-        ...
-      ))}, enable = TRUE)
+        # Iterate over the n_combinations sequence and compute the Shapley values
+        result_list[[sampling_method]][[idx_rep_str]] = suppressWarnings(future.apply::future_lapply(
+          X = as.list(used_sequence_n_combinations),
+          FUN = tmp_function,
+          model = model,
+          x_explain = x_explain,
+          x_train = x_train,
+          approach = approach,
+          prediction_zero = prediction_zero,
+          keep_samp_for_vS = keep_samp_for_vS,
+          n_samples = n_samples,
+          n_batches = n_batches,
+          seed = seed,
+          sampling_method = sampling_method,
+          precomputed_vS = precomputed_vS,
+          progressbar = progressbar,
+          future.seed = 1,
+          ...
+        ))}, enable = TRUE)
 
       # Update the names
       names(result_list[[sampling_method]][[idx_rep_str]]) = paste0("n_combinations_", used_sequence_n_combinations)
@@ -476,13 +476,13 @@ aggregate_and_plot_results = function(repeated_explanations_list,
         future.apply::future_lapply(results_list, function(ith_method) {
           median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
           tmp_dt = data.table::data.table(n_combinations =
-                                as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
-                              CI_lower = median_and_ci[1,],
-                              median = median_and_ci[2,],
-                              CI_upper = median_and_ci[3,],
-                              mean = apply(ith_method, 1, mean),
-                              min = apply(ith_method, 1, min),
-                              max = apply(ith_method, 1, max))
+                                            as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
+                                          CI_lower = median_and_ci[1,],
+                                          median = median_and_ci[2,],
+                                          CI_upper = median_and_ci[3,],
+                                          mean = apply(ith_method, 1, mean),
+                                          min = apply(ith_method, 1, min),
+                                          max = apply(ith_method, 1, max))
         }), idcol = "sampling")
     results_dt_with_missing_entries$sampling = factor(results_dt_with_missing_entries$sampling,
                                                       levels = names(repeated_explanations_list),
@@ -507,7 +507,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       data.table::rbindlist(
         future.apply::future_lapply(results_list, function(ith_method) {
           data.table::data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
-                     ith_method)
+                                 ith_method)
         }), idcol = "sampling")
 
 
@@ -524,9 +524,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
 
     # Convert from a wide to long data.table
     result_dt_alternative_long = data.table::melt(data = result_dt_alternative,
-                                      id.vars = c("sampling", "n_combinations"),
-                                      variable.name = "repetition",
-                                      value.name = "evaluation_criterion")
+                                                  id.vars = c("sampling", "n_combinations"),
+                                                  variable.name = "repetition",
+                                                  value.name = "evaluation_criterion")
 
   } else {
     result_dt_alternative_long = dt_long
