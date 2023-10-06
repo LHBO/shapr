@@ -313,81 +313,26 @@ for (rho_idx in seq_along(rhos)) {
       prediction_zero = prediction_zero,
       keep_samp_for_vS = TRUE,
       n_combinations = 2^M,
-      n_samples = 500000,
+      n_samples = 5000,
       n_batches = 2^(M-2),
       gaussian.mu = mu,
       gaussian.cov_mat = sigma,
       seed = 1
     )}, enable = TRUE)
 
-
-    dt_list = future.apply::future_lapply(
-      seq(2, nrow(S)-1),
-      function(S_ind, S, mu, cov_mat, x_explain, feature_names) {
-        S_now = as.logical(S[S_ind,])
-        Sbar_now = !as.logical(S[S_ind,])
-
-        mu_S = mu[S_now]
-        mu_Sbar = mu[Sbar_now]
-
-        cov_mat_SbarS = cov_mat[Sbar_now, S_now, drop = FALSE]
-        cov_mat_SS = cov_mat[S_now, S_now, drop = FALSE]
-        cov_mat_SbarS_cov_mat_SS_inv = cov_mat_SbarS %*% solve(cov_mat_SS)
-
-        x_S_star = x_explain[,..S_now]
-
-        x_Sbar_mean_dt = data.table(t(mu_Sbar + cov_mat_SbarS_cov_mat_SS_inv %*% t(sweep(x_S_star, 2, mu_S, FUN = "-"))))
-
-        cbind(id = seq(nrow(x_explain)), data.table::copy(x_explain)[, (feature_names[Sbar_now]) := x_Sbar_mean_dt])
-      },
-      S = true_explanations$internal$objects$S,
-      mu = true_explanations$internal$parameters$gaussian.mu,
-      cov_mat = true_explanations$internal$parameters$gaussian.cov_mat,
-      x_explain = true_explanations$internal$data$x_explain,
-      feature_names = true_explanations$internal$parameters$feature_names
-    )
-    dt = data.table::rbindlist(dt_list, idcol = "id_combination")
-    dt[, id_combination := id_combination + 1]
-    dt[, "vS_hat" := (cbind(1, as.matrix(.SD)) %*% predictive_model$coefficients),
-       .SDcols = true_explanations$internal$parameters$feature_names]
-
-    # Should be certain that this is correct as we set `use.names = FALSE`.
-    dt_vS = rbind(
-      true_explanations$internal$output$dt_vS[1],
-      dcast(dt, id_combination ~ id, value.var = "vS_hat"),
-      true_explanations$internal$output$dt_vS[.N],
-      use.names = FALSE
-    )
-
-    true_explanations$internal$output$dt_vS - dt_vS
-
-    progressr::with_progress({
-      true_explanations2 <- explain(
-        model = predictive_model,
-        x_explain = data_test,
-        x_train = data_train,
-        approach = "gaussian",
-        prediction_zero = prediction_zero,
-        keep_samp_for_vS = FALSE,
-        n_combinations = 2^M,
-        n_samples = 25,
-        n_batches = 2^(M-2),
-        gaussian.mu = mu,
-        gaussian.cov_mat = sigma,
-        seed = 1,
-        precomputed_vS = list(dt_vS = dt_vS)
-      )}, enable = TRUE)
+    true_explanations_better = explain_linear_model_Gaussian_data(
+      explanation = true_explanations,
+      linear_model = predictive_model)
 
     mean_absolute_and_squared_errors(
-      true_explanations$shapley_values,
-      true_explanations2$shapley_values
+      true_explanations2$shapley_values,
+      true_explanations_better$shapley_values
     )
 
-
-    message("Start saving the true explanations.")
     future::plan(sequential)
 
     # Save them just in case
+    message("Start saving the true explanations.")
     saveRDS(true_explanations, save_file_name_true)
     message("Saved the true explanations.")
   }

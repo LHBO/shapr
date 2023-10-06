@@ -12,6 +12,7 @@
 #'
 #' @return List of the different evaluation scores
 #' @export
+#' @author Lars Henry Berge Olsen
 mean_absolute_and_squared_errors = function(dt_true, dt_approx, include_none = FALSE) {
 
   # Remove the 'none' column if we are not to include them
@@ -97,7 +98,7 @@ mean_absolute_and_squared_errors = function(dt_true, dt_approx, include_none = F
 #' See [shapr::explain()] for more details.
 #' @export
 #'
-#' @examples
+#' @author Lars Henry Berge Olsen
 repeated_explanations = function(model,
                                  x_explain,
                                  x_train,
@@ -338,6 +339,112 @@ repeated_explanations = function(model,
 }
 
 
+#' Compute more precise Shapley values for linear model with the Gaussian approach
+#'
+#' @param explanation list. The returned object from the [shapr::explain()] function.
+#' @param linear_model A fitted linear model using the [base::lm()] function.
+#'
+#' @return An `shapr` object. Same as the `explanation` input.
+#' @export
+#' @author Lars Henry Berge Olsen
+explain_linear_model_Gaussian_data = function(explanation, linear_model) {
+  # Check that user has provided a correct explanation object
+  if (!"shapr" %in% class(explanation)) {
+    stop("The `explanation` parameter must be an object of class 'shapr'.")
+  }
+
+  # Check that the approach is Gaussian
+  if (explanation$internal$parameters$approach != "gaussian") {
+    stop("This function is only applicable when `approach = gaussian`.")
+  }
+
+  # Check that the model is linear
+  if (!"lm" %in% class(linear_model)) {
+    stop("The `linear_model` parameter must be an object of class 'lm'.")
+  }
+
+  # Create a data.table containing the conditional means and the corresponding given
+  # feature values for all test observations and coalitions.
+  dt = data.table::rbindlist(
+    future.apply::future_lapply(
+      seq(2, explanation$internal$parameters$used_n_combinations - 1), # Skip the empty and full coalitions
+      function(S_ind, S, mu, cov_mat, x_explain, feature_names) {
+        # This function computes the conditional mean of Xsbar | Xs = Xs_star and combine those
+        # values with the
+
+        # Get boolean representations if the features are in the S and the Sbar sets
+        S_now = as.logical(S[S_ind,])
+        Sbar_now = !as.logical(S[S_ind,])
+
+        # Extract the mean values for the features in the two sets
+        mu_S = mu[S_now]
+        mu_Sbar = mu[Sbar_now]
+
+        # Extract the relevant parts of the covariance matrix
+        cov_mat_SbarS = cov_mat[Sbar_now, S_now, drop = FALSE]
+        cov_mat_SS = cov_mat[S_now, S_now, drop = FALSE]
+        cov_mat_SbarS_cov_mat_SS_inv = cov_mat_SbarS %*% solve(cov_mat_SS)
+
+        # Extract the features we condition on
+        x_S_star = x_explain[,..S_now]
+
+        # Compute the conditional mean of Xsbar given Xs = Xs_star
+        x_Sbar_mean_dt = data.table(t(mu_Sbar + cov_mat_SbarS_cov_mat_SS_inv %*% t(sweep(x_S_star, 2, mu_S, FUN = "-"))))
+
+        # Combine the conditional means with the conditional feature values
+        cbind(id = seq(nrow(x_explain)), data.table::copy(x_explain)[, (feature_names[Sbar_now]) := x_Sbar_mean_dt])
+      },
+      S = explanation$internal$objects$S,
+      mu = explanation$internal$parameters$gaussian.mu,
+      cov_mat = explanation$internal$parameters$gaussian.cov_mat,
+      x_explain = explanation$internal$data$x_explain,
+      feature_names = explanation$internal$parameters$feature_names
+    ),
+    idcol = "id_combination")
+
+  # We have to add one to id_combination as it started to count at one,
+  # but we skipped the first id_combination in the computations above (empty set).
+  dt[, id_combination := id_combination + 1]
+
+  # Compute the estimated contribution functions
+  dt[, "vS_hat" := (cbind(1, as.matrix(.SD)) %*% linear_model$coefficients),
+     .SDcols = explanation$internal$parameters$feature_names]
+
+  # We `dcast` the data.table to go from long to wide data.table,
+  # where each row is coalition and and each column is an explicand.
+  # Extract the results for the empty and grand coalition from the explanation object,
+  # and then combine all of this together.
+  # As the column names of these objects are different, we set `use.names = FALSE`.
+  # Then we merge the data.tables without warning and checking that the column names matches.
+  dt_vS = rbind(
+    explanation$internal$output$dt_vS[1],
+    dcast(dt, id_combination ~ id, value.var = "vS_hat"), # Here we go from long to wide data table.
+    explanation$internal$output$dt_vS[.N],
+    use.names = FALSE
+  )
+
+  # Compute the Shapley values again, but this time with the precomputed contribution functions
+  progressr::with_progress({
+    updated_explanation <- explain(
+      model = linear_model,
+      x_explain = explanation$internal$data$x_explain,
+      x_train = explanation$internal$data$x_train,
+      approach = explanation$internal$parameters$approach,
+      prediction_zero = explanation$internal$parameters$prediction_zero,
+      keep_samp_for_vS = explanation$internal$parameters$keep_samp_for_vS,
+      n_combinations = explanation$internal$parameters$n_combinations,
+      n_samples = explanation$internal$parameters$n_samples,
+      n_batches = explanation$internal$parameters$n_batches,
+      gaussian.mu = explanation$internal$parameters$gaussian.mu,
+      gaussian.cov_mat = explanation$internal$parameters$gaussian.cov_mat,
+      seed = explanation$internal$parameters$seed,
+      precomputed_vS = list(dt_vS = dt_vS) # We use dt_vS to compute the Shapley values
+    )}, enable = TRUE)
+
+  return(updated_explanation)
+}
+
+
 
 #' Aggregate the results of repeated explanations and plot them
 #'
@@ -384,7 +491,7 @@ repeated_explanations = function(model,
 #' @return Depends on the values of `return_figures` and `return_dt`.
 #' @export
 #'
-#' @examples
+#' @author Lars Henry Berge Olsen
 aggregate_and_plot_results = function(repeated_explanations_list,
                                       true_explanations,
                                       index_combinations = NULL,
