@@ -427,12 +427,15 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
     stop("The `linear_model` parameter must be an object of class 'lm'.")
   }
 
+  # Create a progress bar
+  progress_bar = progressr::progressor(explanation$internal$parameters$used_n_combinations - 2)
+
   # Create a data.table containing the conditional means and the corresponding given
   # feature values for all test observations and coalitions.
   dt = data.table::rbindlist(
     future.apply::future_lapply(
       seq(2, explanation$internal$parameters$used_n_combinations - 1), # Skip the empty and full coalitions
-      function(S_ind, S, mu, cov_mat, x_explain, feature_names) {
+      function(S_ind, S, mu, cov_mat, x_explain, feature_names, progress_bar) {
         # This function computes the conditional mean of Xsbar | Xs = Xs_star and combine those
         # values with the
 
@@ -455,14 +458,19 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
         # Compute the conditional mean of Xsbar given Xs = Xs_star
         x_Sbar_mean_dt = data.table(t(mu_Sbar + cov_mat_SbarS_cov_mat_SS_inv %*% t(sweep(x_S_star, 2, mu_S, FUN = "-"))))
 
+        # Update the progress bar
+        progress_bar(amount = 1, message = "Estimating v(S) (lm-Gauss)")
+
         # Combine the conditional means with the conditional feature values
-        cbind(id = seq(nrow(x_explain)), data.table::copy(x_explain)[, (feature_names[Sbar_now]) := x_Sbar_mean_dt])
+        return(cbind(id = seq(nrow(x_explain)),
+                     data.table::copy(x_explain)[, (feature_names[Sbar_now]) := x_Sbar_mean_dt]))
       },
       S = explanation$internal$objects$S,
       mu = explanation$internal$parameters$gaussian.mu,
       cov_mat = explanation$internal$parameters$gaussian.cov_mat,
       x_explain = explanation$internal$data$x_explain,
-      feature_names = explanation$internal$parameters$feature_names
+      feature_names = explanation$internal$parameters$feature_names,
+      progress_bar = progress_bar
     ),
     idcol = "id_combination")
 
@@ -480,10 +488,19 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
   # and then combine all of this together.
   # As the column names of these objects are different, we set `use.names = FALSE`.
   # Then we merge the data.tables without warning and checking that the column names matches.
+  # REMOVED THIS ONE 13.10.23 as I earlier just set the whole dt_vS to zero.
+  # dt_vS = rbind(
+  #   explanation$internal$output$dt_vS[1],
+  #   dcast(dt, id_combination ~ id, value.var = "vS_hat"), # Here we go from long to wide data table.
+  #   explanation$internal$output$dt_vS[.N],
+  #   use.names = FALSE
+  # )
   dt_vS = rbind(
-    explanation$internal$output$dt_vS[1],
-    dcast(dt, id_combination ~ id, value.var = "vS_hat"), # Here we go from long to wide data table.
-    explanation$internal$output$dt_vS[.N],
+    data.table::data.table(id_combination = 1)[, `:=` (paste0("p_hat1_", seq(explanation$internal$parameters$n_explain)),
+                                           explanation$internal$parameters$prediction_zero)],
+    data.table::dcast(dt, id_combination ~ id, value.var = "vS_hat"), # Here we go from long to wide data table.
+    data.table::data.table(id_combination = explanation$internal$parameters$used_n_combinations)[, paste0("p_hat1_", seq(explanation$internal$parameters$n_explain)) :=
+                                                                                     as.list(shapr::predict_model(linear_model, explanation$internal$data$x_explain))],
     use.names = FALSE
   )
 
@@ -502,6 +519,7 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
       prediction_zero = explanation$internal$parameters$prediction_zero,
       keep_samp_for_vS = explanation$internal$parameters$keep_samp_for_vS,
       n_combinations = explanation$internal$parameters$n_combinations,
+      exact = explanation$internal$parameters$exact,
       n_samples = explanation$internal$parameters$n_samples,
       n_batches = explanation$internal$parameters$n_batches,
       gaussian.mu = explanation$internal$parameters$gaussian.mu,

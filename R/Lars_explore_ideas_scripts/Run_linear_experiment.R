@@ -299,6 +299,8 @@ for (rho_idx in seq_along(rhos)) {
   if (compute_true_explanations) {
     message("Start computing the true explanations.")
 
+    # TODO: LEGG TIL HER SÅNN AT MAN KAN VELGE OM MAN GJØR LM -GAUS STRAT
+
     # Set future in the right plan
     if (n_workers > 1) {
       future::plan(multisession, workers = n_workers)
@@ -310,8 +312,14 @@ for (rho_idx in seq_along(rhos)) {
     progressr::handlers("cli")
 
     # We are going to call `shapr::explain()` once to set up the `shapr` object. To do this we do not need
-    # to estimate the contribution functions accurately with a high number of MC samples, hence, we set it
-    # to 1 and will later compute the contribution functions accurately.
+    # to estimate the contribution functions accurately hence we could set n_samples = 1, but it is faster
+    # to use a precomputed dt_vS list with just rubbish. We add the special cases for the empty and full set
+    # but we let the other entries be 0.
+    dt_vS = data.table(id_combination = rep(seq(2^M)))[, `:=` (paste0("p_hat1_", seq(n_test)), 0)]
+    dt_vS[id_combination == 1, `:=` (names(dt_vS)[-1], prediction_zero)] # can be directly given as it is a scalar.
+    dt_vS[id_combination == .N, `:=` (names(dt_vS)[-1], as.list(response_test))] # need to be a list as it is a vector.
+
+    # Create the shapr object. The Shapley value output will be rubbish, but we only need the object/list structure.
     progressr::with_progress({
       true_explanations <- explain(
       model = predictive_model,
@@ -320,19 +328,30 @@ for (rho_idx in seq_along(rhos)) {
       approach = "gaussian",
       prediction_zero = prediction_zero,
       keep_samp_for_vS = TRUE,
-      n_combinations = 2^M,
       exact = TRUE,
       n_samples = 1,
       n_batches = 2^(M-2),
       gaussian.mu = mu,
       gaussian.cov_mat = sigma,
-      seed = 1
+      seed = 1,
+      precomputed_vS = list(dt_vS = dt_vS)
     )}, enable = TRUE)
 
+    jm = data.table(id_combination = rep(seq(2^M)))[, `:=` (paste0("p_hat1_", seq(n_test)), 0)]
+    jm
+    jm[1, "p_hat1_1" := 2]
+    jm[1, -1] = rep(2, 20)
+    set(jm, 1L, names(jm), )
+
+    jm[1, `:=` (p_hat1_2 = 2)]
+    jm
+
     # Compute the true explanations using the `lm` and `Gaussian` approach strategy
-    true_explanations_better = explain_linear_model_Gaussian_data(
-      explanation = true_explanations,
-      linear_model = predictive_model)
+    progressr::with_progress({
+      true_explanations_better_11 = explain_linear_model_Gaussian_data(
+        explanation = true_explanations_11,
+        linear_model = predictive_model)
+    })
 
     # Set future back to sequential plan
     future::plan(sequential)
