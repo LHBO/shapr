@@ -27,7 +27,7 @@ repetitions = 1
 n_workers = 2
 n_samples_true = n_samples = 10
 n_train = n_test = 20
-M = 4
+M = 11
 rhos = 0.5
 
 # Extract if we are to generate the data and model
@@ -83,7 +83,6 @@ if (length(rhos) > 1) {
 # Extract the correlation level
 betas = as.character(args[12])
 if (betas != "NULL") {
-  print("hei")
   betas = unlist(strsplit(betas, ","))
   if (length(betas) > 1) {
     betas = unname(sapply(betas, function(i) as.numeric(i)))
@@ -93,7 +92,7 @@ if (betas != "NULL") {
 } else {
   # Create the beta vector
   betas = c(0, rep(1, M))
-  betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2)
+  betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
   betas = betas[seq(M+1)]
 }
 
@@ -141,6 +140,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 # Set the working directory
 setwd(folder)
 
+# Load the new functions
 source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
 
 message("loading my version of the package")
@@ -298,12 +298,20 @@ for (rho_idx in seq_along(rhos)) {
   ## True explanations -----------------------------------------------------------------------------------------------
   if (compute_true_explanations) {
     message("Start computing the true explanations.")
+
+    # Set future in the right plan
     if (n_workers > 1) {
       future::plan(multisession, workers = n_workers)
     } else {
       future::plan(sequential)
     }
+
+    # Specify the progressr bar
     progressr::handlers("cli")
+
+    # We are going to call `shapr::explain()` once to set up the `shapr` object. To do this we do not need
+    # to estimate the contribution functions accurately with a high number of MC samples, hence, we set it
+    # to 1 and will later compute the contribution functions accurately.
     progressr::with_progress({
       true_explanations <- explain(
       model = predictive_model,
@@ -313,25 +321,23 @@ for (rho_idx in seq_along(rhos)) {
       prediction_zero = prediction_zero,
       keep_samp_for_vS = TRUE,
       n_combinations = 2^M,
-      n_samples = 5000,
+      exact = TRUE,
+      n_samples = 1,
       n_batches = 2^(M-2),
       gaussian.mu = mu,
       gaussian.cov_mat = sigma,
       seed = 1
     )}, enable = TRUE)
 
+    # Compute the true explanations using the `lm` and `Gaussian` approach strategy
     true_explanations_better = explain_linear_model_Gaussian_data(
       explanation = true_explanations,
       linear_model = predictive_model)
 
-    mean_absolute_and_squared_errors(
-      true_explanations2$shapley_values,
-      true_explanations_better$shapley_values
-    )
-
+    # Set future back to sequential plan
     future::plan(sequential)
 
-    # Save them just in case
+    # Save the true explanations just in case
     message("Start saving the true explanations.")
     saveRDS(true_explanations, save_file_name_true)
     message("Saved the true explanations.")

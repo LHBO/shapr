@@ -139,6 +139,19 @@ repeated_explanations = function(model,
   sequence_n_combinations = unique(c(seq(n_combinations_from, n_combinations_to, n_combinations_increment),
                                      n_combinations_to))
 
+  # Check if we are in the special case of linear model and Gaussian approach
+  # as we can then compute the `precomputed_vS` much faster and more precise.
+  if (use_precomputed_vS && approach == "gaussian" && class(model) == "lm") {
+    use_precomputed_vS_gaussian_lm = TRUE
+
+    # Small message to the user
+    cat(sprintf("Note that the parameter `n_samples` (%d) is no longer applicable as it is technically infinite
+as we use the exact means in the `lm` and `gaussian` strategy",
+                n_samples))
+  } else {
+    use_precomputed_vS_gaussian_lm = FALSE
+  }
+
   # Extract the seed value
   seed = seed_start_value
 
@@ -152,28 +165,76 @@ repeated_explanations = function(model,
 
     # If we are to use precomputed
     if (use_precomputed_vS) {
-      if (ncol(x_explain) > 10) message("Computing `precomputed_vS` might take some time due to many featueres.\n")
 
-      # Small message to user
-      cat(sprintf("Creating the `precomputed_vS` for repetition %d of %d.\n",idx_rep, n_repetitions))
+      # Check what kind of precomputed_vS we are going to use
+      if (use_precomputed_vS_gaussian_lm) {
+        # We are using the Gaussian approach or the predictive model is a linear model
 
-      # Do not want any warnings
-      progressr::handlers("cli")
-      progressr::with_progress({
-        precomputed_vS = suppressWarnings(suppressMessages(
-          explain(
-            model = model,
-            x_explain = x_explain,
-            x_train = x_train,
-            approach = approach,
-            prediction_zero = prediction_zero,
-            keep_samp_for_vS = keep_samp_for_vS,
-            n_combinations = 2^ncol(x_explain),
-            n_samples = n_samples,
-            n_batches = n_batches,
-            seed = seed,
-            ...
-          )))$internal$output}, enable = TRUE)
+        # Small message to user
+        cat(sprintf(
+          "Creating the `precomputed_vS` for repetition %d of %d using the `lm` and `gaussian` strategy.\n",
+          idx_rep, n_repetitions))
+
+        # We are going to call `shapr::explain()` once to set up the `shapr` object. To do this we do not need
+        # to estimate the contribution functions accurately with a high number of MC samples, hence, we set it
+        # to 1 and will later compute the contribution functions accurately.
+        n_samples_used = 1
+
+        # Do not want any warnings
+        progressr::handlers("cli")
+        progressr::with_progress({
+          explanations_auxilliary = suppressWarnings(suppressMessages(
+            explain(
+              model = model,
+              x_explain = x_explain,
+              x_train = x_train,
+              approach = approach,
+              prediction_zero = prediction_zero,
+              keep_samp_for_vS = keep_samp_for_vS,
+              n_combinations = 2^ncol(x_explain),
+              n_samples = n_samples_used,
+              n_batches = n_batches,
+              seed = seed,
+              ...
+            )))}, enable = TRUE)
+
+        # Compute the precompute_vS using the `lm` and `Gaussian` approach strategy
+        precomputed_vS = explain_linear_model_Gaussian_data(
+          explanation = explanations_auxilliary,
+          linear_model = model,
+          only_return_dt_vS_list = TRUE)
+
+      } else {
+        # We are NOT using the Gaussian approach or the predictive model is NOT a linear model.
+        # We therefore use the default version
+
+        # Small warning to the user
+        if (ncol(x_explain) > 10) message("Computing `precomputed_vS` might take some time due to many featueres.\n")
+
+        # Small message to user
+        cat(sprintf("Creating the `precomputed_vS` for repetition %d of %d.\n", idx_rep, n_repetitions))
+
+        # We set the number of MC samples to use to be the value provided by the user
+        n_samples_used = n_samples
+
+        # Do not want any warnings
+        progressr::handlers("cli")
+        progressr::with_progress({
+          precomputed_vS = suppressWarnings(suppressMessages(
+            explain(
+              model = model,
+              x_explain = x_explain,
+              x_train = x_train,
+              approach = approach,
+              prediction_zero = prediction_zero,
+              keep_samp_for_vS = keep_samp_for_vS,
+              n_combinations = 2^ncol(x_explain),
+              n_samples = n_samples_used,
+              n_batches = n_batches,
+              seed = seed,
+              ...
+            )))$internal$output}, enable = TRUE)
+      }
     } else {
       precomputed_vS = NULL
     }
@@ -343,11 +404,14 @@ repeated_explanations = function(model,
 #'
 #' @param explanation list. The returned object from the [shapr::explain()] function.
 #' @param linear_model A fitted linear model using the [base::lm()] function.
+#' @param only_return_dt_vS_list Boolean. If `TRUE`, then we skip computing the Shapley values
+#' and rater directly return a list containing the estimated contribution function values.
 #'
-#' @return An `shapr` object. Same as the `explanation` input.
+#' @return An `shapr` object. Same as the `explanation` input. Or a list containing the `vS_list`
+#' if `only_return_dt_vS_list` is `TRUE`.
 #' @export
 #' @author Lars Henry Berge Olsen
-explain_linear_model_Gaussian_data = function(explanation, linear_model) {
+explain_linear_model_Gaussian_data = function(explanation, linear_model, only_return_dt_vS_list = FALSE) {
   # Check that user has provided a correct explanation object
   if (!"shapr" %in% class(explanation)) {
     stop("The `explanation` parameter must be an object of class 'shapr'.")
@@ -423,6 +487,11 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model) {
     use.names = FALSE
   )
 
+  # If we only are to return the computed contribution functions
+  # This is useful when we are investigating the coalition sampling procedures
+  # as we then do not to compute the Shapley values.
+  if (only_return_dt_vS_list) return(list(dt_vS = dt_vS))
+
   # Compute the Shapley values again, but this time with the precomputed contribution functions
   progressr::with_progress({
     updated_explanation <- explain(
@@ -441,6 +510,11 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model) {
       precomputed_vS = list(dt_vS = dt_vS) # We use dt_vS to compute the Shapley values
     )}, enable = TRUE)
 
+  # Set the number of samples to `Inf` and create a new boolean
+  updated_explanation$internal$parameters$n_samples = Inf
+  updated_explanation$internal$parameters$lm_gaussian_strategy = TRUE
+
+  # Return the updated explanations
   return(updated_explanation)
 }
 
