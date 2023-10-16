@@ -1,6 +1,5 @@
 # cd ~/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 
-
 # # #Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 1 250 1000 250 10 0.0 NULL
 # #  ixion bastet
 # # #
@@ -15,20 +14,34 @@
 # # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.6 NULL
 # # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.9 NULL
 
+
+# To do the setup, i.e., create the data and predictive model
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.9 NULL
+# Then, we create the true Shapley values
+# Rscript Run_linear_experiment.R FALSE TRUE FALSE NULL 6 1000000 250 1000 250 10 0.9 NULL
+# Then, we can run the repeated experiments
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:10 6 1000000 250 1000 250 10 0.9 NULL
+
+
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
 if (length(args) < 11) {
-  stop("Must provide all parameters!", call.=FALSE)
+  stop("Must provide all parameters (do_setup, compute_true_explanations, compute_repeated_explanations, repetitions,
+       n_workers, n_samples_true, n_samples, n_train, n_test, M, rho, beta)!", call.=FALSE)
 }
 
-do_setup = compute_true_explanations = compute_repeated_explanations = TRUE
+do_setup = FALSE
+compute_true_explanations = FALSE
+compute_repeated_explanations = TRUE
 repetitions = 1
 n_workers = 2
-n_samples_true = n_samples = 10
-n_train = n_test = 20
-M = 11
-rhos = 0.5
+n_samples_true = 1000000
+n_samples = 250
+n_train = 1000
+n_test = 250
+M = 10
+rhos = 0.9
 
 # Extract if we are to generate the data and model
 do_setup = as.logical(args[1])
@@ -96,11 +109,22 @@ if (betas != "NULL") {
   betas = betas[seq(M+1)]
 }
 
+
 # Small printout to the user
-message(sprintf("Set up: rho = [%s] and beta = [%s].\n",
-                paste(rhos, collapse = ", "), paste(betas, collapse = ", ")))
-
-
+message(paste0(
+  "Set up:",
+"\ndo_setup = ", do_setup,
+"\ncompute_true_explanations = ", compute_true_explanations,
+"\ncompute_repeated_explanations = ", compute_repeated_explanations,
+"\nrepetitions = [", paste(repetitions, collapse = ", "), "]",
+"\nn_workers = ", n_workers,
+"\nn_samples_true = ", n_samples_true,
+"\nn_samples = ", n_samples,
+"\nn_train = ", n_train,
+"\nn_test = ", n_test,
+"\nM = ", M,
+"\nrho = [", paste(rhos, collapse = ", "), "]",
+"\nbeta = [", paste(betas, collapse = ", "), "]\n"))
 
 
 
@@ -143,7 +167,7 @@ setwd(folder)
 # Load the new functions
 source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
 
-message("loading my version of the package")
+message("Loading my version of the `shapr` package.")
 #library(shapr)
 #setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
 if (UiO) {
@@ -155,13 +179,13 @@ if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 }
 library(shapr)
-message("done")
+
 
 # Libraries -------------------------------------------------------------------------------------------------------
 library(data.table)
 library(mvtnorm)
 library(condMVNorm)
-library(mgcv)
+suppressPackageStartupMessages(library(mgcv))
 library(progressr)
 library(cli)
 library(future)
@@ -180,6 +204,9 @@ if (n_workers > n_max_workers) {
 # Fixed parameters ------------------------------------------------------------------------------------------------------
 # Mean of the multivariate Gaussian distribution
 mu = rep(0, times = M)
+
+# We use the Gaussian approach
+approach = "gaussian"
 
 # Which coalition/combination sampling schemes to use
 sampling_methods = c("unique",
@@ -278,7 +305,7 @@ for (rho_idx in seq_along(rhos)) {
     saveRDS(save_list, save_file_name_setup)
 
   } else {
-    message("Load the data and predictive model.")
+    message("Loading the data and predictive model.")
 
     save_list = readRDS(save_file_name_setup)
 
@@ -297,9 +324,7 @@ for (rho_idx in seq_along(rhos)) {
 
   ## True explanations -----------------------------------------------------------------------------------------------
   if (compute_true_explanations) {
-    message("Start computing the true explanations.")
-
-    # TODO: LEGG TIL HER SÅNN AT MAN KAN VELGE OM MAN GJØR LM -GAUS STRAT
+    message(paste0("Start computing the true explanations (n_workers = ", n_workers, ")."))
 
     # Set future in the right plan
     if (n_workers > 1) {
@@ -311,47 +336,71 @@ for (rho_idx in seq_along(rhos)) {
     # Specify the progressr bar
     progressr::handlers("cli")
 
-    # We are going to call `shapr::explain()` once to set up the `shapr` object. To do this we do not need
-    # to estimate the contribution functions accurately hence we could set n_samples = 1, but it is faster
-    # to use a precomputed dt_vS list with just rubbish. We add the special cases for the empty and full set
-    # but we let the other entries be 0.
-    dt_vS = data.table(id_combination = rep(seq(2^M)))[, `:=` (paste0("p_hat1_", seq(n_test)), 0)]
-    dt_vS[id_combination == 1, `:=` (names(dt_vS)[-1], prediction_zero)] # can be directly given as it is a scalar.
-    dt_vS[id_combination == .N, `:=` (names(dt_vS)[-1], as.list(response_test))] # need to be a list as it is a vector.
+    # Check if we are in the special case of linear model and Gaussian approach
+    # as we can then compute the `precomputed_vS` much faster and more precise.
+    if (approach == "gaussian" && class(predictive_model) == "lm") {
+      # We are using the Gaussian approach and a linear predictive model
 
-    # Create the shapr object. The Shapley value output will be rubbish, but we only need the object/list structure.
-    progressr::with_progress({
-      true_explanations <- explain(
-      model = predictive_model,
-      x_explain = data_test,
-      x_train = data_train,
-      approach = "gaussian",
-      prediction_zero = prediction_zero,
-      keep_samp_for_vS = TRUE,
-      exact = TRUE,
-      n_samples = 1,
-      n_batches = 2^(M-2),
-      gaussian.mu = mu,
-      gaussian.cov_mat = sigma,
-      seed = 1,
-      precomputed_vS = list(dt_vS = dt_vS)
-    )}, enable = TRUE)
+      # Small message to the user
+      message(sprintf("Using the LM-Gaussian strategy to compute the true Shapley values (not using `n_samples = %d`).",
+              n_samples_true))
 
-    jm = data.table(id_combination = rep(seq(2^M)))[, `:=` (paste0("p_hat1_", seq(n_test)), 0)]
-    jm
-    jm[1, "p_hat1_1" := 2]
-    jm[1, -1] = rep(2, 20)
-    set(jm, 1L, names(jm), )
+      # We are going to call `shapr::explain()` once to set up the `shapr` object. To do this we do not need
+      # to estimate the contribution functions accurately hence we could set n_samples = 1, but it is faster
+      # to use a precomputed dt_vS list with just rubbish. We add the special cases for the empty and full set
+      # but we let the other entries be 0.
+      dt_vS = data.table(id_combination = rep(seq(2^M)))[, `:=` (paste0("p_hat1_", seq(n_test)), 0)]
+      dt_vS[id_combination == 1, `:=` (names(dt_vS)[-1], prediction_zero)] # can be directly given as it is a scalar.
+      dt_vS[id_combination == .N, `:=` (names(dt_vS)[-1], as.list(response_test))] # need to be a list as it is a vector.
 
-    jm[1, `:=` (p_hat1_2 = 2)]
-    jm
+      # Create the shapr object. The Shapley value output will be rubbish, but we only need the object/list structure.
+      progressr::with_progress({
+        true_explanations_tmp <- explain(
+          model = predictive_model,
+          x_explain = data_test,
+          x_train = data_train,
+          approach = approach,
+          prediction_zero = prediction_zero,
+          keep_samp_for_vS = FALSE,
+          exact = TRUE,
+          n_samples = 1,
+          n_batches = 2^(M-2),
+          # n_samples = 2^M, # Do not need it as we specify `exact = TRUE`.
+          gaussian.mu = mu,
+          gaussian.cov_mat = sigma,
+          seed = 1,
+          precomputed_vS = list(dt_vS = dt_vS)
+        )}, enable = TRUE)
 
-    # Compute the true explanations using the `lm` and `Gaussian` approach strategy
-    progressr::with_progress({
-      true_explanations_better_11 = explain_linear_model_Gaussian_data(
-        explanation = true_explanations_11,
-        linear_model = predictive_model)
-    })
+      # Compute the true explanations using the LM-Gaussian strategy
+      progressr::with_progress({
+        true_explanations = explain_linear_model_Gaussian_data(
+          explanation = true_explanations_tmp,
+          linear_model = predictive_model)
+      }, enable = TRUE)
+
+    } else {
+      # Small message to the user
+      message("Using the Monte Carlo Integrations strategy to compute the true Shapley values.")
+
+      # We are either using a non-Gaussian approach or a non-linear predictive model
+      # Compute the true explanations
+      progressr::with_progress({
+        true_explanations <- explain(
+          model = predictive_model,
+          x_explain = data_test,
+          x_train = data_train,
+          approach = approach,
+          prediction_zero = prediction_zero,
+          keep_samp_for_vS = TRUE,
+          exact = TRUE,
+          n_samples = n_samples_true,
+          n_batches = 2^(M-2),
+          gaussian.mu = mu,
+          gaussian.cov_mat = sigma,
+          seed = 1
+        )}, enable = TRUE)
+    }
 
     # Set future back to sequential plan
     future::plan(sequential)
@@ -390,17 +439,19 @@ for (rho_idx in seq_along(rhos)) {
       tmp_save_path = paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho,
                             "MC", n_samples, "estimated_tmp.rds", sep = "_")
 
+      # Set if we are doing the computations in parallel or sequential
       if (n_workers > 1) {
         future::plan(multisession, workers = n_workers)
       } else {
         future::plan(sequential)
       }
+
       # Compute the repeated estimated Shapley values using the different sampling methods
       repeated_estimated_explanations = repeated_explanations(
         model = predictive_model,
         x_explain = data_test,
         x_train = data_train,
-        approach = "gaussian",
+        approach = approach,
         gaussian.cov_mat = sigma,
         gaussian.mu = mu,
         prediction_zero = prediction_zero,
@@ -440,10 +491,9 @@ for (rho_idx in seq_along(rhos)) {
     }
   }
 }
-message("Done with everything. Print warnings if any.")
+message("Done with everything.\nPrint warnings if any ('-ne' means no warnings).")
 
 warnings()
-print(warnings())
 
 
 

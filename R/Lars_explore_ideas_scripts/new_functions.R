@@ -128,6 +128,9 @@ repeated_explanations = function(model,
                                  save_path = NULL,
                                  ...) {
 
+  # Set the design of the progress bar
+  progressr::handlers("cli")
+
   # Check for valid sampling methods
   sampling_methods = match.arg(sampling_methods, several.ok = TRUE)
 
@@ -145,9 +148,15 @@ repeated_explanations = function(model,
     use_precomputed_vS_gaussian_lm = TRUE
 
     # Small message to the user
-    cat(sprintf("Note that the parameter `n_samples` (%d) is no longer applicable as it is technically infinite
-as we use the exact means in the `lm` and `gaussian` strategy",
-                n_samples))
+    message(paste0("We use the LM-Gaussian strategy, then `n_samples` (", n_samples,
+                   ") is no longer applicable. It will rather technically be `Inf`."))
+
+    # These variables are only needed if we do the LM-Gaussian strategy
+    # Get the number of features, number of test observations, and their predicted response using the model
+    M = ncol(x_explain)
+    n_test = nrow(x_explain)
+    response_test = predict(model, x_explain)
+
   } else {
     use_precomputed_vS_gaussian_lm = FALSE
   }
@@ -171,38 +180,44 @@ as we use the exact means in the `lm` and `gaussian` strategy",
         # We are using the Gaussian approach or the predictive model is a linear model
 
         # Small message to user
-        cat(sprintf(
-          "Creating the `precomputed_vS` for repetition %d of %d using the `lm` and `gaussian` strategy.\n",
-          idx_rep, n_repetitions))
+        message(sprintf("Creating the `precomputed_vS` for repetition %d of %d using the LM-Gaussian strategy.",
+                        idx_rep, n_repetitions))
 
         # We are going to call `shapr::explain()` once to set up the `shapr` object. To do this we do not need
-        # to estimate the contribution functions accurately with a high number of MC samples, hence, we set it
-        # to 1 and will later compute the contribution functions accurately.
-        n_samples_used = 1
+        # to estimate the contribution functions accurately hence we could set n_samples = 1, but it is faster
+        # to use a precomputed dt_vS list with just rubbish. We add the special cases for the empty and full set
+        # but we let the other entries be 0.
+        dt_vS = data.table(id_combination = rep(seq(2^M)))[, `:=` (paste0("p_hat1_", seq(n_test)), 0)]
+        dt_vS[id_combination == 1, `:=` (names(dt_vS)[-1], prediction_zero)] # can be directly given as it is a scalar.
+        dt_vS[id_combination == .N, `:=` (names(dt_vS)[-1], as.list(response_test))] # need to be a list as it is a vector.
 
-        # Do not want any warnings
-        progressr::handlers("cli")
+        # Create the shapr object. The Shapley value output will be rubbish,
+        # but we only need the object/list structure. Do not want any warnings.
         progressr::with_progress({
-          explanations_auxilliary = suppressWarnings(suppressMessages(
-            explain(
+          explanations_tmp = suppressWarnings(suppressMessages(
+            shapr::explain(
               model = model,
               x_explain = x_explain,
               x_train = x_train,
               approach = approach,
               prediction_zero = prediction_zero,
               keep_samp_for_vS = keep_samp_for_vS,
-              n_combinations = 2^ncol(x_explain),
-              n_samples = n_samples_used,
+              exact = TRUE,
+              # n_combinations = 2^ncol(x_explain), # Do not need it as we specify `exact = TRUE`.
+              n_samples = 1,
               n_batches = n_batches,
               seed = seed,
+              precomputed_vS = list(dt_vS = dt_vS),
               ...
             )))}, enable = TRUE)
 
-        # Compute the precompute_vS using the `lm` and `Gaussian` approach strategy
-        precomputed_vS = explain_linear_model_Gaussian_data(
-          explanation = explanations_auxilliary,
-          linear_model = model,
-          only_return_dt_vS_list = TRUE)
+        # Compute the precompute_vS using the LM-Gaussian strategy
+        progressr::with_progress({
+          precomputed_vS = explain_linear_model_Gaussian_data(
+            explanation = explanations_tmp,
+            linear_model = model,
+            only_return_dt_vS_list = TRUE)
+        }, enable = TRUE)
 
       } else {
         # We are NOT using the Gaussian approach or the predictive model is NOT a linear model.
@@ -212,16 +227,16 @@ as we use the exact means in the `lm` and `gaussian` strategy",
         if (ncol(x_explain) > 10) message("Computing `precomputed_vS` might take some time due to many featueres.\n")
 
         # Small message to user
-        cat(sprintf("Creating the `precomputed_vS` for repetition %d of %d.\n", idx_rep, n_repetitions))
+        message(paste0("Creating the `precomputed_vS` for repetition ", idx_rep, " of ", n_repetitions,
+                       " using the Monte Carlo Integration strategy."))
 
         # We set the number of MC samples to use to be the value provided by the user
         n_samples_used = n_samples
 
         # Do not want any warnings
-        progressr::handlers("cli")
         progressr::with_progress({
           precomputed_vS = suppressWarnings(suppressMessages(
-            explain(
+            shapr::explain(
               model = model,
               x_explain = x_explain,
               x_train = x_train,
@@ -240,15 +255,16 @@ as we use the exact means in the `lm` and `gaussian` strategy",
     }
 
 
+
     # Iterate over the sampling methods
-    sampling_method_idx = 9
+    sampling_method_idx = 1
     for (sampling_method_idx in seq(n_sampling_methods)) {
       sampling_method = sampling_methods[sampling_method_idx]
 
       # Small printout to the user
-      cat(sprintf("Rep %d (%d of %d). Method: %s (%d of %d).\n",
-                  idx_rep, idx_rep, n_repetitions,
-                  sampling_method, sampling_method_idx, n_sampling_methods))
+      message(sprintf("Rep %d (%d of %d). Method: %s (%d of %d).\n",
+                      idx_rep, idx_rep, n_repetitions,
+                      sampling_method, sampling_method_idx, n_sampling_methods))
 
       # A string used in the result list
       idx_rep_str = paste0("repetition_", idx_rep)
@@ -263,36 +279,43 @@ as we use the exact means in the `lm` and `gaussian` strategy",
         used_sequence_n_combinations = sequence_n_combinations
       }
 
-      # Create a temp function which computes the shapley values for a specific number of coalitions
-      tmp_function = function(n_combinations,
-                              model,
-                              x_explain,
-                              x_train,
-                              approach,
-                              prediction_zero,
-                              keep_samp_for_vS,
-                              n_samples,
-                              n_batches,
-                              seed,
-                              sampling_method,
-                              precomputed_vS,
-                              progressbar,
-                              ...) {
-        tmp_res = suppressMessages(suppressWarnings(explain(
-          model = model,
-          x_explain = x_explain,
-          x_train = x_train,
-          approach = approach,
-          prediction_zero = prediction_zero,
-          keep_samp_for_vS = keep_samp_for_vS,
-          n_combinations = n_combinations,
-          n_samples = n_samples,
-          n_batches = min(n_combinations-1, n_batches),
-          seed = seed,
-          sampling_method = sampling_method,
-          precomputed_vS = precomputed_vS,
-          ...
-        )))
+      # Get the number of different `n_combinations`
+      n_combinations_total = length(used_sequence_n_combinations)
+
+      # Create a temp function which computes the Shapley values for a specific number of coalitions
+      compute_SV_function = function(n_combinations,
+                                     n_combinations_total,
+                                     model,
+                                     x_explain,
+                                     x_train,
+                                     approach,
+                                     prediction_zero,
+                                     keep_samp_for_vS,
+                                     n_samples,
+                                     n_batches,
+                                     seed,
+                                     sampling_method,
+                                     precomputed_vS,
+                                     progress_bar,
+                                     ...) {
+
+        # Call the `shapr::explain` function with the provided parameters
+        tmp_res = suppressMessages(suppressWarnings(
+          shapr::explain(
+            model = model,
+            x_explain = x_explain,
+            x_train = x_train,
+            approach = approach,
+            prediction_zero = prediction_zero,
+            keep_samp_for_vS = keep_samp_for_vS,
+            n_combinations = n_combinations,
+            n_samples = n_samples,
+            n_batches = min(n_combinations-1, n_batches),
+            seed = seed,
+            sampling_method = sampling_method,
+            precomputed_vS = precomputed_vS,
+            ...
+          )))
 
         # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
         if (n_combinations != used_sequence_n_combinations[1]) {
@@ -302,22 +325,44 @@ as we use the exact means in the `lm` and `gaussian` strategy",
           tmp_res$pred_explain = NULL
         }
 
-        progressbar(message = sprintf("Rep %d (%d of %d). Method: %s (%d of %d). N_comb %d.\n",
-                                      idx_rep, idx_rep, n_repetitions,
-                                      sampling_method, sampling_method_idx, n_sampling_methods,
-                                      n_combinations))
+        # EXTRACT PROGRESS iteration
+        progress_bar
 
+        # Update the progress bar
+        progress_bar(message = sprintf("Rep: %d of %d. Method: %s (%d of %d). N_comb: %d of %d.\n",
+                                       idx_rep, n_repetitions,
+                                       sampling_method, sampling_method_idx, n_sampling_methods,
+                                       n_combinations, n_combinations_total))
+
+        # Return the results
         return(tmp_res)
       }
 
-      # Create a progress bar
-      progressbar = progressr::progressor(steps = length(used_sequence_n_combinations))
+      # Have wrapped the future.apply::future_lapply inside this function to make the progressr work
+      future_compute_SV_function = function(compute_SV_function,
+                                            used_sequence_n_combinations,
+                                            n_combinations_total,
+                                            model,
+                                            x_explain,
+                                            x_train,
+                                            approach,
+                                            prediction_zero,
+                                            keep_samp_for_vS,
+                                            n_samples,
+                                            n_batches,
+                                            seed,
+                                            sampling_method,
+                                            precomputed_vS,
+                                            ...) {
 
-      progressr::with_progress({
-        # Iterate over the n_combinations sequence and compute the Shapley values
-        result_list[[sampling_method]][[idx_rep_str]] = suppressWarnings(future.apply::future_lapply(
+        # Create a progress bar
+        progress_bar = progressr::progressor(steps = n_combinations_total)
+
+        # Call the tmp_function for the different number of coalitions
+        future.apply::future_lapply(
           X = as.list(used_sequence_n_combinations),
-          FUN = tmp_function,
+          FUN = suppressMessages(suppressWarnings(compute_SV_function)),
+          n_combinations_total = n_combinations_total,
           model = model,
           x_explain = x_explain,
           x_train = x_train,
@@ -329,10 +374,56 @@ as we use the exact means in the `lm` and `gaussian` strategy",
           seed = seed,
           sampling_method = sampling_method,
           precomputed_vS = precomputed_vS,
-          progressbar = progressbar,
+          progress_bar = progress_bar,
           future.seed = 1,
+          future.scheduling = n_combinations_total,
           ...
-        ))}, enable = TRUE)
+        )
+      }
+
+      # Get the estimated Shapley values using the specified parameters
+      result_list[[sampling_method]][[idx_rep_str]] = with_progress(
+        future_compute_SV_function(compute_SV_function = compute_SV_function,
+                                   used_sequence_n_combinations = used_sequence_n_combinations,
+                                   n_combinations_total = n_combinations_total,
+                                   model = model,
+                                   x_explain = x_explain,
+                                   x_train = x_train,
+                                   approach = approach,
+                                   prediction_zero = prediction_zero,
+                                   keep_samp_for_vS = keep_samp_for_vS,
+                                   n_samples = n_samples,
+                                   n_batches = n_batches,
+                                   seed = seed,
+                                   sampling_method = sampling_method,
+                                   precomputed_vS = precomputed_vS,
+                                   ...),
+        enable = TRUE)
+
+      #
+      #       # Ensure that we get a progress bar
+      #       progressr::with_progress({
+      #         # Iterate over the n_combinations sequence and compute the Shapley values
+      #         result_list[[sampling_method]][[idx_rep_str]] = suppressMessages(suppressWarnings(future.apply::future_lapply(
+      #           X = as.list(used_sequence_n_combinations),
+      #           FUN = tmp_function,
+      #           model = model,
+      #           x_explain = x_explain,
+      #           x_train = x_train,
+      #           approach = approach,
+      #           prediction_zero = prediction_zero,
+      #           keep_samp_for_vS = keep_samp_for_vS,
+      #           n_samples = n_samples,
+      #           n_batches = n_batches,
+      #           seed = seed,
+      #           sampling_method = sampling_method,
+      #           precomputed_vS = precomputed_vS,
+      #           progress_bar = progress_bar,
+      #           future.seed = 1,
+      #           ...
+      #         )))}, enable = TRUE)
+
+
 
       # Update the names
       names(result_list[[sampling_method]][[idx_rep_str]]) = paste0("n_combinations_", used_sequence_n_combinations)
@@ -390,6 +481,7 @@ as we use the exact means in the `lm` and `gaussian` strategy",
     # Update the seed value
     seed = seed + 1
 
+    # Save the results if a save path has been provided
     if (!is.null(save_path)) {
       saveRDS(result_list, save_path)
     }
@@ -459,7 +551,7 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
         x_Sbar_mean_dt = data.table(t(mu_Sbar + cov_mat_SbarS_cov_mat_SS_inv %*% t(sweep(x_S_star, 2, mu_S, FUN = "-"))))
 
         # Update the progress bar
-        progress_bar(amount = 1, message = "Estimating v(S) (lm-Gauss)")
+        progress_bar(amount = 1, message = "Estimating v(S) (LM-Gauss)")
 
         # Combine the conditional means with the conditional feature values
         return(cbind(id = seq(nrow(x_explain)),
@@ -497,10 +589,10 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
   # )
   dt_vS = rbind(
     data.table::data.table(id_combination = 1)[, `:=` (paste0("p_hat1_", seq(explanation$internal$parameters$n_explain)),
-                                           explanation$internal$parameters$prediction_zero)],
+                                                       explanation$internal$parameters$prediction_zero)],
     data.table::dcast(dt, id_combination ~ id, value.var = "vS_hat"), # Here we go from long to wide data table.
     data.table::data.table(id_combination = explanation$internal$parameters$used_n_combinations)[, paste0("p_hat1_", seq(explanation$internal$parameters$n_explain)) :=
-                                                                                     as.list(shapr::predict_model(linear_model, explanation$internal$data$x_explain))],
+                                                                                                   as.list(shapr::predict_model(linear_model, explanation$internal$data$x_explain))],
     use.names = FALSE
   )
 
@@ -511,22 +603,23 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
 
   # Compute the Shapley values again, but this time with the precomputed contribution functions
   progressr::with_progress({
-    updated_explanation <- explain(
-      model = linear_model,
-      x_explain = explanation$internal$data$x_explain,
-      x_train = explanation$internal$data$x_train,
-      approach = explanation$internal$parameters$approach,
-      prediction_zero = explanation$internal$parameters$prediction_zero,
-      keep_samp_for_vS = explanation$internal$parameters$keep_samp_for_vS,
-      n_combinations = explanation$internal$parameters$n_combinations,
-      exact = explanation$internal$parameters$exact,
-      n_samples = explanation$internal$parameters$n_samples,
-      n_batches = explanation$internal$parameters$n_batches,
-      gaussian.mu = explanation$internal$parameters$gaussian.mu,
-      gaussian.cov_mat = explanation$internal$parameters$gaussian.cov_mat,
-      seed = explanation$internal$parameters$seed,
-      precomputed_vS = list(dt_vS = dt_vS) # We use dt_vS to compute the Shapley values
-    )}, enable = TRUE)
+    updated_explanation <- suppressWarnings(suppressMessages(
+      shapr::explain(
+        model = linear_model,
+        x_explain = explanation$internal$data$x_explain,
+        x_train = explanation$internal$data$x_train,
+        approach = explanation$internal$parameters$approach,
+        prediction_zero = explanation$internal$parameters$prediction_zero,
+        keep_samp_for_vS = explanation$internal$parameters$keep_samp_for_vS,
+        exact = explanation$internal$parameters$exact,
+        n_combinations = explanation$internal$parameters$n_combinations, # Just to not get the message from shapr.
+        n_samples = explanation$internal$parameters$n_samples,
+        n_batches = explanation$internal$parameters$n_batches,
+        gaussian.mu = explanation$internal$parameters$gaussian.mu,
+        gaussian.cov_mat = explanation$internal$parameters$gaussian.cov_mat,
+        seed = explanation$internal$parameters$seed,
+        precomputed_vS = list(dt_vS = dt_vS) # We use dt_vS to compute the Shapley values
+      )))}, enable = TRUE)
 
   # Set the number of samples to `Inf` and create a new boolean
   updated_explanation$internal$parameters$n_samples = Inf
