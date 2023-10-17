@@ -7,6 +7,7 @@
 # module load R/4.2.1-foss-2022a
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
 # git checkout Lars/paper3_ideas
+# git pull
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 # Rscript Run_linear_experiment.R TRUE TRUE FALSE NULL 11 5000 NULL 1000 250 10 0.9 NULL
 # # # Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:50 6 NULL 500 1000 250 10 0.9 NULL
@@ -23,6 +24,13 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:10 6 1000000 250 1000 250 10 0.5 NULL
 
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:10 6 1000000 250 1000 250 10 0.5 NULL
+
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.0 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.3 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.5 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.7 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.9 NULL
+
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -432,7 +440,7 @@ for (rho_idx in seq_along(rhos)) {
       repetition = repetitions[repetition_idx]
 
       # Small printout to the user
-      cat(sprintf("Working on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
+      cat(sprintf("\nWorking on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
                   rho, rho_idx, length(rhos), repetition, repetition_idx, length(repetitions)))
 
       # Create the save file name
@@ -497,9 +505,6 @@ for (rho_idx in seq_along(rhos)) {
       # Save them just in case
       saveRDS(repeated_estimated_explanations, save_file_name_rep)
       file.remove(save_file_name_rep_tmp)
-
-      # Add a white line to easier see the current repetitions
-      message("\n")
     }
   }
 }
