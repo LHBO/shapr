@@ -125,6 +125,7 @@ repeated_explanations = function(model,
                                  n_combinations_from = 2, #ncol(x_explain) + 1,
                                  n_combinations_to = 2^ncol(x_explain),
                                  n_combinations_increment = 1,
+                                 n_combinations_array = NULL,
                                  save_path = NULL,
                                  ...) {
 
@@ -138,9 +139,23 @@ repeated_explanations = function(model,
   result_list = lapply(sampling_methods, function(x) list())
   names(result_list) = sampling_methods
 
-  # Get the values of `n_combinations` we are to consider
-  sequence_n_combinations = unique(c(seq(n_combinations_from, n_combinations_to, n_combinations_increment),
-                                     n_combinations_to))
+  # Check if we are using the array of `n_combinations` or have to create it ourselves
+  if (is.null(n_combinations_array)) {
+    # Small message to the user
+    message(paste("We use the parameters `n_combinations_from`, `n_combinations_to` and `n_combinations_increment`",
+                   "to determine the used `n_combinations`, and not `n_combinations_array`."))
+
+    # Get the values of `n_combinations` we are to consider
+    sequence_n_combinations = unique(c(seq(n_combinations_from, n_combinations_to, n_combinations_increment),
+                                       n_combinations_to))
+  } else {
+    # Small message to the user
+    message(paste("We use the parameter `n_combinations_array` to determine the used `n_combinations`, and not the",
+                   "parameters `n_combinations_from`, `n_combinations_to` and `n_combinations_increment`."))
+
+    # We use the provided values
+    sequence_n_combinations = n_combinations_array
+  }
 
   # Check if we are in the special case of linear model and Gaussian approach
   # as we can then compute the `precomputed_vS` much faster and more precise.
@@ -262,7 +277,7 @@ repeated_explanations = function(model,
       sampling_method = sampling_methods[sampling_method_idx]
 
       # Small printout to the user
-      message(sprintf("Rep %d (%d of %d). Method: %s (%d of %d).\n",
+      message(sprintf("Rep %d (%d of %d). Method: %s (%d of %d).",
                       idx_rep, idx_rep, n_repetitions,
                       sampling_method, sampling_method_idx, n_sampling_methods))
 
@@ -284,7 +299,7 @@ repeated_explanations = function(model,
 
       # Create a temp function which computes the Shapley values for a specific number of coalitions
       compute_SV_function = function(n_combinations,
-                                     n_combinations_total,
+                                     n_combinations_to,
                                      model,
                                      x_explain,
                                      x_train,
@@ -329,10 +344,10 @@ repeated_explanations = function(model,
         progress_bar
 
         # Update the progress bar
-        progress_bar(message = sprintf("Rep: %d of %d. Method: %s (%d of %d). N_comb: %d of %d.\n",
+        progress_bar(message = sprintf("Rep: %d of %d. Method: %s (%d of %d). N_comb: %d of %d.",
                                        idx_rep, n_repetitions,
                                        sampling_method, sampling_method_idx, n_sampling_methods,
-                                       n_combinations, n_combinations_total))
+                                       n_combinations, n_combinations_to))
 
         # Return the results
         return(tmp_res)
@@ -342,6 +357,7 @@ repeated_explanations = function(model,
       future_compute_SV_function = function(compute_SV_function,
                                             used_sequence_n_combinations,
                                             n_combinations_total,
+                                            n_combinations_to,
                                             model,
                                             x_explain,
                                             x_train,
@@ -362,7 +378,7 @@ repeated_explanations = function(model,
         future.apply::future_lapply(
           X = as.list(used_sequence_n_combinations),
           FUN = suppressMessages(suppressWarnings(compute_SV_function)),
-          n_combinations_total = n_combinations_total,
+          n_combinations_to = n_combinations_to,
           model = model,
           x_explain = x_explain,
           x_train = x_train,
@@ -386,6 +402,7 @@ repeated_explanations = function(model,
         future_compute_SV_function(compute_SV_function = compute_SV_function,
                                    used_sequence_n_combinations = used_sequence_n_combinations,
                                    n_combinations_total = n_combinations_total,
+                                   n_combinations_to = n_combinations_to,
                                    model = model,
                                    x_explain = x_explain,
                                    x_train = x_train,

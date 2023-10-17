@@ -228,9 +228,16 @@ n_combinations_from = 2
 # We increase by one each time
 n_combinations_increment = 4
 
+# Or we can define it to do more coalitions in the beginning as it seems to be then that we get the largest
+# changes in the MAE, i.e, it is better to use some extra time to do the computations there and be more coarse
+# for the coalition sizes in the middle.
+n_combinations_array =
+  sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features
+                seq(M + choose(M, 2), 2^M - M, n_combinations_increment), # Then include 4 new coalitions at the time
+                seq(2^M-M, 2^M)))) # Include the coalitions that are missing 1 feature
+
 # We start with 2 ad we used 1 for the true Shapley values above.
 seed_start_value = 2
-
 
 # Iterate over the rhos
 rho_idx = 1
@@ -462,6 +469,7 @@ for (rho_idx in seq_along(rhos)) {
         seed_start_value = seed_start_value_now,
         n_combinations_from = n_combinations_from,
         n_combinations_increment = n_combinations_increment,
+        n_combinations_array = n_combinations_array,
         use_precomputed_vS = TRUE,
         sampling_methods = sampling_methods,
         save_path = save_file_name_rep_tmp)
