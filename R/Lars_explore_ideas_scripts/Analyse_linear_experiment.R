@@ -4,6 +4,7 @@ M = 10
 
 # The correlation level
 rhos = c(0.0, 0.5, 0.6)
+rhos = 0.9
 
 # The number of training observations
 n_train = 1000
@@ -55,8 +56,8 @@ library(future.apply)
 library(ggplot2)
 
 # The beta vector
-betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2)
 betas = c(0, rep(1, M))
+betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
 betas = betas[seq(M+1)]
 
 # If we are to remove redundant stuff from the explanations
@@ -195,7 +196,7 @@ aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_li
                            plot_figures = FALSE,
                            return_figures = TRUE,
                            return_dt = FALSE,
-                           scale_y_log10 = TRUE,
+                           scale_y_log10 = FALSE,
                            dt_CI = result_figures$dt$dt_CI,
                            dt_long = result_figures$dt$dt_long,
                            only_these_sampling_methods = c("unique",

@@ -195,8 +195,12 @@ repeated_explanations = function(model,
         # We are using the Gaussian approach or the predictive model is a linear model
 
         # Small message to user
-        message(sprintf("Creating the `precomputed_vS` for repetition %d of %d using the LM-Gaussian strategy.",
-                        idx_rep, n_repetitions))
+        if (n_repetitions == 1) {
+          message("Creating the `precomputed_vS` using the LM-Gaussian strategy.")
+        } else {
+          message(sprintf("Creating the `precomputed_vS` for repetition %d of %d using the LM-Gaussian strategy.",
+                          idx_rep, n_repetitions))
+        }
 
         # We are going to call `shapr::explain()` once to set up the `shapr` object. To do this we do not need
         # to estimate the contribution functions accurately hence we could set n_samples = 1, but it is faster
@@ -242,8 +246,12 @@ repeated_explanations = function(model,
         if (ncol(x_explain) > 10) message("Computing `precomputed_vS` might take some time due to many featueres.\n")
 
         # Small message to user
-        message(paste0("Creating the `precomputed_vS` for repetition ", idx_rep, " of ", n_repetitions,
-                       " using the Monte Carlo Integration strategy."))
+        if (n_repetitions == 1) {
+          message("Creating the `precomputed_vS` using the Monte Carlo Integration strategy.")
+        } else {
+          message(paste0("Creating the `precomputed_vS` for repetition ", idx_rep, " of ", n_repetitions,
+                         " using the Monte Carlo Integration strategy."))
+        }
 
         # We set the number of MC samples to use to be the value provided by the user
         n_samples_used = n_samples
@@ -269,17 +277,20 @@ repeated_explanations = function(model,
       precomputed_vS = NULL
     }
 
-
-
     # Iterate over the sampling methods
     sampling_method_idx = 1
     for (sampling_method_idx in seq(n_sampling_methods)) {
       sampling_method = sampling_methods[sampling_method_idx]
 
       # Small printout to the user
-      message(sprintf("Rep %d (%d of %d). Method: %s (%d of %d).",
-                      idx_rep, idx_rep, n_repetitions,
-                      sampling_method, sampling_method_idx, n_sampling_methods))
+      if (n_repetitions == 1) {
+        message(sprintf("Method: %s (%d of %d).",
+                        sampling_method, sampling_method_idx, n_sampling_methods))
+      } else {
+        message(sprintf("Rep %d (%d of %d). Method: %s (%d of %d).",
+                        idx_rep, idx_rep, n_repetitions,
+                        sampling_method, sampling_method_idx, n_sampling_methods))
+      }
 
       # A string used in the result list
       idx_rep_str = paste0("repetition_", idx_rep)
@@ -340,14 +351,17 @@ repeated_explanations = function(model,
           tmp_res$pred_explain = NULL
         }
 
-        # EXTRACT PROGRESS iteration
-        progress_bar
-
         # Update the progress bar
-        progress_bar(message = sprintf("Rep: %d of %d. Method: %s (%d of %d). N_comb: %d of %d.",
-                                       idx_rep, n_repetitions,
-                                       sampling_method, sampling_method_idx, n_sampling_methods,
-                                       n_combinations, n_combinations_to))
+        if (n_repetitions == 1) {
+          progress_bar(message = sprintf("Method: %s (%d of %d). N_comb: %d of %d.",
+                                         sampling_method, sampling_method_idx, n_sampling_methods,
+                                         n_combinations, n_combinations_to))
+        } else {
+          progress_bar(message = sprintf("Rep: %d of %d. Method: %s (%d of %d). N_comb: %d of %d.",
+                                         idx_rep, n_repetitions,
+                                         sampling_method, sampling_method_idx, n_sampling_methods,
+                                         n_combinations, n_combinations_to))
+        }
 
         # Return the results
         return(tmp_res)

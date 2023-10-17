@@ -16,12 +16,13 @@
 
 
 # To do the setup, i.e., create the data and predictive model
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.9 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.5 NULL
 # Then, we create the true Shapley values
-# Rscript Run_linear_experiment.R FALSE TRUE FALSE NULL 6 1000000 250 1000 250 10 0.9 NULL
+# Rscript Run_linear_experiment.R FALSE TRUE FALSE NULL 6 1000000 250 1000 250 10 0.5 NULL
 # Then, we can run the repeated experiments
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:10 6 1000000 250 1000 250 10 0.9 NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:10 6 1000000 250 1000 250 10 0.5 NULL
 
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:10 6 1000000 250 1000 250 10 0.5 NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -496,6 +497,9 @@ for (rho_idx in seq_along(rhos)) {
       # Save them just in case
       saveRDS(repeated_estimated_explanations, save_file_name_rep)
       file.remove(save_file_name_rep_tmp)
+
+      # Add a white line to easier see the current repetitions
+      message("\n")
     }
   }
 }
