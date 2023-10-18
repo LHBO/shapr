@@ -178,7 +178,7 @@ source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
 
 message("Loading my version of the `shapr` package.")
 #library(shapr)
-setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
+#setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
 if (UiO) {
   # If they have the old version, then we install the one on GitHub
   if (any(as.list(args(shapr::explain)) == "x")) {
