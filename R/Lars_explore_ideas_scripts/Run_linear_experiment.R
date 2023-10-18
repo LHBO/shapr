@@ -25,11 +25,11 @@
 
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:10 6 1000000 250 1000 250 10 0.5 NULL
 
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.0 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.0 NULL (y)
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.3 NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.5 NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.7 NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.9 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.5 NULL (y)
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.7 NULL (y)
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.9 NULL (y)
 
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -40,16 +40,16 @@ if (length(args) < 11) {
        n_workers, n_samples_true, n_samples, n_train, n_test, M, rho, beta)!", call.=FALSE)
 }
 
-do_setup = FALSE
-compute_true_explanations = FALSE
-compute_repeated_explanations = TRUE
-repetitions = 1
-n_workers = 2
+do_setup = TRUE
+compute_true_explanations = TRUE
+compute_repeated_explanations = FALSE
+repetitions = 10
+n_workers = 4
 n_samples_true = 1000000
-n_samples = 250
+n_samples = 1000000
 n_train = 1000
 n_test = 250
-M = 10
+M = 5
 rhos = 0.9
 
 # Extract if we are to generate the data and model
@@ -113,8 +113,8 @@ if (betas != "NULL") {
   }
 } else {
   # Create the beta vector
-  betas = c(0, rep(1, M))
   betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
+  betas = c(0, rep(1, M))
   betas = betas[seq(M+1)]
 }
 
@@ -140,7 +140,7 @@ message(paste0(
 # Setup -----------------------------------------------------------------------------------------------------------
 # Get the name of the computer we are working on
 hostname = R.utils::System$getHostname()
-cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
+message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
 
 # If we are working on UiO computer or not
 UiO = NULL
@@ -245,6 +245,8 @@ n_combinations_array =
                 seq(M + choose(M, 2), 2^M - M, n_combinations_increment), # Then include 4 new coalitions at the time
                 seq(2^M-M, 2^M)))) # Include the coalitions that are missing 1 feature
 
+if (M <= 8) n_combinations_array = seq(2, 2^M)
+
 # We start with 2 ad we used 1 for the true Shapley values above.
 seed_start_value = 2
 
@@ -298,7 +300,7 @@ for (rho_idx in seq_along(rhos)) {
     predictive_model = lm(y ~ ., data = data_train_with_response)
 
     # Look at the accuracy of the model
-    cat(sprintf("Training MSE = %g and test MSE = %g.\n",
+    message(sprintf("Training MSE = %g and test MSE = %g.",
                 mean((predict(predictive_model, data_train_with_response) - data_train_with_response$y)^2),
                 mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)))
 
@@ -440,7 +442,7 @@ for (rho_idx in seq_along(rhos)) {
       repetition = repetitions[repetition_idx]
 
       # Small printout to the user
-      cat(sprintf("\nWorking on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
+      message(sprintf("Working on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
                   rho, rho_idx, length(rhos), repetition, repetition_idx, length(repetitions)))
 
       # Create the save file name
@@ -506,6 +508,9 @@ for (rho_idx in seq_along(rhos)) {
       saveRDS(repeated_estimated_explanations, save_file_name_rep)
       file.remove(save_file_name_rep_tmp)
     }
+
+    # Add a white space line after each iteration.
+    message("\n")
   }
 }
 message("Done with everything.\nPrint warnings if any ('-ne' means no warnings).")

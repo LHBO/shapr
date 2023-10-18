@@ -243,7 +243,7 @@ repeated_explanations = function(model,
         # We therefore use the default version
 
         # Small warning to the user
-        if (ncol(x_explain) > 10) message("Computing `precomputed_vS` might take some time due to many featueres.\n")
+        if (ncol(x_explain) > 10) message("Computing `precomputed_vS` might take some time due to many featueres.")
 
         # Small message to user
         if (n_repetitions == 1) {
