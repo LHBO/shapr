@@ -43,13 +43,13 @@ if (length(args) < 11) {
 do_setup = TRUE
 compute_true_explanations = TRUE
 compute_repeated_explanations = FALSE
-repetitions = 10
+repetitions = 1
 n_workers = 4
 n_samples_true = 1000000
 n_samples = 1000000
 n_train = 1000
 n_test = 250
-M = 5
+M = 7
 rhos = 0.9
 
 # Extract if we are to generate the data and model
@@ -115,6 +115,7 @@ if (betas != "NULL") {
   # Create the beta vector
   betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
   betas = c(0, rep(1, M))
+  betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)
   betas = betas[seq(M+1)]
 }
 
@@ -262,6 +263,9 @@ rho_idx = 1
 for (rho_idx in seq_along(rhos)) {
   # Get the current rho
   rho = rhos[rho_idx]
+
+  # Small message to the user
+  message(paste0("Working on rho = ", rho, " (", rho_idx, " of ", length(rhos), ")"))
 
   # Create the covariance matrix
   sigma = matrix(rho, ncol = M, nrow = M) # Old
@@ -519,6 +523,9 @@ for (rho_idx in seq_along(rhos)) {
     # Add a white space line after each iteration.
     message("\n")
   }
+
+  # Add a white space line after each iteration.
+  message("\n")
 }
 message("Done with everything.\nPrint warnings if any ('-ne' means no warnings).")
 

@@ -238,7 +238,7 @@
 #'
 #' @export
 #'
-#' @author Martin Jullum
+#' @author Martin Jullum & Lars Henry Berge Olsen
 #'
 #' @references
 #'   Aas, K., Jullum, M., & L<U+00F8>land, A. (2021). Explaining individual predictions when features are dependent:
@@ -257,6 +257,11 @@ explain <- function(model,
                     predict_model = NULL,
                     get_model_specs = NULL,
                     timing = TRUE,
+                    precomputed_vS = NULL, # must be a list `precomputed_vS = list(dt_vS = data.table)` with the correct entries
+                    pilot_estimates_vS = NULL, # Similar to `precomputed_vS`
+                    sampling_method = "uniqe", # This is the sampling method of the coalitions
+                    specific_coalition_set = NULL,
+                    specific_coalition_set_weights = NULL,
                     ...) { # ... is further arguments passed to specific approaches
 
   timing_list <- list(
@@ -285,6 +290,11 @@ explain <- function(model,
     keep_samp_for_vS = keep_samp_for_vS,
     feature_specs = feature_specs,
     timing = timing,
+    precomputed_vS = precomputed_vS,
+    pilot_estimates_vS = pilot_estimates_vS,
+    sampling_method = sampling_method,
+    specific_coalition_set = specific_coalition_set,
+    specific_coalition_set_weights = specific_coalition_set_weights,
     ...
   )
 

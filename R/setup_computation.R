@@ -295,7 +295,11 @@ feature_combinations <- function(m, exact = TRUE, n_combinations = 200, weight_z
       dt <- feature_not_exact(m = m,
                               n_combinations = n_combinations,
                               weight_zero_m = weight_zero_m,
-                              sampling_method = internal$parameters$sampling_method)
+                              sampling_method = internal$parameters$sampling_method,
+                              pilot_estimates_vS = internal$parameters$pilot_estimates_vS,
+                              specific_coalition_set = internal$parameters$specific_coalition_set,
+                              specific_coalition_set_weights = internal$parameters$specific_coalition_set_weights)
+
       stopifnot(
         data.table::is.data.table(dt),
         !is.null(dt[["p"]])
@@ -346,7 +350,11 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
                                                   "largest_weights_combination_size",
                                                   "smallest_weights",
                                                   "smallest_weights_constant_SW",
-                                                  "smallest_weights_combination_size")) {
+                                                  "smallest_weights_combination_size",
+                                                  "pilot_estimates_paired"),
+                              pilot_estimates_vS = NULL,
+                              specific_coalition_set = NULL,
+                              specific_coalition_set_weights = NULL) {
 
   # Get the sampling method. The `unique` method is the default one in master.
   # The `non_unique` method is the version that was default in the first version in `shapr`.
@@ -361,6 +369,85 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
   w <- shapley_weights(m = m, N = n, n_features) * n
   p <- w / sum(w)
 
+
+  # Check that user provided pilot estimates if the sampling method use pilot estimates.
+  # TODO: note that in this version, the user need to manually provide the pilot estimates
+  # when calling the `explain` function. In future versions, this should then be done internally in `shapr`.
+  if (grepl("pilot", sampling_method) && is.null(pilot_estimates_vS)) {
+    stop(paste0("User must provide `pilot_estimates_vS` as the `sampling_method` (",
+                sampling_method, ") use pilot estimates."))
+  }
+
+
+
+  if (!is.null(specific_coalition_set)) {
+    ## specific_order --------------------------------------------------------------------------------------------------
+    # The user has specified a specific order of coalitions to add
+
+    # Sort the coalitions in increasing order. This is okay as we are going to use all of them,
+    # hence the order does not matter for the final Shapley values.
+    specific_coalition_set = sort(specific_coalition_set)
+
+    # Check that the coalition order is unique. I.e., that we do not add the same coalition multiple times
+    if (length(unique(specific_coalition_set)) != length(specific_coalition_set)) {
+      stop("There are repeated entries in `specific_coalition_set`.")
+    }
+
+    # Check that the number of user specified coalitions corresponds to `n_combinations`
+    if (length(specific_coalition_set) != n_combinations) {
+      stop(paste0("The number of entries in `specific_coalition_set` (", length(specific_coalition_set), ") must be ",
+                  "the same as `n_combinations` (", n_combinations, ")."))
+    }
+
+    # The user has also specified corresponding weights
+    if (!is.null(specific_coalition_set_weights)) {
+
+      # Reorder the weights to match the sorted order of `specific_coalition_set`
+      specific_coalition_set_weights = specific_coalition_set_weights[order(specific_coalition_set)]
+
+      # Check that they are of equal length
+      if (length(specific_coalition_set) != length(specific_coalition_set_weights)) {
+        stop(paste0("The length of `specific_coalition_set` (", length(specific_coalition_set_weights), ") and ",
+                    "`specific_coalition_set_weights` (", length(specific_coalition_set_weights) ,") differ."))
+      }
+
+      # Will use these weights and not the Shapley kernel weights
+      Shapley_kernel_weights = FALSE
+      message(paste("Use the entries in `specific_coalition_set_weights` instead of the Shapley kernel weights",
+                    "in the computations of the Shapley values."))
+
+    } else {
+      # We use the Shapley kernel weights
+      Shapley_kernel_weights = TRUE
+    }
+
+    # Check that the first and last elements are 1 and 2^M, respectively.
+    if (any(!(c(1, 2^m) == specific_coalition_set[c(1, n_combinations)]))) {
+      stop(paste("The first and last elements in `specific_coalition_set` must be `c(1, 2^M)`, respectively,",
+                 "where M is the number of features."))
+    }
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+
+
+    # TODO: we can be more clever here. Do not need to make all combinations and then extract only the relevant.
+    # Based on the value of `n_combinations`, we do not need to use `0:m`, but look at `n` and then choose the
+    # smallest `m'` such that we only need to use `0:m'`. Note that we need need to add the last one manually.
+    # Mostly useful if `m` is large, i.e., 20+.
+    dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE),
+                            recursive = FALSE)[specific_coalition_set]]
+
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight :=
+         if (Shapley_kernel_weights) shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)
+       else
+
+    } else {table(specific_coalition_set)}]
+
+  }
 
   # Check if any of "unique", "unique_paired", "non_unique", "unique_SW", "unique_paired_SW", "non_unique_SW"
   if (sampling_method %in% c("unique", "unique_paired", "non_unique","unique_SW", "unique_paired_SW", "non_unique_SW")) {
@@ -669,6 +756,16 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     dt[, N := as.integer(N)]
     dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
 
+  } else if (grepl("pilot", sampling_method)) {
+    # We are doing pilot estimates
+
+    # Here I should add setup stuff
+
+
+    # Here we look at the different versions
+    if (sampling_method == "pilot_estimates_paired") {
+
+    }
 
   }
 

@@ -40,6 +40,11 @@ setup <- function(x_train,
                   group_lags = NULL,
                   timing,
                   is_python = FALSE,
+                  precomputed_vS = NULL,
+                  pilot_estimates_vS = NULL,
+                  sampling_method = NULL,
+                  specific_coalition_set = NULL,
+                  specific_coalition_set_weights = NULL,
                   ...) {
   internal <- list()
 
@@ -63,6 +68,11 @@ setup <- function(x_train,
     group_lags = group_lags,
     timing = timing,
     is_python = is_python,
+    precomputed_vS = precomputed_vS,
+    pilot_estimates_vS = pilot_estimates_vS,
+    sampling_method = sampling_method,
+    specific_coalition_set = specific_coalition_set,
+    specific_coalition_set_weights = specific_coalition_set_weights,
     ...
   )
 

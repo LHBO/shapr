@@ -1,3 +1,6 @@
+if (FALSE) {
+
+
 # In this file we are going to explore if there is any merit in the idea about using pilot estimates.
 # To check this we will first make it easy for our self and assume that the pilot estimates are given
 # to us. In this case, we will use the true contribution function values as the pilot estimates
@@ -7,28 +10,42 @@ library(ggplot2)
 
 # Load some stuff -------------------------------------------------------------------------------------------------
 # We load the true explanations
+# M = 5
 explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0_betas_2_1_0.25_-3_-1_1.5_true.rds")
 explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.9_betas_2_1_0.25_-3_-1_1.5_true.rds")
 explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0_betas_0_1_1_1_1_1_true.rds")
 explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.9_betas_0_1_1_1_1_1_true.rds")
 
-# Extract the internal list from the explanation object
-internal = explanation$internal
+# M = 7
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_0_1_1_1_1_1_1_1_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_0_1_1_1_1_1_1_1_true.rds")
+explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_0_1_1_1_1_1_1_1_true.rds")
 
-# Get the number of features
-M = internal$parameters$n_features
 
-# We extract the W and S matrices
-W = explanation$internal$objects$W
-S = explanation$internal$objects$S
+{
+  # Extract the internal list from the explanation object
+  internal = explanation$internal
 
-# Extract the v(S) elements
-dt_vS = explanation$internal$output$dt_vS
+  # Get the number of features
+  M = internal$parameters$n_features
 
-# The W matrix is the same as the R matrix in the papers.
-# And it is such that Phi = W %*% v(S). We can check this. (Only column name that is different)
-all.equal(as.data.table(t(W %*% as.matrix(internal$output$dt_vS[,-"id_combination"]))), explanation$shapley_values)
+  # We extract the W and S matrices
+  W = explanation$internal$objects$W
+  S = explanation$internal$objects$S
 
+  # Extract the v(S) elements
+  dt_vS = explanation$internal$output$dt_vS
+
+  # The W matrix is the same as the R matrix in the papers.
+  # And it is such that Phi = W %*% v(S). We can check this. (Only column name that is different)
+  all.equal(as.data.table(t(W %*% as.matrix(internal$output$dt_vS[,-"id_combination"]))), explanation$shapley_values)
+}
 
 
 # Look at a single test obs ---------------------------------------------------------------------------------------
@@ -68,6 +85,22 @@ matplot(abs(W_and_vS_cumsum_diff), type = "l", lty = 1, xlab = "Number of Coalit
 # The point is that we above have added the coalitions in increasing order,
 # but we want to see if we can find another
 # order such that the error decreases much faster.
+
+
+
+W_and_vS_cumsum_2 = apply(W_and_vS_element_wise_product[,tmp], 1, cumsum)
+# We see that this adds up to the Shapley values
+matplot(W_and_vS_cumsum_2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley values")
+points(rep(2^M, M+1), explanation$shapley_values[test_obs_idx], col = seq(M))
+# Compute the difference between the cumulative sum and the actual Shapley values with all the terms
+W_and_vS_cumsum_diff_2 = sweep(x = W_and_vS_cumsum_2, MARGIN = 2, STATS = as.matrix(explanation$shapley_values[test_obs_idx,]), FUN = "-")
+# We see that the difference decreases relative linear. But some volatility
+matplot(W_and_vS_cumsum_diff_2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley value difference")
+# Can also look at the absolute difference
+matplot(abs(W_and_vS_cumsum_diff_2), type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Absolute Shapley value difference")
+
+
+
 
 
 ## Order each feature ----------------------------------------------------------------------------------------------
@@ -537,6 +570,12 @@ indices = seq(1, 2^M)
 
 
 
+# -----------------------------------------------------------------------------------------------------------------
+length(R_matrix_list_all_individuals)
+
+R_matrix_list_all_individuals[[1]]
+
+R_matrix_list_all_individuals
 
 
 # Look at paired differences --------------------------------------------------------------------------------------
@@ -625,22 +664,56 @@ ggplot(data = R_dt, aes(x = id_combination_diff, y = mean_abs_Rij)) +
   facet_grid(rows = vars(id_feature))
 R_dt[id_feature == 1]
 
-#
-R_dt_summarized = R_dt[, mean(mean_abs_Rij), by = id_combination_diff][, setnames(.SD, "V1", "mean_abs_R")]
-R_dt_summarized[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE))]
+
+R_dt
 R_dt_summarized
+merge(R_dt_summarized, R_dt, by = "id_combination_diff", all.y = FALSE)
+
+
+R_dt_summarized[R_dt, on = "id_combination_diff"]
+R_dt[R_dt_summarized, on = .(id_combination_diff)]
+
+
+unique(R_dt[,c(1,6,7)])
+
+#
+R_dt_summarized = R_dt[, lapply(.SD, mean),
+                       .SDcols = c("mean_Rij", "mean_abs_Rij"),
+                       by = id_combination_diff][, setnames(.SD,
+                                                            c("mean_Rij", "mean_abs_Rij"),
+                                                            c("mean_R", "mean_abs_R"))]
+
+R_dt_summarized[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+                        mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+R_dt_summarized = R_dt_summarized[unique(R_dt[,c(1,6,7)]), on = "id_combination_diff"]
+str(R_dt_summarized)
+
+tmp = setorder(R_dt_summarized[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")], mean_abs_R_ordered)[,-"mean_abs_R_ordered"]
+tmp = c(t(as.matrix(tmp)))
 
 ggplot(data = R_dt_summarized, aes(x = id_combination_diff, y = mean_abs_R)) +
   geom_bar(position="dodge", stat="identity")
 
-R_dt_summarized_sorted =
-
-ggplot(data = R_dt_summarized, aes(x = forcats::fct_reorder(id_combination_diff, mean_abs_R),
-                                   y = mean_abs_R)) +
-  geom_hist(position="dodge", stat="identity")
-
 
 R_dt_summarized %>%
+  dplyr::mutate(id_combination_diff = fct_rev(fct_reorder(id_combination_diff, mean_abs_R))) %>%
+  ggplot(aes(x = id_combination_diff,
+             y = mean_abs_R)) +
+  geom_bar(position="dodge", stat="identity")
+
+
+
+# Need to
+ggplot(data = R_dt_summarized[id_combination_diff != "D1"],
+       aes(x = id_combination_diff, y = mean_R)) +
+  geom_bar(position="dodge", stat="identity")
+
+R_dt_summarized[id_combination_diff != "D1"] %>%
+  dplyr::mutate(id_combination_diff = fct_rev(fct_reorder(id_combination_diff, mean_R))) %>%
+  ggplot(aes(x = id_combination_diff,
+             y = mean_R)) +
+  geom_bar(position="dodge", stat="identity")
+
 
 
 ggplot(data = R_dt, aes(x = id_combination_diff, y = mean_Rij)) +
@@ -806,6 +879,7 @@ explanation$internal$objects$S[14,]
 
 
 
+}
 
 
 
