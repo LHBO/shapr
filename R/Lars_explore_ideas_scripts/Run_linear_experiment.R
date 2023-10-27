@@ -31,6 +31,8 @@
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.7 NULL (y)
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:50 8 1000000 250 1000 250 10 0.9 NULL (y)
 
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1 4 1000000 250 1000 250 5 0.5 NULL
+
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -49,7 +51,7 @@ n_samples_true = 1000000
 n_samples = 1000000
 n_train = 1000
 n_test = 250
-M = 7
+M = 6
 rhos = 0.9
 
 # Extract if we are to generate the data and model
@@ -195,7 +197,8 @@ if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
   # devtools::clean_dll()
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 }
-library(shapr)
+#library(shapr)
+devtools::load_all(".")
 
 
 # Libraries -------------------------------------------------------------------------------------------------------
@@ -237,7 +240,33 @@ sampling_methods = c("unique",
                      "largest_weights",
                      "largest_weights_combination_size",
                      "smallest_weights",
-                     "smallest_weights_combination_size")
+                     "smallest_weights_constant_SW",
+                     "smallest_weights_combination_size",
+                     "paired_coalitions",
+                     "single_mean_coalition_effect",
+                     "single_median_coalition_effect",
+                     "single_mean_ranking_over_each_test_obs",
+                     "single_median_ranking_over_each_test_obs",
+                     "pilot_estimates_paired")
+
+sampling_methods = c("paired_coalitions",
+                     "single_mean_coalition_effect",
+                     "single_median_coalition_effect",
+                     "single_mean_ranking_over_each_test_obs",
+                     "single_median_ranking_over_each_test_obs",
+                     "unique",
+                     "unique_paired",
+                     "unique_paired_SW",
+                     "chronological_order_increasing",
+                     "largest_weights",
+                     "smallest_weights")
+
+sampling_methods = c("paired_coalitions",
+                     "single_mean_coalition_effect",
+                     "single_median_coalition_effect",
+                     "single_mean_ranking_over_each_test_obs",
+                     "single_median_ranking_over_each_test_obs")
+
 
 # First value where the coalition/combination sampling scheme has an effect, (first two are empty and full coalitions)
 n_combinations_from = 2
@@ -394,7 +423,7 @@ for (rho_idx in seq_along(rhos)) {
           exact = TRUE,
           n_samples = 1,
           n_batches = 2^(M-2),
-          # n_samples = 2^M, # Do not need it as we specify `exact = TRUE`.
+          # n_combinations = 2^M, # Do not need it as we specify `exact = TRUE`.
           gaussian.mu = mu,
           gaussian.cov_mat = sigma,
           seed = 1,
@@ -457,8 +486,8 @@ for (rho_idx in seq_along(rhos)) {
                   rho, rho_idx, length(rhos), repetition, repetition_idx, length(repetitions)))
 
       # Create the save file name
-      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
-      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, "_tmp.rds"))
+      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, "_specific.rds"))
+      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, "_specific_tmp.rds"))
 
       # Estimated Shapley -----------------------------------------------------------------------------------------------
       # Get the seed for the current repetition
@@ -466,7 +495,7 @@ for (rho_idx in seq_along(rhos)) {
 
       # Path to save the results temporary
       tmp_save_path = paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho,
-                            "MC", n_samples, "estimated_tmp.rds", sep = "_")
+                            "MC", n_samples, "estimated_specific_tmp.rds", sep = "_")
 
       # Set if we are doing the computations in parallel or sequential
       if (n_workers > 1) {
@@ -476,7 +505,7 @@ for (rho_idx in seq_along(rhos)) {
       }
 
       # Compute the repeated estimated Shapley values using the different sampling methods
-      repeated_estimated_explanations = repeated_explanations(
+      repeated_estimated_explanations = suppressWarnings(suppressMessages(repeated_explanations(
         model = predictive_model,
         x_explain = data_test,
         x_train = data_train,
@@ -494,7 +523,7 @@ for (rho_idx in seq_along(rhos)) {
         n_combinations_array = n_combinations_array,
         use_precomputed_vS = TRUE,
         sampling_methods = sampling_methods,
-        save_path = save_file_name_rep_tmp)
+        save_path = save_file_name_rep_tmp)))
       # model = predictive_model
       # x_explain = data_test
       # x_train = data_train

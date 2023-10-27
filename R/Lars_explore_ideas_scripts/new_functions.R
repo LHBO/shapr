@@ -108,17 +108,24 @@ repeated_explanations = function(model,
                                  n_samples,
                                  n_batches,
                                  sampling_methods = c("unique",
-                                                      "unique_paired",
-                                                      "non_unique",
                                                       "unique_SW",
+                                                      "unique_paired",
                                                       "unique_paired_SW",
+                                                      "non_unique",
                                                       "non_unique_SW",
                                                       "chronological_order_increasing",
                                                       "chronological_order_decreasing",
                                                       "largest_weights",
                                                       "largest_weights_combination_size",
                                                       "smallest_weights",
-                                                      "smallest_weights_combination_size"),
+                                                      "smallest_weights_constant_SW",
+                                                      "smallest_weights_combination_size",
+                                                      "paired_coalitions",
+                                                      "single_mean_coalition_effect",
+                                                      "single_median_coalition_effect",
+                                                      "single_mean_ranking_over_each_test_obs",
+                                                      "single_median_ranking_over_each_test_obs",
+                                                      "pilot_estimates_paired"),
                                  n_repetitions = 10,
                                  use_precomputed_vS = TRUE,
                                  seed_start_value = 1,
@@ -132,8 +139,21 @@ repeated_explanations = function(model,
   # Set the design of the progress bar
   progressr::handlers("cli")
 
+  # print("In repeated_explanations")
+  # print(sampling_methods)
+
   # Check for valid sampling methods
   sampling_methods = match.arg(sampling_methods, several.ok = TRUE)
+
+  # Create a list of the strategies that use pre-computed pilot-estimates
+  specific_coalition_set_strategies = c("paired_coalitions",
+                                        "single_mean_coalition_effect",
+                                        "single_median_coalition_effect",
+                                        "single_mean_ranking_over_each_test_obs",
+                                        "single_median_ranking_over_each_test_obs")
+
+  # Check if we are using the `specific_coalition_set` parameter in the `explain` function.
+  using_specific_coalition_set = any(sampling_methods %in% specific_coalition_set_strategies)
 
   # Create a list to store the results
   result_list = lapply(sampling_methods, function(x) list())
@@ -143,7 +163,7 @@ repeated_explanations = function(model,
   if (is.null(n_combinations_array)) {
     # Small message to the user
     message(paste("We use the parameters `n_combinations_from`, `n_combinations_to` and `n_combinations_increment`",
-                   "to determine the used `n_combinations`, and not `n_combinations_array`."))
+                  "to determine the used `n_combinations`, and not `n_combinations_array`."))
 
     # Get the values of `n_combinations` we are to consider
     sequence_n_combinations = unique(c(seq(n_combinations_from, n_combinations_to, n_combinations_increment),
@@ -151,7 +171,7 @@ repeated_explanations = function(model,
   } else {
     # Small message to the user
     message(paste("We use the parameter `n_combinations_array` to determine the used `n_combinations`, and not the",
-                   "parameters `n_combinations_from`, `n_combinations_to` and `n_combinations_increment`."))
+                  "parameters `n_combinations_from`, `n_combinations_to` and `n_combinations_increment`."))
 
     # We use the provided values
     sequence_n_combinations = n_combinations_array
@@ -230,13 +250,19 @@ repeated_explanations = function(model,
               ...
             )))}, enable = TRUE)
 
-        # Compute the precompute_vS using the LM-Gaussian strategy
+        # Compute the explanation_precompute_vS using the LM-Gaussian strategy
+        # Could save a tiny bit of time by setting this to `only_return_dt_vS_list = TRUE`,
+        # but `pilot_estimates_paired_order` uses `explanation` as input.
+        # TODO: Could rewrite that function quite easy.
         progressr::with_progress({
-          precomputed_vS = explain_linear_model_Gaussian_data(
+          explanation_precomputed_vS = explain_linear_model_Gaussian_data(
             explanation = explanations_tmp,
             linear_model = model,
-            only_return_dt_vS_list = TRUE)
+            only_return_dt_vS_list = FALSE)
         }, enable = TRUE)
+
+        # Extract only the precomputed_vS list
+        precomputed_vS = explanation_precomputed_vS$internal$output
 
       } else {
         # We are NOT using the Gaussian approach or the predictive model is NOT a linear model.
@@ -258,7 +284,7 @@ repeated_explanations = function(model,
 
         # Do not want any warnings
         progressr::with_progress({
-          precomputed_vS = suppressWarnings(suppressMessages(
+          explanation_precomputed_vS = suppressWarnings(suppressMessages(
             shapr::explain(
               model = model,
               x_explain = x_explain,
@@ -271,10 +297,34 @@ repeated_explanations = function(model,
               n_batches = n_batches,
               seed = seed,
               ...
-            )))$internal$output}, enable = TRUE)
+            )))}, enable = TRUE)
+
+        # Extract only the precomputed_vS list
+        precomputed_vS = explanation_precomputed_vS$internal$output
       }
     } else {
       precomputed_vS = NULL
+
+      # Stop if user has provided not suitable combination of parameters
+      if (using_specific_coalition_set) {
+        stop("To use `specific_coalition_set` in `explain`, the parameter `use_precomputed_vS` must be `TRUE`.")
+      }
+    }
+
+    # Check if we need to compute the `specific_coalition_set`.
+    if (using_specific_coalition_set) {
+
+      # Get the `specific_coalition_set`.
+      #specific_coalition_set = pilot_estimates_paired_order(explanation_precomputed_vS, plot_figures = TRUE)
+      specific_coalition_set = pilot_estimates_coalition_inclusion_order(explanation_precomputed_vS)
+
+      # TODO: REMOVE THIS PRINTOUT
+      print(specific_coalition_set)
+
+      # TODO: we use the Shapley kernel weights now, but might change that in the future.
+      specific_coalition_set_weights = lapply(seq_along(specific_coalition_set), function(x) NULL)
+      names(specific_coalition_set_weights) = names(specific_coalition_set)
+      print(specific_coalition_set_weights)
     }
 
     # Iterate over the sampling methods
@@ -308,90 +358,12 @@ repeated_explanations = function(model,
       # Get the number of different `n_combinations`
       n_combinations_total = length(used_sequence_n_combinations)
 
-      # Create a temp function which computes the Shapley values for a specific number of coalitions
-      compute_SV_function = function(n_combinations,
-                                     n_combinations_to,
-                                     model,
-                                     x_explain,
-                                     x_train,
-                                     approach,
-                                     prediction_zero,
-                                     keep_samp_for_vS,
-                                     n_samples,
-                                     n_batches,
-                                     seed,
-                                     sampling_method,
-                                     precomputed_vS,
-                                     progress_bar,
-                                     ...) {
-
-        # Call the `shapr::explain` function with the provided parameters
-        tmp_res = suppressMessages(suppressWarnings(
-          shapr::explain(
-            model = model,
-            x_explain = x_explain,
-            x_train = x_train,
-            approach = approach,
-            prediction_zero = prediction_zero,
-            keep_samp_for_vS = keep_samp_for_vS,
-            n_combinations = n_combinations,
-            n_samples = n_samples,
-            n_batches = min(n_combinations-1, n_batches),
-            seed = seed,
-            sampling_method = sampling_method,
-            precomputed_vS = precomputed_vS,
-            ...
-          )))
-
-        # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
-        if (n_combinations != used_sequence_n_combinations[1]) {
-          tmp_res[["only_save"]] = tmp_res$internal$objects[c(2,3,4)]
-          tmp_res$internal = NULL
-          tmp_res$timing = NULL
-          tmp_res$pred_explain = NULL
-        }
-
-        # Update the progress bar
-        if (n_repetitions == 1) {
-          progress_bar(message = sprintf("Method: %s (%d of %d). N_comb: %d of %d.",
-                                         sampling_method, sampling_method_idx, n_sampling_methods,
-                                         n_combinations, n_combinations_to))
-        } else {
-          progress_bar(message = sprintf("Rep: %d of %d. Method: %s (%d of %d). N_comb: %d of %d.",
-                                         idx_rep, n_repetitions,
-                                         sampling_method, sampling_method_idx, n_sampling_methods,
-                                         n_combinations, n_combinations_to))
-        }
-
-        # Return the results
-        return(tmp_res)
-      }
-
-      # Have wrapped the future.apply::future_lapply inside this function to make the progressr work
-      future_compute_SV_function = function(compute_SV_function,
-                                            used_sequence_n_combinations,
-                                            n_combinations_total,
-                                            n_combinations_to,
-                                            model,
-                                            x_explain,
-                                            x_train,
-                                            approach,
-                                            prediction_zero,
-                                            keep_samp_for_vS,
-                                            n_samples,
-                                            n_batches,
-                                            seed,
-                                            sampling_method,
-                                            precomputed_vS,
-                                            ...) {
-
-        # Create a progress bar
-        progress_bar = progressr::progressor(steps = n_combinations_total)
-
-        # Call the tmp_function for the different number of coalitions
-        future.apply::future_lapply(
-          X = as.list(used_sequence_n_combinations),
-          FUN = suppressMessages(suppressWarnings(compute_SV_function)),
+      # Get the estimated Shapley values using the specified parameters
+      result_list[[sampling_method]][[idx_rep_str]] = with_progress(
+        future_compute_SV_function(
+          compute_SV_function = compute_SV_function,
+          used_sequence_n_combinations = used_sequence_n_combinations,
+          n_combinations_total = n_combinations_total,
           n_combinations_to = n_combinations_to,
           model = model,
           x_explain = x_explain,
@@ -402,33 +374,17 @@ repeated_explanations = function(model,
           n_samples = n_samples,
           n_batches = n_batches,
           seed = seed,
-          sampling_method = sampling_method,
+          sampling_method = if (sampling_method %in% specific_coalition_set_strategies) "specific_coalition_set" else sampling_method,
+          sampling_method_full_name = sampling_method,
+          sampling_method_idx = sampling_method_idx,
+          n_sampling_methods = n_sampling_methods,
           precomputed_vS = precomputed_vS,
-          progress_bar = progress_bar,
-          future.seed = 1,
-          future.scheduling = n_combinations_total,
-          ...
-        )
-      }
-
-      # Get the estimated Shapley values using the specified parameters
-      result_list[[sampling_method]][[idx_rep_str]] = with_progress(
-        future_compute_SV_function(compute_SV_function = compute_SV_function,
-                                   used_sequence_n_combinations = used_sequence_n_combinations,
-                                   n_combinations_total = n_combinations_total,
-                                   n_combinations_to = n_combinations_to,
-                                   model = model,
-                                   x_explain = x_explain,
-                                   x_train = x_train,
-                                   approach = approach,
-                                   prediction_zero = prediction_zero,
-                                   keep_samp_for_vS = keep_samp_for_vS,
-                                   n_samples = n_samples,
-                                   n_batches = n_batches,
-                                   seed = seed,
-                                   sampling_method = sampling_method,
-                                   precomputed_vS = precomputed_vS,
-                                   ...),
+          specific_coalition_set =
+            if (sampling_method %in% specific_coalition_set_strategies) specific_coalition_set[[sampling_method]] else NULL,
+          specific_coalition_set_weights =
+            if (sampling_method %in% specific_coalition_set_strategies) specific_coalition_set_weights[[sampling_method]] else NULL,
+          n_repetitions = n_repetitions,
+          ...),
         enable = TRUE)
 
       #
@@ -521,6 +477,209 @@ repeated_explanations = function(model,
   # return the results
   return(result_list)
 }
+
+
+
+
+
+#' Title
+#' @description
+#' # Create a temp function which computes the Shapley values for a specific number of coalitions
+#'
+#' @param n_combinations
+#' @param n_combinations_to
+#' @param used_sequence_n_combinations
+#' @param model
+#' @param x_explain
+#' @param x_train
+#' @param approach
+#' @param prediction_zero
+#' @param keep_samp_for_vS
+#' @param n_samples
+#' @param n_batches
+#' @param seed
+#' @param sampling_method
+#' @param precomputed_vS
+#' @param specific_coalition_set
+#' @param specific_coalition_set_weights
+#' @param progress_bar
+#' @param ...
+#'
+#' @return
+#'
+#' @keywords internal
+compute_SV_function = function(n_combinations,
+                               n_combinations_to,
+                               used_sequence_n_combinations,
+                               model,
+                               x_explain,
+                               x_train,
+                               approach,
+                               prediction_zero,
+                               keep_samp_for_vS,
+                               n_samples,
+                               n_batches,
+                               seed,
+                               sampling_method,
+                               sampling_method_full_name,
+                               sampling_method_idx,
+                               n_sampling_methods,
+                               precomputed_vS,
+                               specific_coalition_set,
+                               specific_coalition_set_weights,
+                               n_repetitions,
+                               progress_bar,
+                               ...) {
+
+  # print("In compute_SV_function.")
+  # print(sampling_method)
+
+  # Extract only the relevant coalitions from `specific_coalition_set`
+  if (!is.null(specific_coalition_set)) {
+    specific_coalition_set = specific_coalition_set[seq(n_combinations)]
+  }
+
+  # Extract only the relevant coalitions from `specific_coalition_set_weights`
+  if (!is.null(specific_coalition_set_weights)) {
+    specific_coalition_set_weights = specific_coalition_set_weights[seq(n_combinations)]
+  }
+
+  # Call the `shapr::explain` function with the provided parameters
+  # print("hei")
+  tmp_res = suppressMessages(suppressWarnings(
+    shapr::explain(
+      model = model,
+      x_explain = x_explain,
+      x_train = x_train,
+      approach = approach,
+      prediction_zero = prediction_zero,
+      keep_samp_for_vS = keep_samp_for_vS,
+      n_combinations = n_combinations,
+      n_samples = n_samples,
+      n_batches = min(n_combinations-1, n_batches),
+      seed = seed,
+      sampling_method = sampling_method,
+      sampling_method_full_name = sampling_method_full_name,
+      precomputed_vS = precomputed_vS,
+      specific_coalition_set = specific_coalition_set,
+      specific_coalition_set_weights = specific_coalition_set_weights,
+      ...
+    )))
+  # print("hei2")
+
+  # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
+  if (n_combinations != used_sequence_n_combinations[1]) {
+    tmp_res[["only_save"]] = tmp_res$internal$objects[c(2,3,4)]
+    tmp_res$internal = NULL
+    tmp_res$timing = NULL
+    tmp_res$pred_explain = NULL
+  }
+
+  # Update the progress bar
+  if (n_repetitions == 1) {
+    progress_bar(message = sprintf("Method: %s (%d of %d). N_comb: %d of %d.",
+                                   sampling_method, sampling_method_idx, n_sampling_methods,
+                                   n_combinations, n_combinations_to))
+  } else {
+    progress_bar(message = sprintf("Rep: %d of %d. Method: %s (%d of %d). N_comb: %d of %d.",
+                                   idx_rep, n_repetitions,
+                                   sampling_method, sampling_method_idx, n_sampling_methods,
+                                   n_combinations, n_combinations_to))
+  }
+
+  # Return the results
+  return(tmp_res)
+}
+
+
+#' Title
+#'
+#' @description
+#' Have wrapped the future.apply::future_lapply inside this function to make the progressr work
+#'
+#'
+#' @param compute_SV_function
+#' @param used_sequence_n_combinations
+#' @param n_combinations_total
+#' @param n_combinations_to
+#' @param model
+#' @param x_explain
+#' @param x_train
+#' @param approach
+#' @param prediction_zero
+#' @param keep_samp_for_vS
+#' @param n_samples
+#' @param n_batches
+#' @param seed
+#' @param sampling_method
+#' @param precomputed_vS
+#' @param specific_coalition_set
+#' @param specific_coalition_set_weights
+#' @param ...
+#'
+#' @return
+#' @keywords internal
+future_compute_SV_function = function(compute_SV_function,
+                                      used_sequence_n_combinations,
+                                      n_combinations_total,
+                                      n_combinations_to,
+                                      model,
+                                      x_explain,
+                                      x_train,
+                                      approach,
+                                      prediction_zero,
+                                      keep_samp_for_vS,
+                                      n_samples,
+                                      n_batches,
+                                      seed,
+                                      sampling_method,
+                                      sampling_method_full_name,
+                                      sampling_method_idx,
+                                      n_sampling_methods,
+                                      precomputed_vS,
+                                      specific_coalition_set,
+                                      specific_coalition_set_weights,
+                                      n_repetitions,
+                                      ...) {
+
+  # print("In future_compute_SV_function.")
+
+  # Create a progress bar
+  progress_bar = progressr::progressor(steps = n_combinations_total)
+
+  # Call the tmp_function for the different number of coalitions
+  future.apply::future_lapply(
+    X = as.list(used_sequence_n_combinations),
+    FUN = suppressMessages(suppressWarnings(compute_SV_function)),
+    used_sequence_n_combinations = used_sequence_n_combinations,
+    n_combinations_to = n_combinations_to,
+    model = model,
+    x_explain = x_explain,
+    x_train = x_train,
+    approach = approach,
+    prediction_zero = prediction_zero,
+    keep_samp_for_vS = keep_samp_for_vS,
+    n_samples = n_samples,
+    n_batches = n_batches,
+    seed = seed,
+    sampling_method = sampling_method,
+    sampling_method_full_name = sampling_method_full_name,
+    sampling_method_idx = sampling_method_idx,
+    n_sampling_methods = n_sampling_methods,
+    precomputed_vS = precomputed_vS,
+    specific_coalition_set = specific_coalition_set,
+    specific_coalition_set_weights = specific_coalition_set_weights,
+    n_repetitions = n_repetitions,
+    progress_bar = progress_bar,
+    future.seed = 1,
+    future.scheduling = n_combinations_total,
+    ...
+  )
+}
+
+
+
+
 
 
 #' Compute more precise Shapley values for linear model with the Gaussian approach
@@ -1086,5 +1245,432 @@ aggregate_and_plot_results = function(repeated_explanations_list,
       return(return_list)
     }
   }
+}
+
+
+#' Extract best paired coalition order
+#'
+#' @param explanation A [shapr] explanation object with all coalitions. Should be "true_explanations".
+#' @param plot_figures Boolean. If we are to plot figures.
+#'
+#' @return array with the indices of the coalitions that we should add in decreasing importance order.
+#' I.e., the first one is the most important.
+#' @export
+#'
+#' @examples
+pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
+
+  # Extract the internal list from the explanation object
+  internal = explanation$internal
+
+  # Get the number of features
+  M = internal$parameters$n_features
+
+  if (2^M != internal$parameters$n_combinations) {
+    stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
+    # TODO: we can later remove this if we do not need this as we can rather return the features to use
+    # internal$objects$X$features instead of using the index of these.
+  }
+
+  # We extract the W and S matrices
+  W = explanation$internal$objects$W
+  S = explanation$internal$objects$S
+
+  # Extract the v(S) elements
+  dt_vS = explanation$internal$output$dt_vS
+
+  # Compute the R's. I.e., W * v(s), but without adding them together.
+  # So not a matrix product, but rather an element wise multiplication.
+  # Do it for all test observations and store the results in a list.
+  R_matrix_list_all_individuals =
+    lapply(seq(ncol(dt_vS[, -"id_combination"])),
+           function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
+
+  # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+  # then the second largest and so on.
+  alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
+
+  # Change the order of the coalitions such that we have S (odd indices) and
+  # then S_bar (even indices), for all possible coalitions.
+  # Note that we add 1 as we exclude the phi0.
+  R_matrix_paired_order_list =
+    lapply(seq(M), function (investigate_feature_number) {
+      sapply(R_matrix_list_all_individuals,
+             "[",
+             investigate_feature_number + 1, )[alternating_indices,]
+    })
+
+  # We compute the difference between the S and S_bar entries. Odd minus even indices.
+  R_matrix_paired_order_diff_list =
+    lapply(seq_along(R_matrix_paired_order_list),
+           function (feature_idx) {
+             R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
+               R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+           })
+
+  # Convert it to a data.table
+  R_dt_paired_order_diff =
+    data.table::rbindlist(
+      lapply(seq_along(R_matrix_paired_order_diff_list),
+             function (feature_idx) {
+               data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                                      D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
+             }),
+      idcol = "id_feature",
+      use.names = TRUE
+    )
+
+  # Change the column names
+  data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+
+  # Go from wide data.table to long data.table format
+  R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
+                                                 id.vars = c("id_feature", "id"),
+                                                 value.name = "Rij",
+                                                 variable.name = "id_combination_diff",
+                                                 variable.factor = TRUE)
+
+  # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
+  # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
+  R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
+                                         mean_abs_Rij = mean(abs(Rij))),
+                                     by = list(id_combination_diff, id_feature)]
+
+  # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
+  # we also add the index of the coalitions that are included in the paired coalitions.
+  R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
+               id_combination_S = seq(1, 2^(M-1)),
+               id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
+       by = id_feature]
+
+
+  if (plot_figures) {
+    ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
+      ggplot2::geom_bar(position = "dodge", stat = "identity") +
+      ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
+  }
+
+  # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
+  # mean for each paired coalition. This is thus a value average over all features and test observations.
+  R_dt_aggregated = R_dt[, lapply(.SD, mean),
+                         .SDcols = c("mean_Rij", "mean_abs_Rij"),
+                         by = id_combination_diff][, data.table::setnames(.SD,
+                                                                          c("mean_Rij", "mean_abs_Rij"),
+                                                                          c("mean_R", "mean_abs_R"))]
+
+  # Add order values for the aggreagated values. A low value means that it is how high importance.
+  # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
+  R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+                          mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+
+  # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
+  R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
+                                    on = "id_combination_diff"]
+
+  # Extract which order we should add the paired coalitions based on the mean_abs_R score
+  specific_coalition_set = c(t(as.matrix(data.table::setorder(
+    R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+    mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+
+
+  # Return the order of paired coalitions should be added
+  return(specific_coalition_set)
+}
+
+
+
+#' Auxillary
+#'
+#' @param specific_coalition_set
+#' @param n_combinations
+#'
+#' @return
+#' @export
+#'
+#' @examples
+extract_specific_coalition_set = function(specific_coalition_set, n_combinations) {
+  specific_coalition_set[c(1,3:n_combinations,2)]
+}
+
+
+
+
+
+
+#' Extract best coalition order with highest abs importance
+#'
+#' @param explanation A [shapr] explanation object with all coalitions. Should be "true_explanations".
+#' @param plot_figures Boolean. If we are to plot figures.
+#'
+#' @return array with the indices of the coalitions that we should add in decreasing importance order.
+#' I.e., the first one is the most important.
+#' @export
+#'
+#' @examples
+pilot_estimates_coalition_inclusion_order =
+  function(explanation,
+           strategies = c("paired_coalitions",
+                          "single_mean_coalition_effect",
+                          "single_median_coalition_effect",
+                          "single_mean_ranking_over_each_test_obs",
+                          "single_median_ranking_over_each_test_obs"),
+           plot_figures = FALSE,
+           always_empty_and_grand_coalitions_first = TRUE) {
+
+  # Check for valid strategies
+  strategies = match.arg(strategies, several.ok = TRUE)
+
+  # Extract the internal list from the explanation object
+  internal = explanation$internal
+
+  # Get the number of features
+  M = internal$parameters$n_features
+
+  if (2^M != internal$parameters$n_combinations) {
+    stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
+    # TODO: we can later remove this if we do not need this as we can rather return the features to use
+    # internal$objects$X$features instead of using the index of these.
+  }
+
+  # We extract the W and S matrices
+  W = explanation$internal$objects$W
+  S = explanation$internal$objects$S
+
+  # Extract the v(S) elements
+  dt_vS = explanation$internal$output$dt_vS
+
+  # Compute the R's. I.e., W * v(s), but without adding them together.
+  # So not a matrix product, but rather an element wise multiplication.
+  # Do it for all test observations and store the results in a list.
+  R_matrix_list_all_individuals =
+    lapply(seq(ncol(dt_vS[, -"id_combination"])),
+           function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
+
+  # List to store the results to be returned
+  return_list = list()
+
+  if ("paired_coalitions" %in% strategies) {
+    # We are doing the paired version
+    # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+    # then the second largest and so on.
+    alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
+
+    # Change the order of the coalitions such that we have S (odd indices) and
+    # then S_bar (even indices), for all possible coalitions.
+    # Note that we add 1 as we exclude the phi0.
+    R_matrix_paired_order_list =
+      lapply(seq(M), function (investigate_feature_number) {
+        sapply(R_matrix_list_all_individuals,
+               "[",
+               investigate_feature_number + 1, )[alternating_indices,]
+      })
+
+    # We compute the difference between the S and S_bar entries. Odd minus even indices.
+    R_matrix_paired_order_diff_list =
+      lapply(seq_along(R_matrix_paired_order_list),
+             function (feature_idx) {
+               R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
+                 R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+             })
+
+    # Convert it to a data.table
+    R_dt_paired_order_diff =
+      data.table::rbindlist(
+        lapply(seq_along(R_matrix_paired_order_diff_list),
+               function (feature_idx) {
+                 data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                                        D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
+               }),
+        idcol = "id_feature",
+        use.names = TRUE
+      )
+
+    # Change the column names
+    data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+
+    # Go from wide data.table to long data.table format
+    R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
+                                                   id.vars = c("id_feature", "id"),
+                                                   value.name = "Rij",
+                                                   variable.name = "id_combination_diff",
+                                                   variable.factor = TRUE)
+
+    # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
+    # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
+    R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
+                                           mean_abs_Rij = mean(abs(Rij))),
+                                       by = list(id_combination_diff, id_feature)]
+
+    # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
+    # we also add the index of the coalitions that are included in the paired coalitions.
+    R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
+                 id_combination_S = seq(1, 2^(M-1)),
+                 id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
+         by = id_feature]
+
+    # ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
+    #   ggplot2::geom_bar(position = "dodge", stat = "identity") +
+    #   ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
+
+    # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
+    # mean for each paired coalition. This is thus a value average over all features and test observations.
+    R_dt_aggregated = R_dt[, lapply(.SD, mean),
+                           .SDcols = c("mean_Rij", "mean_abs_Rij"),
+                           by = id_combination_diff][, data.table::setnames(.SD,
+                                                                            c("mean_Rij", "mean_abs_Rij"),
+                                                                            c("mean_R", "mean_abs_R"))]
+
+    # Add order values for the aggregated values. A low value means that it is how high importance.
+    # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
+    R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+                            mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+
+    # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
+    R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
+                                      on = "id_combination_diff"]
+
+    # Extract which order we should add the paired coalitions based on the mean_abs_R score
+    paired_coalitions = c(t(as.matrix(data.table::setorder(
+      R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+      mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+
+    return_list$paired_coalitions = paired_coalitions
+  }
+
+  # Check if doing any of the single methods
+  if (any(c("single_mean_coalition_effect",
+            "single_median_coalition_effect",
+            "single_mean_ranking_over_each_test_obs",
+            "single_median_ranking_over_each_test_obs") %in% strategies)) {
+    # We are at least doing one of these
+
+    # Note that we add 1 as we exclude the phi0, and empty place after "," is intentional.
+    R_matrix_list = lapply(seq(M), function (feature_idx) sapply(R_matrix_list_all_individuals, "[", feature_idx + 1, ))
+
+    # Convert it to a data.table
+    R_dt_tmp = data.table::rbindlist(
+      lapply(seq(M), function (feature_idx)
+               data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                                      t(R_matrix_list[[feature_idx]]))
+             ),
+      idcol = "id_feature",
+      use.names = TRUE
+    )
+
+    # Change the column names
+    data.table::setnames(R_dt_tmp, c("id_feature", "id", seq(2^M)))
+
+    # Go from wide data.table to long data.table format
+    R_dt_long = data.table::melt(R_dt_tmp,
+                                 id.vars = c("id", "id_feature"),
+                                 value.name = "Rij",
+                                 variable.name = "id_combination",
+                                 variable.factor = TRUE)
+
+    # Reorder the columns and set the keys
+    data.table::setcolorder(R_dt_long, c("id", "id_combination", "id_feature", "Rij"))
+    data.table::setkeyv(R_dt_long, c("id", "id_combination", "id_feature"))
+
+    # Compute the absolute value of Rij
+    R_dt_long[, abs_Rij := abs(Rij)]
+
+    # For each id and id_feature combination we compute the ordering of the absolute Rij coming from each coalition.
+    # The ordering goes from 1 to 2^M, where a large a low value means that it has a high Rij value.
+    # I.e., ordering 1 means that that coalition has the highest Rij value for that id and id_feature.
+    R_dt_long[, `:=` (order_abs_Rij = order(order(abs_Rij, decreasing = TRUE), decreasing = FALSE)),
+             by = list(id, id_feature)]
+
+    # Then we average the abs_Rij scores over the features for each test observation and coalition.
+    # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to
+    # `n_id * n_id_combination`.
+    R_dt_long_agg_V1 = R_dt_long[, list(avg_abs_Rij = mean(abs_Rij)), by = list(id, id_combination)]
+
+    # Compute the order of avg_abs_Rij for the different test observations.
+    R_dt_long_agg_V1[, `:=` (order_avg_abs_Rij = order(order(avg_abs_Rij, decreasing = TRUE), decreasing = FALSE)),
+                by = list(id)]
+
+    # Compute the mean ordering over all test observations
+    single_mean_ranking_over_each_test_obs =
+      as.integer(R_dt_long_agg_V1[, mean(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
+    single_median_ranking_over_each_test_obs =
+      as.integer(R_dt_long_agg_V1[, median(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
+
+    # Then we average the abs_Rij scores over the features and test observations for each coalition.
+    # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to `n_id_combination`.
+    R_dt_long_agg_V2 = R_dt_long[, list(mean_abs_Rij = mean(abs_Rij),
+                                        median_abs_Rij = median(abs_Rij)),
+                                 by = list(id_combination)]
+    single_mean_coalition_effect = order(R_dt_long_agg_V2$mean_abs_Rij, decreasing = TRUE)
+    single_median_coalition_effect = order(R_dt_long_agg_V2$median_abs_Rij, decreasing = TRUE)
+
+    # Add the results to the return list
+    if ("single_mean_coalition_effect" %in% strategies) {
+      return_list$single_mean_coalition_effect = single_mean_coalition_effect
+    }
+    if ("single_median_coalition_effect" %in% strategies) {
+      return_list$single_median_coalition_effect = single_median_coalition_effect
+    }
+    if ("single_mean_ranking_over_each_test_obs" %in% strategies) {
+      return_list$single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs
+    }
+    if ("single_median_ranking_over_each_test_obs" %in% strategies) {
+      return_list$single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs
+    }
+
+    # Some plots to look at the different orderings
+    # matplot(t(data.table::dcast(R_dt_long_agg_V1,
+    #                             id ~ id_combination,
+    #                             value.var = "order_avg_abs_Rij")[,-"id"])[,1:10], type = "l", lty = 1)
+    # points(single_mean_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 1)
+    # points(single_median_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 2)
+    # points(single_mean_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 3)
+    # points(single_median_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 4)
+
+    # dt_temp = melt(data.table::data.table(id = factor(seq(2^M)),
+    #                             single_mean_coalition_effect = single_mean_coalition_effect,
+    #                             single_median_coalition_effect = single_median_coalition_effect,
+    #                             single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs,
+    #                             single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs),
+    #      id.vars = "id",
+    #      measure.vars =
+    #        c("single_mean_coalition_effect",
+    #        "single_median_coalition_effect",
+    #        "single_mean_ranking_over_each_test_obs",
+    #        "single_median_ranking_over_each_test_obs"),
+    #      value.name = "ranking",
+    #      variable.name = "strategy",
+    #      variable.factor = TRUE)
+    #
+    #   ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:100)],
+    #                   aes(x = id, y = ranking, fill = strategy)) +
+    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+  }
+
+  # Reorder the coalition orders such that the empty and grand coalitions are included as the first and second
+  # coalitions. I.e., such that 1 and 2^M are the two first entries.
+  if (always_empty_and_grand_coalitions_first) {
+    return_list =
+      lapply(return_list, function(coalition_order) c(1, 2^M, coalition_order[!(coalition_order %in% c(1, 2^M))]))
+  }
+
+  # Plot some figures if requested by the user
+  if (plot_figures) {
+    dt_temp = data.table::melt(cbind(id = factor(seq(2^M)), data.table::as.data.table(return_list)),
+                               id.vars = "id",
+                               value.name = "ranking",
+                               variable.name = "strategy",
+                               variable.factor = TRUE)
+
+    ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:20)],
+                    aes(x = id, y = ranking, fill = strategy)) +
+      ggplot2::geom_bar(position = "dodge", stat = "identity")
+
+    GGally::ggpairs(data.table::as.data.table(return_list)) +
+      labs(x = "Ordering (lower means more important)",
+           y = "Ordering (lower means more important)")
+  }
+
+  # Return the order of paired coalitions should be added
+  return(return_list)
 }
 

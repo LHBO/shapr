@@ -570,7 +570,7 @@ indices = seq(1, 2^M)
 
 
 
-# -----------------------------------------------------------------------------------------------------------------
+# Coalitions with highest Rij -------------------------------------------------------------------------------------
 length(R_matrix_list_all_individuals)
 
 R_matrix_list_all_individuals[[1]]
@@ -579,6 +579,134 @@ R_matrix_list_all_individuals
 
 
 # Look at paired differences --------------------------------------------------------------------------------------
+
+pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
+
+  # Extract the internal list from the explanation object
+  internal = explanation$internal
+
+  # Get the number of features
+  M = internal$parameters$n_features
+
+  if (2^M != internal$parameters$n_combinations) {
+    stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
+    # TODO: we can later remove this if we do not need this as we can rather return the features to use
+    # internal$objects$X$features instead of using the index of these.
+  }
+
+  # We extract the W and S matrices
+  W = explanation$internal$objects$W
+  S = explanation$internal$objects$S
+
+  # Extract the v(S) elements
+  dt_vS = explanation$internal$output$dt_vS
+
+  # Compute the R's. I.e., W * v(s), but without adding them together.
+  # So not a matrix product, but rather an element wise multiplication.
+  # Do it for all test observations and store the results in a list.
+  R_matrix_list_all_individuals =
+    lapply(seq(ncol(dt_vS[, -"id_combination"])),
+           function (test_obs_idx) t(t(W)*as.matrix(dt_vS[, -"id_combination"])[,test_obs_idx]))
+
+  # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+  # then the second largest and so on.
+  alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
+
+  # Change the order of the coalitions such that we have S (odd indices) and
+  # then S_bar (even indices), for all possible coalitions.
+  # Note that we add 1 as we exclude the phi0.
+  R_matrix_paired_order_list =
+    lapply(seq(M), function (investigate_feature_number) {
+      sapply(R_matrix_list_all_individuals,
+             "[",
+             investigate_feature_number + 1, )[alternating_indices,]
+    })
+
+  # We compute the difference between the S and S_bar entries. Odd minus even indices.
+  R_matrix_paired_order_diff_list =
+    lapply(seq_along(R_matrix_paired_order_list),
+           function (feature_idx) {
+             R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
+               R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+           })
+
+  # Convert it to a data.table
+  R_dt_paired_order_diff =
+    data.table::rbindlist(
+      lapply(seq_along(R_matrix_paired_order_diff_list),
+             function (feature_idx) {
+               data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                          D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
+             }),
+      idcol = "id_feature",
+      use.names = TRUE
+    )
+
+  # Change the column names
+  setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+
+  # Go from wide data.table to long data.table format
+  R_dt_paired_order_diff_long = melt(R_dt_paired_order_diff,
+                                     id.vars = c("id_feature", "id"),
+                                     value.name = "Rij",
+                                     variable.name = "id_combination_diff",
+                                     variable.factor = TRUE)
+
+  # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
+  # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
+  R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
+                                         mean_abs_Rij = mean(abs(Rij))),
+                                     by = list(id_combination_diff, id_feature)]
+
+  # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
+  # we also add the index of the coalitions that are included in the paired coalitions.
+  R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
+               id_combination_S = seq(1, 2^(M-1)),
+               id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
+       by = id_feature]
+
+
+  if (plot_figures) {
+    ggplot(data = R_dt, aes(x = id_combination_diff, y = mean_abs_Rij)) +
+      geom_bar(position = "dodge", stat = "identity") +
+      facet_grid(rows = vars(id_feature))
+  }
+
+  # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
+  # mean for each paired coalition. This is thus a value average over all features and test observations.
+  R_dt_aggregated = R_dt[, lapply(.SD, mean),
+                         .SDcols = c("mean_Rij", "mean_abs_Rij"),
+                         by = id_combination_diff][, setnames(.SD,
+                                                              c("mean_Rij", "mean_abs_Rij"),
+                                                              c("mean_R", "mean_abs_R"))]
+
+  # Add order values for the aggreagated values. A low value means that it is how high importance.
+  # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
+  R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+                          mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+
+  # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
+  R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
+                                    on = "id_combination_diff"]
+
+  # Extract which order we should add the paired coalitions based on the mean_abs_R score
+  specific_coalition_set = c(t(as.matrix(setorder(
+    R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+    mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+
+
+  # Return the order of paired coalitions should be added
+  return(specific_coalition_set)
+}
+
+pilot_estimates_paired_order(explanation)
+
+
+extract_specific_coalition_set = function(specific_coalition_set, n_combinations) {
+  specific_coalition_set[c(1,3:n_combinations,2)]
+}
+
+extract_specific_coalition_set(specific_coalition_set, 4)
 
 
 # Compute the R's. I.e., W * v(s), but without adding them together.
@@ -666,36 +794,46 @@ R_dt[id_feature == 1]
 
 
 R_dt
-R_dt_summarized
-merge(R_dt_summarized, R_dt, by = "id_combination_diff", all.y = FALSE)
+R_dt_aggregated
+merge(R_dt_aggregated, R_dt, by = "id_combination_diff", all.y = FALSE)
 
 
-R_dt_summarized[R_dt, on = "id_combination_diff"]
-R_dt[R_dt_summarized, on = .(id_combination_diff)]
+R_dt_aggregated[R_dt, on = "id_combination_diff"]
+R_dt[R_dt_aggregated, on = .(id_combination_diff)]
 
 
 unique(R_dt[,c(1,6,7)])
 
 #
-R_dt_summarized = R_dt[, lapply(.SD, mean),
+R_dt_aggregated = R_dt[, lapply(.SD, mean),
                        .SDcols = c("mean_Rij", "mean_abs_Rij"),
                        by = id_combination_diff][, setnames(.SD,
                                                             c("mean_Rij", "mean_abs_Rij"),
                                                             c("mean_R", "mean_abs_R"))]
 
-R_dt_summarized[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
                         mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
-R_dt_summarized = R_dt_summarized[unique(R_dt[,c(1,6,7)]), on = "id_combination_diff"]
-str(R_dt_summarized)
+R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c(1,6,7)]), on = "id_combination_diff"]
+str(R_dt_aggregated)
 
-tmp = setorder(R_dt_summarized[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")], mean_abs_R_ordered)[,-"mean_abs_R_ordered"]
-tmp = c(t(as.matrix(tmp)))
+specific_coalition_set = c(t(as.matrix(setorder(
+  R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+  mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+specific_coalition_set
 
-ggplot(data = R_dt_summarized, aes(x = id_combination_diff, y = mean_abs_R)) +
+specific_coalition_set_function = function(specific_coalition_set, n_combinations) {
+  specific_coalition_set[c(1,3:n_combinations,2)]
+}
+
+specific_coalition_set_function(specific_coalition_set, 4)
+
+
+
+ggplot(data = R_dt_aggregated, aes(x = id_combination_diff, y = mean_abs_R)) +
   geom_bar(position="dodge", stat="identity")
 
 
-R_dt_summarized %>%
+R_dt_aggregated %>%
   dplyr::mutate(id_combination_diff = fct_rev(fct_reorder(id_combination_diff, mean_abs_R))) %>%
   ggplot(aes(x = id_combination_diff,
              y = mean_abs_R)) +
@@ -704,11 +842,11 @@ R_dt_summarized %>%
 
 
 # Need to
-ggplot(data = R_dt_summarized[id_combination_diff != "D1"],
+ggplot(data = R_dt_aggregated[id_combination_diff != "D1"],
        aes(x = id_combination_diff, y = mean_R)) +
   geom_bar(position="dodge", stat="identity")
 
-R_dt_summarized[id_combination_diff != "D1"] %>%
+R_dt_aggregated[id_combination_diff != "D1"] %>%
   dplyr::mutate(id_combination_diff = fct_rev(fct_reorder(id_combination_diff, mean_R))) %>%
   ggplot(aes(x = id_combination_diff,
              y = mean_R)) +

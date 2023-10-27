@@ -259,7 +259,7 @@ explain <- function(model,
                     timing = TRUE,
                     precomputed_vS = NULL, # must be a list `precomputed_vS = list(dt_vS = data.table)` with the correct entries
                     pilot_estimates_vS = NULL, # Similar to `precomputed_vS`
-                    sampling_method = "uniqe", # This is the sampling method of the coalitions
+                    sampling_method = "unique", # This is the sampling method of the coalitions
                     specific_coalition_set = NULL,
                     specific_coalition_set_weights = NULL,
                     ...) { # ... is further arguments passed to specific approaches

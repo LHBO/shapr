@@ -1,10 +1,10 @@
 # Parameters ------------------------------------------------------------------------------------------------------
 # The number of features
-M = 10
+M = 5
 
 # The correlation level
 rhos = c(0.0, 0.5, 0.6)
-rhos = 0.9
+rhos = 0.5
 
 # The number of training observations
 n_train = 1000
@@ -58,6 +58,7 @@ library(ggplot2)
 # The beta vector
 betas = c(0, rep(1, M))
 betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
+betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)
 betas = betas[seq(M+1)]
 
 # If we are to remove redundant stuff from the explanations
@@ -160,7 +161,7 @@ for (rho_idx in seq_along(rhos)) {
   result_figures = aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
                                               true_explanations = true_explanations_list[[1]],
                                               evaluation_criterion = "MAE",
-                                              scale_y_log10 = TRUE,
+                                              scale_y_log10 = FALSE,
                                               plot_figures = FALSE,
                                               return_figures = TRUE,
                                               return_dt = TRUE,
@@ -180,6 +181,24 @@ result_figures = aggregate_and_plot_results(repeated_explanations_list = repeate
                                             return_figures = TRUE,
                                             return_dt = TRUE,
                                             n_workers = 1)
+
+# Just the specific methods
+aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
+                           true_explanations = true_explanations_list[[1]],
+                           evaluation_criterion = "MAE",
+                           plot_figures = FALSE,
+                           return_figures = TRUE,
+                           return_dt = FALSE,
+                           scale_y_log10 = FALSE,
+                           dt_CI = result_figures$dt$dt_CI,
+                           dt_long = result_figures$dt$dt_long,
+                           only_these_sampling_methods = c("paired_coalitions",
+                                                           "single_mean_coalition_effect",
+                                                           "single_median_coalition_effect",
+                                                           "single_mean_ranking_over_each_test_obs",
+                                                           "single_median_ranking_over_each_test_obs",
+                                                           "unique",
+                                                           "unique_paired"))$figure_mean
 
 
 saveRDS(result_figures$dt, file.path(folder_save, paste0(file_name, "_dt.rds")))
