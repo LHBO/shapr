@@ -4,7 +4,7 @@ M = 5
 
 # The correlation level
 rhos = c(0.0, 0.5, 0.6)
-rhos = 0.5
+rhos = 0.9
 
 # The number of training observations
 n_train = 1000
@@ -57,8 +57,8 @@ library(ggplot2)
 
 # The beta vector
 betas = c(0, rep(1, M))
-betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)
+betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
 betas = betas[seq(M+1)]
 
 # If we are to remove redundant stuff from the explanations

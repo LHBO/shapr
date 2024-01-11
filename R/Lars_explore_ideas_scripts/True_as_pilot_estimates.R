@@ -699,14 +699,15 @@ pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
   return(specific_coalition_set)
 }
 
-pilot_estimates_paired_order(explanation)
+specific_coalition_set = pilot_estimates_paired_order(explanation)
+pilot_estimates_paired_order(explanation, plot_figures = TRUE)
 
 
 extract_specific_coalition_set = function(specific_coalition_set, n_combinations) {
   specific_coalition_set[c(1,3:n_combinations,2)]
 }
 
-extract_specific_coalition_set(specific_coalition_set, 4)
+extract_specific_coalition_set(specific_coalition_set, 6)
 
 
 # Compute the R's. I.e., W * v(s), but without adding them together.
