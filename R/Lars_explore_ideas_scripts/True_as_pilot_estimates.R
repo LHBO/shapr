@@ -6,26 +6,27 @@ if (FALSE) {
 # to us. In this case, we will use the true contribution function values as the pilot estimates
 library(data.table)
 library(ggplot2)
+  library(forcats)
 
 
 # Load some stuff -------------------------------------------------------------------------------------------------
 # We load the true explanations
 # M = 5
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0_betas_2_1_0.25_-3_-1_1.5_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.9_betas_2_1_0.25_-3_-1_1.5_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0_betas_0_1_1_1_1_1_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.9_betas_0_1_1_1_1_1_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0_betas_2_1_0.25_-3_-1_1.5_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.9_betas_2_1_0.25_-3_-1_1.5_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0_betas_0_1_1_1_1_1_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.9_betas_0_1_1_1_1_1_true.rds")
 
 # M = 7
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_0_1_1_1_1_1_1_1_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_0_1_1_1_1_1_1_1_true.rds")
-explanation = readRDS("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_0_1_1_1_1_1_1_1_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_2_1_0.25_-3_-1_1.5_-0.5_0.75_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_2_10_0.25_-3_-1_1.5_-0.5_10_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0_betas_0_1_1_1_1_1_1_1_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_0_1_1_1_1_1_1_1_true.rds")
+explanation = readRDS("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.9_betas_0_1_1_1_1_1_1_1_true.rds")
 
 
 {
@@ -88,16 +89,18 @@ matplot(abs(W_and_vS_cumsum_diff), type = "l", lty = 1, xlab = "Number of Coalit
 
 
 
-W_and_vS_cumsum_2 = apply(W_and_vS_element_wise_product[,tmp], 1, cumsum)
-# We see that this adds up to the Shapley values
-matplot(W_and_vS_cumsum_2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley values")
-points(rep(2^M, M+1), explanation$shapley_values[test_obs_idx], col = seq(M))
-# Compute the difference between the cumulative sum and the actual Shapley values with all the terms
-W_and_vS_cumsum_diff_2 = sweep(x = W_and_vS_cumsum_2, MARGIN = 2, STATS = as.matrix(explanation$shapley_values[test_obs_idx,]), FUN = "-")
-# We see that the difference decreases relative linear. But some volatility
-matplot(W_and_vS_cumsum_diff_2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley value difference")
-# Can also look at the absolute difference
-matplot(abs(W_and_vS_cumsum_diff_2), type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Absolute Shapley value difference")
+# # MISSING TMP
+#
+# W_and_vS_cumsum_2 = apply(W_and_vS_element_wise_product[,tmp], 1, cumsum)
+# # We see that this adds up to the Shapley values
+# matplot(W_and_vS_cumsum_2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley values")
+# points(rep(2^M, M+1), explanation$shapley_values[test_obs_idx], col = seq(M))
+# # Compute the difference between the cumulative sum and the actual Shapley values with all the terms
+# W_and_vS_cumsum_diff_2 = sweep(x = W_and_vS_cumsum_2, MARGIN = 2, STATS = as.matrix(explanation$shapley_values[test_obs_idx,]), FUN = "-")
+# # We see that the difference decreases relative linear. But some volatility
+# matplot(W_and_vS_cumsum_diff_2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley value difference")
+# # Can also look at the absolute difference
+# matplot(abs(W_and_vS_cumsum_diff_2), type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Absolute Shapley value difference")
 
 
 
@@ -132,8 +135,6 @@ W_and_vS_element_wise_product_without_null_ordered =
 # Here "important" means having larger absolute value.
 W_and_vS_element_wise_product_without_null_ordered
 
-W_and_vS_elements_sorted_based_on_abs_value - W_and_vS_element_wise_product_without_null_sorted
-
 W_and_vS_elements_sorted_based_on_abs_value = sapply(
   seq(M),
   function(col_ind) {
@@ -141,6 +142,8 @@ W_and_vS_elements_sorted_based_on_abs_value = sapply(
 
 # We see that we now have the elements sorted in
 W_and_vS_elements_sorted_based_on_abs_value
+W_and_vS_elements_sorted_based_on_abs_value - W_and_vS_element_wise_product_without_null_sorted
+
 
 # Get the Shapley values
 colSums(W_and_vS_elements_sorted_based_on_abs_value)
@@ -580,7 +583,13 @@ R_matrix_list_all_individuals
 
 # Look at paired differences --------------------------------------------------------------------------------------
 
-pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
+pilot_estimates_paired_order = function(explanation,
+                                        figures_to_plot = NULL,
+                                        objects_to_return = "order") {
+  if (any(!figures_to_plot %in% c(NULL, "Rij_ind", "Rij_aggregated", "R_aggregated"))) stop("Invalid figures.")
+  if (any(!objects_to_return %in% c("order", "R_dt", "R_dt_aggregated", "R_matrix_list_all_individuals"))) {
+    stop("Invalid return objects.")
+  }
 
   # Extract the internal list from the explanation object
   internal = explanation$internal
@@ -652,6 +661,14 @@ pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
                                      variable.name = "id_combination_diff",
                                      variable.factor = TRUE)
 
+  if ("Rij_ind" %in% figures_to_plot) {
+    plot(ggplot(data = R_dt_paired_order_diff_long[id %in% 1:100],
+                aes(fill = id, y = Rij, x = id_combination_diff)) +
+           geom_bar(position = "dodge", stat = "identity") +
+           facet_grid(rows = vars(id_feature)) +
+           scale_x_discrete(guide = guide_axis(n.dodge = 3)))
+  }
+
   # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
   # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
   R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
@@ -665,13 +682,6 @@ pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
                id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
        by = id_feature]
 
-
-  if (plot_figures) {
-    ggplot(data = R_dt, aes(x = id_combination_diff, y = mean_abs_Rij)) +
-      geom_bar(position = "dodge", stat = "identity") +
-      facet_grid(rows = vars(id_feature))
-  }
-
   # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
   # mean for each paired coalition. This is thus a value average over all features and test observations.
   R_dt_aggregated = R_dt[, lapply(.SD, mean),
@@ -680,7 +690,23 @@ pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
                                                               c("mean_Rij", "mean_abs_Rij"),
                                                               c("mean_R", "mean_abs_R"))]
 
-  # Add order values for the aggreagated values. A low value means that it is how high importance.
+  if ("R_aggregated" %in% figures_to_plot) {
+    plot(ggplot(data = R_dt_aggregated, aes(x = id_combination_diff, y = mean_abs_R)) +
+           geom_bar(position="dodge", stat="identity") +
+           coord_flip())
+  }
+
+  if ("Rij_aggregated" %in% figures_to_plot) {
+    R_dt_aggregated2 =
+      data.table::copy(R_dt_aggregated)[,`id_feature` := "agr"][, setnames(.SD, "mean_abs_R", "mean_abs_Rij")]
+    R_dt2 = rbindlist(list(R_dt, R_dt_aggregated2), use.names = TRUE, fill = TRUE)
+    plot(ggplot(data = R_dt2, aes(x = id_combination_diff, y = mean_abs_Rij)) +
+           geom_bar(position = "dodge", stat = "identity") +
+           facet_grid(rows = vars(id_feature)) +
+           scale_x_discrete(guide = guide_axis(n.dodge = 2)))
+  }
+
+  # Add order values for the aggregated values. A low value means that it is how high importance.
   # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
   R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
                           mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
@@ -694,155 +720,55 @@ pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
     R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
     mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
 
+  # Return the results
+  return_list = list()
+  if ("order" %in% objects_to_return) return_list[["order"]] = specific_coalition_set
+  if ("R_dt" %in% objects_to_return) return_list[["R_dt"]] = R_dt
+  if ("R_dt_aggregated" %in% objects_to_return) return_list[["R_dt_aggregated"]] = R_dt_aggregated
+  if ("R_matrix_list_all_individuals" %in% objects_to_return) {
+    return_list[["R_matrix_list_all_individuals"]] = R_matrix_list_all_individuals
+  }
+  if (length(return_list) == 1) return_list = return_list[[1]]
 
   # Return the order of paired coalitions should be added
-  return(specific_coalition_set)
+  return(return_list)
+}
+
+# Function to extract the `n_combinations` most influential combinations
+extract_specific_coalition_set = function(specific_coalition_set, n_combinations) {
+  #sort(specific_coalition_set[c(1,3:n_combinations,2)])
+  sort(specific_coalition_set[c(1:n_combinations)])
 }
 
 specific_coalition_set = pilot_estimates_paired_order(explanation)
-pilot_estimates_paired_order(explanation, plot_figures = TRUE)
+pilot_estimates_paired_order(explanation, figures_to_plot = "Rij_ind")
+pilot_estimates_paired_order(explanation, figures_to_plot = "Rij_aggregated")
+pilot_estimates_paired_order(explanation, figures_to_plot = "R_aggregated")
 
-
-extract_specific_coalition_set = function(specific_coalition_set, n_combinations) {
-  specific_coalition_set[c(1,3:n_combinations,2)]
-}
-
-extract_specific_coalition_set(specific_coalition_set, 6)
-
-
-# Compute the R's. I.e., W * v(s), but without adding them together.
-# So not a matrix product, but rather an element wise multiplication.
-# Do it for all test observations and store the results in a list.
-R_matrix_list_all_individuals =
-  lapply(seq(ncol(dt_vS[, -"id_combination"])),
-         function (test_obs_idx) t(t(W)*as.matrix(dt_vS[, -"id_combination"])[,test_obs_idx]))
-
-# Alternate them such that we extract the smallest, then the largest, then the second smallest,
-# then the second largest and so on.
-alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
-
-
-# Change the order of the coalitions such that we have S (odd indices) and
-# then S_bar (even indices), for all possible coalitions.
-R_matrix_paired_order_list =
-  lapply(seq(M), function (investigate_feature_number) {
-    sapply(R_matrix_list_all_individuals,
-           "[",
-           investigate_feature_number + 1, )[alternating_indices,]
-  })
-
-
-# We compute the difference between the S and S_bar entries. Odd minus even indices.
-R_matrix_paired_order_diff_list =
-  lapply(seq_along(R_matrix_paired_order_list),
-         function (feature_idx) {
-           R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
-             R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
-         })
-
-
-# Convert it to a data.table
-R_dt_paired_order_diff_list =
-  lapply(seq_along(R_matrix_paired_order_diff_list),
-         function (feature_idx) {
-           data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
-                      D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
-         })
-
-R_dt_paired_order_diff = data.table::rbindlist(R_dt_paired_order_diff_list,
-                                               idcol = "id_feature",
-                                               use.names = TRUE)
-R_dt_paired_order_diff
-
-
-# Change the column names
-setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
-R_dt_paired_order_diff
-str(R_dt_paired_order_diff)
-
-# Go from wide data.table to long data.table format
-R_dt_paired_order_diff_long = melt(R_dt_paired_order_diff,
-                                   id.vars = c("id_feature", "id"),
-                                   value.name = "Rij",
-                                   variable.name = "id_combination_diff",
-                                   variable.factor = TRUE)
-
-# Plot the results
-ggplot(data = R_dt_paired_order_diff_long[id %in% 1:100],
-       aes(fill = id, y = Rij, x = id_combination_diff)) +
-  geom_bar(position = "dodge", stat = "identity") +
-  facet_grid(rows = vars(id_feature))
-#facet_wrap(vars(id_feature))
-
-# Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
-# So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
-#colMeans(R_dt_paired_order_diff[,-"id"])
-# R_dt_paired_order_diff_long[, lapply(.SD, mean), by = id_combination_diff, .SDcols = "Rij"]
-R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
-                                      mean_abs_Rij = mean(abs(Rij))),
-                                  by = list(id_combination_diff, id_feature)]
-R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
-            id_combination_S = seq(1, 2^(M-1)),
-            id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
-     by = id_feature]
-
-
-R_dt
-ggplot(data = R_dt, aes(x = id_combination_diff, y = mean_abs_Rij)) +
-  geom_bar(position="dodge", stat="identity") +
-  facet_grid(rows = vars(id_feature))
-R_dt[id_feature == 1]
-
-
-R_dt
-R_dt_aggregated
-merge(R_dt_aggregated, R_dt, by = "id_combination_diff", all.y = FALSE)
-
-
-R_dt_aggregated[R_dt, on = "id_combination_diff"]
-R_dt[R_dt_aggregated, on = .(id_combination_diff)]
-
-
-unique(R_dt[,c(1,6,7)])
-
-#
-R_dt_aggregated = R_dt[, lapply(.SD, mean),
-                       .SDcols = c("mean_Rij", "mean_abs_Rij"),
-                       by = id_combination_diff][, setnames(.SD,
-                                                            c("mean_Rij", "mean_abs_Rij"),
-                                                            c("mean_R", "mean_abs_R"))]
-
-R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
-                        mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
-R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c(1,6,7)]), on = "id_combination_diff"]
-str(R_dt_aggregated)
-
-specific_coalition_set = c(t(as.matrix(setorder(
-  R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
-  mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
-specific_coalition_set
-
-specific_coalition_set_function = function(specific_coalition_set, n_combinations) {
-  specific_coalition_set[c(1,3:n_combinations,2)]
-}
-
-specific_coalition_set_function(specific_coalition_set, 4)
-
-
-
-ggplot(data = R_dt_aggregated, aes(x = id_combination_diff, y = mean_abs_R)) +
-  geom_bar(position="dodge", stat="identity")
-
-
+# Order the bars in decreasing order
+R_dt_aggregated = pilot_estimates_paired_order(explanation, objects_to_return = "R_dt_aggregated")
 R_dt_aggregated %>%
   dplyr::mutate(id_combination_diff = fct_rev(fct_reorder(id_combination_diff, mean_abs_R))) %>%
   ggplot(aes(x = id_combination_diff,
              y = mean_abs_R)) +
-  geom_bar(position="dodge", stat="identity")
+  geom_bar(position="dodge", stat="identity") +
+  coord_flip()
+
+# Look at the best combinations in the diff pairs
+R_dt_aggregated[R_dt_aggregated$mean_abs_R_ordered,][,c("id_combination_diff",
+                                                        "id_combination_S",
+                                                        "id_combination_Sbar")]
+
+# All pair of indices add to 2^(M-1) + 1.
+sapply(seq(length(specific_coalition_set)/2), function(idx) sum(specific_coalition_set[1:2 + 2*(idx-1)]))
+
+# Extract the six most important combinations
+extract_specific_coalition_set(specific_coalition_set, 6)
 
 
 
-# Need to
+
+# HERE I AM NOT SURE WHAT EARLIER LARS WAS THINKING
 ggplot(data = R_dt_aggregated[id_combination_diff != "D1"],
        aes(x = id_combination_diff, y = mean_R)) +
   geom_bar(position="dodge", stat="identity")
@@ -855,49 +781,43 @@ R_dt_aggregated[id_combination_diff != "D1"] %>%
 
 
 
-ggplot(data = R_dt, aes(x = id_combination_diff, y = mean_Rij)) +
-  geom_bar(position = "dodge", stat = "identity") +
-  facet_grid(rows = vars(id_feature))
 
 
-
-
-data.table(id_combination_S = seq(1, 2^(M-1)),
-           id_combination_Sbar = seq(2^M, 2^(M-1) + 1))
-
-
-tmp_dt = data.table(tmp[,seq(10)])[, comb_idx := alternating_indices]
-tmp_dt$comb_idx = factor(tmp_dt$comb_idx, levels = tmp_dt$comb_idx, ordered = TRUE)
-data_dt = melt(tmp_dt,
-               id.vars = "comb_idx",
-               value.name = "Rij",
-               variable.name = "Observation",
-               variable.factor = TRUE)
-str(data_dt)
-
-ggplot(data = data_dt,
-       aes(fill = Observation, y = Rij, x = comb_idx)) +
-  geom_bar(position="dodge", stat="identity")
-
-
-tmp_dt
-
-
-
-test_obs_idx = 6
-barplot(tmp[,test_obs_idx])
-barplot((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[,test_obs_idx])
-barplot(abs((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[,test_obs_idx]))
-
-tmp_order = order(abs((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[,test_obs_idx]), decreasing = TRUE)
-barplot((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[tmp_order,test_obs_idx])
-par(mfrow = c(1,1))
-tmp_order*2-1
-
-# So a strategy is to use this paired order, going from left to right.
-sapply(tmp_order, function(x) alternating_indices[(2*x-1):(2*x)])
-alternating_indices
-tmp_order*2-1
+# TRASH NOT WORKING ANYMORE
+# data.table(id_combination_S = seq(1, 2^(M-1)),
+#            id_combination_Sbar = seq(2^M, 2^(M-1) + 1))
+#
+#
+# tmp_dt = data.table(tmp[,seq(10)])[, comb_idx := alternating_indices]
+# tmp_dt$comb_idx = factor(tmp_dt$comb_idx, levels = tmp_dt$comb_idx, ordered = TRUE)
+# data_dt = melt(tmp_dt,
+#                id.vars = "comb_idx",
+#                value.name = "Rij",
+#                variable.name = "Observation",
+#                variable.factor = TRUE)
+# str(data_dt)
+#
+# ggplot(data = data_dt,
+#        aes(fill = Observation, y = Rij, x = comb_idx)) +
+#   geom_bar(position="dodge", stat="identity")
+#
+#
+# tmp_dt
+#
+# test_obs_idx = 6
+# barplot(tmp[,test_obs_idx])
+# barplot((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[,test_obs_idx])
+# barplot(abs((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[,test_obs_idx]))
+#
+# tmp_order = order(abs((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[,test_obs_idx]), decreasing = TRUE)
+# barplot((tmp[seq(1,2^M,2),] - tmp[seq(2,2^M,2)])[tmp_order,test_obs_idx])
+# par(mfrow = c(1,1))
+# tmp_order*2-1
+#
+# # So a strategy is to use this paired order, going from left to right.
+# sapply(tmp_order, function(x) alternating_indices[(2*x-1):(2*x)])
+# alternating_indices
+# tmp_order*2-1
 
 
 
@@ -906,10 +826,12 @@ tmp_order*2-1
 
 # Take a look at which coalitions corresponds to the different coalitions indices.
 explanation$internal$objects$S
+R_matrix_list_all_individuals = pilot_estimates_paired_order(explanation,
+                                                             objects_to_return = "R_matrix_list_all_individuals")
 # True model: Y = 1 + 1*X1 + 0*X2 - 2*X3 + 1.5*X4*X5
 # Here we
 {
-  par(mfrow = c(2,3))
+  par(mfrow = c(3,3))
   # In the figures below, we see that including the coalition in S gives positive R weights,
   # while they are negative when the feature is not in the coalitions S.
   for (investigate_feature_idx in seq(0,M)) {
@@ -922,6 +844,7 @@ explanation$internal$objects$S
 
   rowMeans(R_matrix_list_all_individuals_one_feature) + rev(rowMeans(R_matrix_list_all_individuals_one_feature))
 
+  par(mfrow = c(3,3))
   for (investigate_feature_idx in seq(0,M)) {
     matplot(1:2^M, sapply(R_matrix_list_all_individuals, "[", investigate_feature_idx+1,), type = "b", lty = 1, pch = 1,
             xlab = "Coalition index", ylab = "R elements/terms",
@@ -930,6 +853,7 @@ explanation$internal$objects$S
     abline(h = 0)
   }
 
+  par(mfrow = c(3,3))
   for (investigate_feature_idx in seq(0,M)) {
     matplot(1:2^M, abs(sapply(R_matrix_list_all_individuals, "[", investigate_feature_idx+1,)), type = "b", lty = 1, pch = 1,
             xlab = "Coalition index", ylab = "Absolute R elements/terms",
