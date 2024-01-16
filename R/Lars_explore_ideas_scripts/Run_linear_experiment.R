@@ -207,6 +207,7 @@ if (UiO) {
   # devtools::clean_dll()
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
   # If they have the old version, then we install the one on GitHub
+  print(any(as.list(args(shapr::explain)) == "x"))
   if (any(as.list(args(shapr::explain)) == "x")) {
     devtools::clean_dll()
     devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
