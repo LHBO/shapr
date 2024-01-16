@@ -880,10 +880,9 @@ R_matrix_list_all_individuals = pilot_estimates_paired_order(explanation,
 # TODO: do we see other results for other setups. What about less dependence. Will then middle coalitions
 # which include the feature be more important?
 investigate_feature_number = 2
-plot(
-  apply(
-    abs(sapply(R_matrix_list_all_individuals, "[", investigate_feature_number+1,)[-c(1, 2^M),]), 1, mean),
-  type = "b")
+plot(apply(sapply(R_matrix_list_all_individuals, "[", investigate_feature_number+1,)[-c(1, 2^M),], 1, mean), type = "b")
+plot(apply(abs(sapply(R_matrix_list_all_individuals, "[", investigate_feature_number+1,)[-c(1, 2^M),]), 1, mean),
+     type = "b")
 
 # Note that mean of all R elements tends to be close to zero.
 # TODO: is this a coincidence or some deeper mathematical meaning?
@@ -895,7 +894,6 @@ mean(sapply(R_matrix_list_all_individuals, "[", investigate_feature_number+1,)[-
 # We look at the absolute elements/terms that we add together to constitute the phi_j values
 {
   par(mfrow = c(1,2))
-
 
   matplot(t(R_matrix_for_one_individual[-1,]),
           type = "b", lwd = 1.5, pch = 1,

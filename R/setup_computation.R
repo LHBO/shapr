@@ -456,7 +456,6 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     dt <- data.table::data.table(id_combination = seq(n_combinations))
     dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE),
                             recursive = FALSE)[specific_coalition_set]]
-
     dt[, n_features := length(features[[1]]), id_combination]
     dt[, N := 1]
     dt[-c(1, .N), N := n[n_features]]
