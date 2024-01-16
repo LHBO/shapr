@@ -1,16 +1,24 @@
+# Libraries -------------------------------------------------------------------------------------------------------
+library(data.table)
+library(future)
+library(future.apply)
+library(ggplot2)
+
+
 # Parameters ------------------------------------------------------------------------------------------------------
 # The number of features
+M = 6
 M = 5
 
 # The correlation level
 rhos = c(0.0, 0.5, 0.6)
-rhos = 0.9
+rhos = 0.5
 
 # The number of training observations
 n_train = 1000
 
 # The number of test observations
-n_test = 250
+n_test = 5000
 
 # Get the name of the computer we are working on
 hostname = R.utils::System$getHostname()
@@ -23,7 +31,7 @@ UiO = NULL
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   # Where the files are stored
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
-  folder_save = file.path(folder, "Paper3_rds_saves")
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   UiO = FALSE
 
 } else if (grepl("hpc.uio.no", hostname)) {
@@ -35,7 +43,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 } else if (grepl("uio.no", hostname)) {
   # TBA
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
-  folder_save = file.path(folder, "Paper3_rds_saves")
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
 
   UiO = TRUE
 
@@ -50,15 +58,12 @@ setwd(folder)
 #setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
 #pkgload::load_all()
 source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
-library(data.table)
-library(future)
-library(future.apply)
-library(ggplot2)
+
 
 # The beta vector
 betas = c(0, rep(1, M))
-betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)
 betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
+betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)
 betas = betas[seq(M+1)]
 
 # If we are to remove redundant stuff from the explanations
@@ -172,6 +177,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
 # Figures ---------------------------------------------------------------------------------------------------------
+result_figures$figures$figure_CI
 
 result_figures = aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_list[[1]],
                                             true_explanations = true_explanations_list[[1]],
@@ -198,7 +204,7 @@ aggregate_and_plot_results(repeated_explanations_list = repeated_explanations_li
                                                            "single_mean_ranking_over_each_test_obs",
                                                            "single_median_ranking_over_each_test_obs",
                                                            "unique",
-                                                           "unique_paired"))$figure_mean
+                                                           "unique_paired"))$figure_CI
 
 
 saveRDS(result_figures$dt, file.path(folder_save, paste0(file_name, "_dt.rds")))

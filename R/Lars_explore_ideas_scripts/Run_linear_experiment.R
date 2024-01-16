@@ -33,6 +33,26 @@
 
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1 4 1000000 250 1000 250 5 0.5 NULL
 
+#
+
+# 2024 runnings ---------------------------------------------------------------------------------------------------
+
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE 1:10 4 1000000 1000000 1000 250 5 0.7 NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:10 4 1000000 1000000 1000 250 5 0.7 NULL
+
+# Rscript Run_linear_experiment.R
+# do_setup (Boolean)
+# compute_true_explanations (Boolean)
+# compute_repeated_explanations (Boolean)
+# repetitions (Integer, or array of integers "c(1, 4, 6)", "1:10". Different seeds)
+# n_workers (Integer)
+# n_samples_true (Integer, but can also be NULL)
+# n_samples (Integer, but can also be NULL)
+# n_train (Integer)
+# n_test (Integer)
+# M (Integer)
+# rhos (Nummeric, or list of nummeric, e.g. "0.0,0.4,0.9")
+
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -51,8 +71,8 @@ n_samples_true = 1000000
 n_samples = 1000000
 n_train = 1000
 n_test = 250
-M = 6
-rhos = 0.9
+M = 5
+rhos = 0.7
 
 # Extract if we are to generate the data and model
 do_setup = as.logical(args[1])
@@ -151,7 +171,7 @@ UiO = NULL
 # set the working directory and define the correct folder based on system
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
-  folder_save = file.path(folder, "Paper3_rds_saves")
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   # basename(folder)
   # dirname(folder)
   UiO = FALSE
@@ -165,7 +185,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 } else if (grepl("uio.no", hostname)) {
   # TBA
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
-  folder_save = file.path(folder, "Paper3_rds_saves")
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
 
   UiO = TRUE
 
@@ -197,8 +217,9 @@ if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
   # devtools::clean_dll()
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 }
-#library(shapr)
-devtools::load_all(".")
+#devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+library(shapr)
+#devtools::load_all(".")
 
 
 # Libraries -------------------------------------------------------------------------------------------------------
@@ -261,7 +282,9 @@ sampling_methods = c("paired_coalitions",
                      "largest_weights",
                      "smallest_weights")
 
-sampling_methods = c("paired_coalitions",
+sampling_methods = c("unique",
+                     "unique_paired",
+                     "paired_coalitions",
                      "single_mean_coalition_effect",
                      "single_median_coalition_effect",
                      "single_mean_ranking_over_each_test_obs",
@@ -467,6 +490,8 @@ for (rho_idx in seq_along(rhos)) {
     message("Start saving the true explanations.")
     saveRDS(true_explanations, save_file_name_true)
     message("Saved the true explanations.")
+  } else {
+    true_explanations = readRDS(save_file_name_true)
   }
 
 
@@ -486,8 +511,8 @@ for (rho_idx in seq_along(rhos)) {
                   rho, rho_idx, length(rhos), repetition, repetition_idx, length(repetitions)))
 
       # Create the save file name
-      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, "_specific.rds"))
-      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, "_specific_tmp.rds"))
+      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
+      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name, "_estimated_repetition_tmp", repetition, ".rds"))
 
       # Estimated Shapley -----------------------------------------------------------------------------------------------
       # Get the seed for the current repetition
