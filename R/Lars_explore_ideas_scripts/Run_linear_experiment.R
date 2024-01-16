@@ -204,8 +204,9 @@ message("Loading my version of the `shapr` package.")
 #setwd("~/PhD/Paper3/Shapr_Lars_paper3/R")
 if (UiO) {
   # print("#HE")
-  devtools::clean_dll()
-  devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  # devtools::clean_dll()
+  # remotes::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  #devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
   # If they have the old version, then we install the one on GitHub
   # print(any(as.list(args(shapr::explain)) == "x"))
   # if (any(as.list(args(shapr::explain)) == "x")) {
@@ -219,8 +220,8 @@ if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 }
 #devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
-library(shapr)
-#devtools::load_all(".")
+#library(shapr)
+devtools::load_all(".")
 
 
 # Libraries -------------------------------------------------------------------------------------------------------
