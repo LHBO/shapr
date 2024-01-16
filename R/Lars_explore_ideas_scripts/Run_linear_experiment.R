@@ -220,8 +220,8 @@ if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 }
 #devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
-#library(shapr)
-devtools::load_all(".")
+library(shapr)
+#devtools::load_all(".")
 
 
 # Libraries -------------------------------------------------------------------------------------------------------
