@@ -1,3 +1,16 @@
+# 2024 runs -------------------------------------------------------------------------------------------------------
+
+# tmux new -s paper3
+# module load R/4.2.1-foss-2022a
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
+# git checkout Lars/paper3_ideas
+# git pull
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:10 10 1000000 1000000 1000 1000 8 0.0,0.5,0.9 1,1,1,1,1,1,1,1,1
+# Rscript Analyse_linear_experiment.R TRUE FALSE 8 0.0,0.5,0.9 1000 5000 1,1,1,1,1,1,1,1,1 MAE
+
+
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -56,7 +69,7 @@ if (betas != "NULL") {
 }
 
 # Extract the evaluation criterion
-evaluation_criterion = as.character(args[6])
+evaluation_criterion = as.character(args[8])
 
 
 # Small printout to the user
@@ -200,6 +213,8 @@ figures_list = lapply(relevant_files, function(save_file){
                plot_figures = FALSE)})
 
 figures_list$`Paper3_Experiment_M_6_n_train_1000_n_test_5000_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds`$figure_CI
+
+# TODO: when making fig, I should check if it exists and then add _1 ,_2 and so on.
 
 stop()
 # Exploration -----------------------------------------------------------------------------------------------------
