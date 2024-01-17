@@ -109,14 +109,16 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
 }
 
+print(folder_save)
+
 # Set the working directory
 setwd(folder)
 
 # Load the new functions
 source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
-#devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas") # Only need
+devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas") # Only need
 library(shapr) # This must be the shapr version in the github repository.
-devtools::load_all(".")
+# devtools::load_all(".")
 
 # Create data.tables ----------------------------------------------------------------------------------------------
 if (do_dt) {
