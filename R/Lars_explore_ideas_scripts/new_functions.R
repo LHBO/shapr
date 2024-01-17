@@ -2343,10 +2343,12 @@ combine_explanation_results = function(M,
                       paste(as.character(betas), collapse = "_"), sep = "_")
     save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
     save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
+    print(file_name)
 
     #  Find the relevant files in the folder and their repetition numbers/indices
     files_in_dir = list.files(folder_save)
     relevant_files_in_dir = files_in_dir[grepl(paste0(file_name, "_estimated_repetition_"), files_in_dir)]
+    print(relevant_files_in_dir)
     relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
     if (length(relevant_files_in_dir) == 0) stop("Cannot find any files for the provided paremeters.")
     relevant_repetitions =
