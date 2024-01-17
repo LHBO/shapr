@@ -1,3 +1,10 @@
+# Libraries -------------------------------------------------------------------------------------------------------
+library(ggplot2)
+library(data.table)
+library(future)
+library(future.apply)
+
+# Functions -------------------------------------------------------------------------------------------------------
 #' Compute MAE and MSE errors
 #'
 #' @description
@@ -44,6 +51,19 @@ mean_absolute_and_squared_errors = function(dt_true, dt_approx, include_none = F
               mae_individual = mae_error_individual,
               mse_feature = mse_error_feature,
               mae_feature = mae_error_feature))
+}
+
+#' Compute the MSE or MAE between to matrices
+#'
+#' @param dt_1 Matrix. A matrix containing the true Shapley values.
+#' @param dt_2 Matrix. A matrix containing the estimated Shapley values
+#' @param evaluation_criterion String. What evaluation criterion to use. Either "MSE" or "MAE".
+#'
+#' @return Numeric. The calculated evaluation criterion.
+#' @export
+compute_MAE_MSE_fast = function(mat_1, mat_2, evaluation_criterion = c("MSE", "MAE")) {
+  evaluation_criterion = match.arg(evaluation_criterion)
+  if (evaluation_criterion == "MSE") mean((mat_1[,-1] - mat_2[,-1])^2) else mean(abs(mat_1[,-1] - mat_2[,-1]))
 }
 
 
@@ -820,6 +840,430 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
 }
 
 
+#' Aggregate the results of repeated explanations and plot them
+#'
+#' @param repeated_explanations_list List. Output from the [shapr::repeated_explanations()] function.
+#' @param true_explanations Shapr object.
+#' Output from the [shapr::explain()] function containing the true Shapley values.
+#' @param evaluation_criterion String. Either "MAE" or "MSE". Default is `MAE`.
+#' @param level Numeric. The confidence level required. Default is `0.95`.
+#' @param n_workers Integer. The number of cores to run the computations.
+#'
+#' @return A list of three [data.table::data.table()] containing the aggregated evaluation criterion results.
+#' @export
+aggregate_results = function(repeated_explanations_list,
+                             true_explanations,
+                             evaluation_criterion = c("MAE", "MSE"),
+                             level = 0.95,
+                             n_workers = 1) {
+  ### Setup and checks
+  # If user only provided a single explanation and did not put it in a list, then we put it into a list.
+  if ("shapr" %in% class(repeated_explanations_list)) repeated_explanations_list <- list(repeated_explanations_list)
+
+  # Check number of workers is less or equal to the number of available cores
+  n_max_workers = future::availableCores()
+  if (n_workers > n_max_workers) {
+    warning(sprintf("Too many workers. Change from %d to %d (max available cores).", n_workers, n_max_workers))
+    n_workers = n_max_workers
+  }
+
+  # Set the future plan to multisession or sequential
+  if (n_workers > 1) future::plan(multisession, workers = n_workers) else future::plan(sequential)
+
+  # Provide names for the sampling methods if not provided by the user
+  if (is.null(names(repeated_explanations_list)) && !is.null(repeated_explanations_list)) {
+    names(repeated_explanations_list) = paste("Sampling Method", seq(length(repeated_explanations_list)))
+    message(paste0("The `repeated_explanations_list` was not a named list. Set the names to be: '",
+                   paste(names(repeated_explanations_list), collapse = "', '"), "'."))
+  }
+
+  # Check for valid level
+  if (!(is.numeric(level) && length(level) == 1 && level >= 0 && level <= 1)) stop("`level` must be a probability.")
+
+  # Extract which evaluation criterion we are going to plot
+  evaluation_criterion = match.arg(evaluation_criterion)
+
+  # Get the number of repetitions
+  n_repetitions = length(repeated_explanations_list[[1]])
+
+  # Convert to matrix
+  true_explanations_shapley_mat = as.matrix(true_explanations$shapley_values)
+
+  ### Make data.tables
+  # Create list where each entry is a `n_coalitions` times `n_repetitions` matrix containing
+  # the overall evaluation criterion (MAE or MSE) between the true Shapley values
+  # (using all coalitions and a high value of `n_combinations`) and the repeated runs
+  # (different seed values) with different sampling methods and number of used coalitions.
+  system.time({results_list =
+    future.apply::future_lapply(repeated_explanations_list, function (ith_method) {
+      sapply(ith_method, function(ith_method_jth_repetition) {
+        sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
+          compute_MAE_MSE_fast(
+            mat_1 = true_explanations_shapley_mat,
+            mat_2 = as.matrix(ith_method_jth_repetition_kth_coalition$shapley_values),
+            evaluation_criterion = evaluation_criterion)
+        })
+      })
+    })
+  })
+
+  # For each method and `n_combination` value, compute the median and the quantile confidence interval
+  # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
+  results_dt_with_missing_entries =
+    data.table::rbindlist(
+      future.apply::future_lapply(results_list, function(ith_method) {
+        median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
+        tmp_dt = data.table::data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method),
+                                                                                    "_(?!.*_)", perl=TRUE), "[[", 2)),
+                                        CI_lower = median_and_ci[1,],
+                                        median = median_and_ci[2,],
+                                        CI_upper = median_and_ci[3,],
+                                        mean = apply(ith_method, 1, mean),
+                                        min = apply(ith_method, 1, min),
+                                        max = apply(ith_method, 1, max))
+      }), idcol = "sampling")
+  results_dt_with_missing_entries$sampling = factor(results_dt_with_missing_entries$sampling,
+                                                    levels = names(repeated_explanations_list),
+                                                    ordered = TRUE)
+
+  # Remove the rows with missing entries. This is in case for paired sampling methods which
+  # does not support odd number of combinations, while the other sampling methods do.
+  results_dt = results_dt_with_missing_entries[!is.na(results_dt_with_missing_entries$median)]
+
+  # We also compute some alternative aggregated versions of the data not needed to make the figure.
+  # Create an alternative aggregated results data.table
+  result_dt_alternative =
+    data.table::rbindlist(
+      future.apply::future_lapply(results_list, function(ith_method) {
+        data.table::data.table(n_combinations =
+                                 as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
+                               ith_method)
+      }), idcol = "sampling")
+
+  # Convert the sampling column to a factor
+  result_dt_alternative$sampling = factor(result_dt_alternative$sampling,
+                                          levels = names(repeated_explanations_list),
+                                          ordered = TRUE)
+
+  # Remove the rows with missing entries. This is in case for paired sampling methods which
+  # does not support odd number of combinations, while the other sampling methods do.
+  result_dt_alternative = result_dt_alternative[!is.na(result_dt_alternative$repetition_1)]
+
+  # Change the column names
+  data.table::setnames(result_dt_alternative, c(names(result_dt_alternative)[1:2], paste(seq(n_repetitions))))
+
+  # Convert from a wide to long data.table
+  result_dt_alternative_long = data.table::melt(data = result_dt_alternative,
+                                                id.vars = c("sampling", "n_combinations"),
+                                                variable.name = "repetition",
+                                                value.name = paste0("evaluation_criterion_", evaluation_criterion))
+
+  # Ensure that we are in sequential mode
+  future::plan(sequential)
+
+  return(list(dt_CI = results_dt,
+              dt_wide = result_dt_alternative,
+              dt_long = result_dt_alternative_long))
+}
+
+#' Plot the aggregated results
+#'
+#' @param dt_CI Data.table. Returned data.table from call to the `aggregate_results()` function.
+#' @param dt_long Data.table Returned data.table from call to the `aggregate_results()` function.
+#' @param file_path String. Path to file to the result data tables.
+#' @param index_combinations Integer vector. Which of the coalitions (combinations) to plot.
+#' E.g. if you we only want combinations with even number of coalitions, we can set
+#' `index_combinations = seq(4, 2^{n_features}, 2)`.
+#' @param only_these_sampling_methods Array of strings. If we are only to use/plot these sampling methods.
+#' @param figures_to_make String. Which figures to make. Possible values are "figure_CI", "figure_mean",
+#' "figure_median", "figure_lines", "figure_boxplot", "figure_lines_boxplot", and "figure_boxplot_lines".
+#' @param ggplot_theme A [ggplot2::theme()] object to customize the non-data components of the plots:
+#' i.e. titles, labels, fonts, background, gridlines, and legends. Themes can be used to give plots
+#' a consistent customized look. Use the themes available in \code{\link[ggplot2:theme_bw]{ggplot2::ggtheme()}}.
+#' if you would like to use a complete theme such as `theme_bw()`, `theme_minimal()`, and more.
+#' @param brewer_palette String. Name of one of the color palettes from [RColorBrewer::RColorBrewer()].
+#'  If `NULL`, then the function uses the default [ggplot2::ggplot()] color scheme.
+#' The following palettes are available for use with these scales:
+#' \describe{
+#'    \item{Diverging}{BrBG, PiYG, PRGn, PuOr, RdBu, RdGy, RdYlBu, RdYlGn, Spectral}
+#'    \item{Qualitative}{Accent, Dark2, Paired, Pastel1, Pastel2, Set1, Set2, Set3}
+#'    \item{Sequential}{Blues, BuGn, BuPu, GnBu, Greens, Greys, Oranges,
+#'      OrRd, PuBu, PuBuGn, PuRd, Purples, RdPu, Reds, YlGn, YlGnBu, YlOrBr, YlOrRd}
+#' }
+#' @param brewer_direction Sets the order of colors in the scale. If 1, the default,
+#' colors are as output by \code{\link[RColorBrewer:ColorBrewer]{RColorBrewer::brewer.pal()}}.
+#' If -1, the order of colors is reversed.
+#' @param flip_coordinates Boolean. Flip Cartesian coordinates so that the methods are on the y-axis.
+#' This is primarily useful for converting geoms and statistics which display y conditional on x, to x conditional on y.
+#' See [ggplot2::coord_flip()].
+#' @param legend_position String or numeric vector `c(x,y)`. The allowed string values for the
+#' argument `legend_position` are: `left`,`top`, `right`, `bottom`, and `none`. Note that, the argument
+#' `legend_position` can be also a numeric vector `c(x,y)`. In this case it is possible to position
+#' the legend inside the plotting area. `x` and `y` are the coordinates of the legend box.
+#' Their values should be between `0` and `1`, where `c(0,0)` corresponds to the "bottom left"
+#' and `c(1,1)` corresponds to the "top right" position.
+#' @param scale_y_log10 Boolean. If we are to use [ggplot2::scale_y_log10()].
+#' @param scale_x_log10 Boolean. If we are to use [ggplot2::scale_x_log10()].
+#' @param plot_figures Boolean. If `TRUE`, then plot the figures.
+#' @param n.dodge Integer. The number of rows to put the labels on the x-axis of the box plots.
+#' I.e., the parameter to [scale_x_discrete(guide = guide_axis(n.dodge = n.dodge))].
+#'
+#' @return List of [ggplot2::ggplot()] figures, based on the `figures_to_make` parameter.
+#' @export
+plot_results = function(dt_CI = NULL,
+                        dt_long = NULL,
+                        file_path = NULL,
+                        index_combinations = NULL,
+                        only_these_sampling_methods = NULL,
+                        figures_to_make = c("figure_CI",
+                                            "figure_mean",
+                                            "figure_median",
+                                            "figure_lines",
+                                            "figure_boxplot",
+                                            "figure_lines_boxplot",
+                                            "figure_boxplot_lines"),
+                        ggplot_theme = NULL,
+                        brewer_palette = NULL,
+                        brewer_direction = 1,
+                        flip_coordinates = FALSE,
+                        legend_position = NULL,
+                        scale_y_log10 = FALSE,
+                        scale_x_log10 = FALSE,
+                        n.dodge = 2,
+                        plot_figures = FALSE) {
+  ### Check parameters
+  figures_to_make = match.arg(figures_to_make, several.ok = TRUE)
+
+  # Load data.tables from file
+  if (!is.null(file_path)) {
+    if (!(is.null(dt_CI) && is.null(dt_long))) stop("Do not provide `file_path` when provding `dt_CI` and `dt_long`.")
+    cat(sprintf("Loading data tables from file_path = '%s'.\n", file_path))
+    file = readRDS(file_path)
+    dt_CI = file$dt_CI
+    dt_long = file$dt_long
+  }
+
+  ### Fix the data.tables
+  # Extract the evaluation criterion and update name
+  evaluation_criterion =
+    tail(unlist(strsplit(colnames(dt_long)[grep("^evaluation_criterion_", colnames(dt_long))], "_")), 1)
+  dt_long = data.table::copy(dt_long)
+  setnames(dt_long, paste0("evaluation_criterion_", evaluation_criterion), "evaluation_criterion")
+
+  # Only keep the desired combinations
+  if (!is.null(index_combinations)) {
+    dt_CI <- dt_CI[n_combinations %in% index_combinations]
+    dt_long <- dt_long[n_combinations %in% index_combinations]
+  }
+
+  # Only use the specified sampling methods
+  if (!is.null(only_these_sampling_methods)) {
+    dt_long = dt_long[sampling %in% only_these_sampling_methods]
+    dt_CI = dt_CI[sampling %in% only_these_sampling_methods]
+  }
+
+  # For the box plots to work we need the combinations to be a factor
+  dt_long_combination_factor = data.table::copy(dt_long)
+  dt_long_combination_factor$n_combinations = factor(dt_long_combination_factor$n_combinations)
+
+  ### Make the figures
+  figure_list = list()
+
+  if ("figure_CI" %in% figures_to_make) {
+    figure_list[["figure_CI"]] =
+      ggplot2::ggplot(dt_CI, ggplot2::aes(x = n_combinations, y = median, col = sampling)) +
+      ggplot2::geom_line() +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper, fill = sampling), alpha = 0.3) +
+      ggplot2::labs(
+        x = "Number of coalitions",
+        y = paste0(evaluation_criterion, " (median + ", level*100,  "% CI)"),
+        col = "Sampling method",
+        fill = "Sampling method") +
+      {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+      {if (scale_y_log10) ggplot2::scale_y_log10()} +
+      {if (scale_x_log10) ggplot2::scale_x_log10()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                                direction = brewer_direction)} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                                 direction = brewer_direction)} +
+      {if (!is.null(ggplot_theme)) ggplot_theme} +
+      {if (flip_coordinates) ggplot2::coord_flip()} +
+      {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+  }
+
+  if ("figure_mean" %in% figures_to_make) {
+    figure_list[["figure_mean"]] =
+      ggplot2::ggplot(dt_CI, ggplot2::aes(x = n_combinations, y = mean, col = sampling)) +
+      ggplot2::geom_line() +
+      ggplot2::labs(
+        x = "Number of coalitions",
+        y = paste(evaluation_criterion, "(mean)"),
+        col = "Sampling method",
+        fill = "Sampling method") +
+      {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+      {if (scale_y_log10) ggplot2::scale_y_log10()} +
+      {if (scale_x_log10) ggplot2::scale_x_log10()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                                 direction = brewer_direction)} +
+      {if (!is.null(ggplot_theme)) ggplot_theme} +
+      {if (flip_coordinates) ggplot2::coord_flip()} +
+      {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+  }
+
+  if ("figure_median" %in% figures_to_make) {
+    figure_list[["figure_median"]] =
+      ggplot2::ggplot(dt_CI, ggplot2::aes(x = n_combinations, y = median, col = sampling)) +
+      ggplot2::geom_line() +
+      ggplot2::labs(
+        x = "Number of coalitions",
+        y = paste(evaluation_criterion, "(median)"),
+        col = "Sampling method",
+        fill = "Sampling method") +
+      {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+      {if (scale_y_log10) ggplot2::scale_y_log10()} +
+      {if (scale_x_log10) ggplot2::scale_x_log10()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                                 direction = brewer_direction)} +
+      {if (!is.null(ggplot_theme)) ggplot_theme} +
+      {if (flip_coordinates) ggplot2::coord_flip()} +
+      {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+  }
+
+  if ("figure_lines" %in% figures_to_make) {
+    figure_list[["figure_lines"]] =
+      ggplot2::ggplot(dt_long,
+                      ggplot2::aes(x = n_combinations,
+                                   y = evaluation_criterion,
+                                   color = repetition,
+                                   linetype = sampling,
+                                   group = interaction(sampling, repetition))) +
+      ggplot2::geom_line() +
+      ggplot2::labs(
+        x = "Number of coalitions",
+        y = evaluation_criterion,
+        col = "Repetition",
+        linetype = "Sampling method") +
+      {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+      {if (scale_y_log10) ggplot2::scale_y_log10()} +
+      {if (scale_x_log10) ggplot2::scale_x_log10()} +
+      ggplot2::guides(
+        linetype = ggplot2::guide_legend(order = 1),
+        color = ggplot2::guide_legend(order = 2)) +
+      {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                                 direction = brewer_direction)} +
+      {if (!is.null(ggplot_theme)) ggplot_theme} +
+      {if (flip_coordinates) ggplot2::coord_flip()} +
+      {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+  }
+
+  if ("figure_boxplot" %in% figures_to_make) {
+    figure_list[["figure_boxplot"]] =
+      ggplot2::ggplot(dt_long_combination_factor,
+                      ggplot2::aes(x = n_combinations,
+                                   y = evaluation_criterion,
+                                   fill = sampling)) +
+      ggplot2::geom_boxplot() +
+      ggplot2::labs(
+        x = "Number of coalitions",
+        y = evaluation_criterion,
+        fill = "Sampling method") +
+      scale_x_discrete(guide = guide_axis(n.dodge = n.dodge)) +
+      {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+      {if (scale_y_log10) ggplot2::scale_y_log10()} +
+      {if (scale_x_log10) ggplot2::scale_x_log10()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                                direction = brewer_direction)} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                                 direction = brewer_direction)} +
+      {if (!is.null(ggplot_theme)) ggplot_theme} +
+      {if (flip_coordinates) ggplot2::coord_flip()} +
+      {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+  }
+
+  if ("figure_lines_boxplot" %in% figures_to_make) {
+    figure_list[["figure_lines_boxplot"]] =
+      ggplot2::ggplot(dt_long_combination_factor,
+                      ggplot2::aes(x = n_combinations,
+                                   y = evaluation_criterion,
+                                   fill = sampling)) +
+      ggplot2::geom_line(ggplot2::aes(linetype = sampling,
+                                      color = repetition,
+                                      group = interaction(sampling, repetition))) +
+      ggplot2::geom_boxplot() +
+      ggplot2::labs(
+        x = "Number of coalitions",
+        y = evaluation_criterion,
+        col = "Repetition",
+        fill = "Sampling method",
+        linetype = "Sampling method") +
+      scale_x_discrete(guide = guide_axis(n.dodge = n.dodge)) +
+      {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+      {if (scale_y_log10) ggplot2::scale_y_log10()} +
+      {if (scale_x_log10) ggplot2::scale_x_log10()} +
+      ggplot2::guides(
+        fill = ggplot2::guide_legend(order = 1),
+        linetype = ggplot2::guide_legend(order = 2),
+        color = ggplot2::guide_legend(order = 3)) +
+      {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                                direction = brewer_direction)} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                                 direction = brewer_direction)} +
+      {if (!is.null(ggplot_theme)) ggplot_theme} +
+      {if (flip_coordinates) ggplot2::coord_flip()} +
+      {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+  }
+
+  if ("figure_boxplot_lines" %in% figures_to_make) {
+    figure_list[["figure_boxplot_lines"]] =
+      ggplot2::ggplot(dt_long_combination_factor,
+                      ggplot2::aes(x = n_combinations,
+                                   y = evaluation_criterion,
+                                   fill = sampling)) +
+      ggplot2::geom_boxplot() +
+      ggplot2::geom_line(ggplot2::aes(linetype = sampling,
+                                      color = repetition,
+                                      group = interaction(sampling, repetition))) +
+      ggplot2::labs(
+        x = "Number of coalitions",
+        y = evaluation_criterion,
+        col = "Repetition",
+        fill = "Sampling method",
+        linetype = "Sampling method") +
+      {if (!scale_y_log10) ggplot2::expand_limits(y = 0)} +
+      {if (scale_y_log10) ggplot2::scale_y_log10()} +
+      {if (scale_x_log10) ggplot2::scale_x_log10()} +
+      ggplot2::guides(
+        fill = ggplot2::guide_legend(order = 1),
+        linetype = ggplot2::guide_legend(order = 2),
+        color = ggplot2::guide_legend(order = 3)) +
+      scale_x_discrete(guide = guide_axis(n.dodge = n.dodge)) +
+      {if (is.null(brewer_palette)) ggplot2::scale_fill_hue()} +
+      {if (is.null(brewer_palette)) ggplot2::scale_color_hue()} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_fill_brewer(palette = brewer_palette,
+                                                                direction = brewer_direction)} +
+      {if (!is.null(brewer_palette)) ggplot2::scale_color_brewer(palette = brewer_palette,
+                                                                 direction = brewer_direction)} +
+      {if (!is.null(ggplot_theme)) ggplot_theme} +
+      {if (flip_coordinates) ggplot2::coord_flip()} +
+      {if (!is.null(legend_position)) ggplot2::theme(legend.position = legend_position)}
+  }
+
+  # If plot figures, then plot the figures
+  if (plot_figures) lapply(rev(figure_list), plot)
+
+  ### Return the results
+  if (length(figure_list) == 1) figure_list = figure_list[[1]]
+  return(figure_list)
+}
 
 #' Aggregate the results of repeated explanations and plot them
 #'
@@ -862,6 +1306,9 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
 #' @param dt_CI Data.table. Returned data.table from earlier call to the function.
 #' @param dt_long Data.table Returned data.table from earlier call to the function.
 #' @param only_these_sampling_methods Array of strings. If we are only to use/plot these samping methods.
+#' @param scale_y_log10 Boolean. If we are to use [ggplot2::scale_y_log10()].
+#' @param scale_x_log10 Boolean. If we are to use [ggplot2::scale_x_log10()].
+#' @param n_workers Integer. The number of cores to run the computations.
 #'
 #' @return Depends on the values of `return_figures` and `return_dt`.
 #' @export
@@ -892,13 +1339,13 @@ aggregate_and_plot_results = function(repeated_explanations_list,
     stop("ggplot2 is not installed. Please run install.packages('ggplot2')")
   }
   if (!requireNamespace("data.table", quietly = TRUE)) {
-    stop("ggplot2 is not installed. Please run install.packages('data.table')")
+    stop("data.table is not installed. Please run install.packages('data.table')")
   }
   if (!requireNamespace("future", quietly = TRUE)) {
-    stop("ggplot2 is not installed. Please run install.packages('future')")
+    stop("future is not installed. Please run install.packages('future')")
   }
   if (!requireNamespace("future.apply", quietly = TRUE)) {
-    stop("ggplot2 is not installed. Please run install.packages('future.apply')")
+    stop("future.apply is not installed. Please run install.packages('future.apply')")
   }
 
   # Check if user only provided a single explanation and did not put it in a list
@@ -932,7 +1379,6 @@ aggregate_and_plot_results = function(repeated_explanations_list,
 
   # Get the number of repetitions
   n_repetitions = length(repeated_explanations_list[[1]])
-
 
   # Make data.tables ------------------------------------------------------------------------------------------------
   if (is.null(dt_CI)) {
@@ -1248,6 +1694,9 @@ aggregate_and_plot_results = function(repeated_explanations_list,
 }
 
 
+
+
+
 #' Extract best paired coalition order
 #'
 #' @param explanation A [shapr] explanation object with all coalitions. Should be "true_explanations".
@@ -1379,8 +1828,8 @@ pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
 
 
 pilot_estimates_paired_order_V2 = function(explanation,
-                                        figures_to_plot = NULL,
-                                        objects_to_return = "order") {
+                                           figures_to_plot = NULL,
+                                           objects_to_return = "order") {
   if (any(!figures_to_plot %in% c(NULL, "Rij_ind", "Rij_aggregated", "R_aggregated"))) stop("Invalid figures.")
   if (any(!objects_to_return %in% c("order", "R_dt", "R_dt_aggregated", "R_matrix_list_all_individuals"))) {
     stop("Invalid return objects.")
@@ -1569,260 +2018,457 @@ pilot_estimates_coalition_inclusion_order =
            plot_figures = FALSE,
            always_empty_and_grand_coalitions_first = TRUE) {
 
-  # Check for valid strategies
-  strategies = match.arg(strategies, several.ok = TRUE)
+    # Check for valid strategies
+    strategies = match.arg(strategies, several.ok = TRUE)
 
-  # Extract the internal list from the explanation object
-  internal = explanation$internal
+    # Extract the internal list from the explanation object
+    internal = explanation$internal
 
-  # Get the number of features
-  M = internal$parameters$n_features
+    # Get the number of features
+    M = internal$parameters$n_features
 
-  if (2^M != internal$parameters$n_combinations) {
-    stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
-    # TODO: we can later remove this if we do not need this as we can rather return the features to use
-    # internal$objects$X$features instead of using the index of these.
-  }
+    if (2^M != internal$parameters$n_combinations) {
+      stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
+      # TODO: we can later remove this if we do not need this as we can rather return the features to use
+      # internal$objects$X$features instead of using the index of these.
+    }
 
-  # We extract the W and S matrices
-  W = explanation$internal$objects$W
-  S = explanation$internal$objects$S
+    # We extract the W and S matrices
+    W = explanation$internal$objects$W
+    S = explanation$internal$objects$S
 
-  # Extract the v(S) elements
-  dt_vS = explanation$internal$output$dt_vS
+    # Extract the v(S) elements
+    dt_vS = explanation$internal$output$dt_vS
 
-  # Compute the R's. I.e., W * v(s), but without adding them together.
-  # So not a matrix product, but rather an element wise multiplication.
-  # Do it for all test observations and store the results in a list.
-  R_matrix_list_all_individuals =
-    lapply(seq(ncol(dt_vS[, -"id_combination"])),
-           function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
+    # Compute the R's. I.e., W * v(s), but without adding them together.
+    # So not a matrix product, but rather an element wise multiplication.
+    # Do it for all test observations and store the results in a list.
+    R_matrix_list_all_individuals =
+      lapply(seq(ncol(dt_vS[, -"id_combination"])),
+             function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
 
-  # List to store the results to be returned
-  return_list = list()
+    # List to store the results to be returned
+    return_list = list()
 
-  if ("paired_coalitions" %in% strategies) {
-    # We are doing the paired version
-    # Alternate them such that we extract the smallest, then the largest, then the second smallest,
-    # then the second largest and so on.
-    alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
+    if ("paired_coalitions" %in% strategies) {
+      # We are doing the paired version
+      # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+      # then the second largest and so on.
+      alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
 
-    # Change the order of the coalitions such that we have S (odd indices) and
-    # then S_bar (even indices), for all possible coalitions.
-    # Note that we add 1 as we exclude the phi0.
-    R_matrix_paired_order_list =
-      lapply(seq(M), function (investigate_feature_number) {
-        sapply(R_matrix_list_all_individuals,
-               "[",
-               investigate_feature_number + 1, )[alternating_indices,]
-      })
+      # Change the order of the coalitions such that we have S (odd indices) and
+      # then S_bar (even indices), for all possible coalitions.
+      # Note that we add 1 as we exclude the phi0.
+      R_matrix_paired_order_list =
+        lapply(seq(M), function (investigate_feature_number) {
+          sapply(R_matrix_list_all_individuals,
+                 "[",
+                 investigate_feature_number + 1, )[alternating_indices,]
+        })
 
-    # We compute the difference between the S and S_bar entries. Odd minus even indices.
-    R_matrix_paired_order_diff_list =
-      lapply(seq_along(R_matrix_paired_order_list),
-             function (feature_idx) {
-               R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
-                 R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
-             })
-
-    # Convert it to a data.table
-    R_dt_paired_order_diff =
-      data.table::rbindlist(
-        lapply(seq_along(R_matrix_paired_order_diff_list),
+      # We compute the difference between the S and S_bar entries. Odd minus even indices.
+      R_matrix_paired_order_diff_list =
+        lapply(seq_along(R_matrix_paired_order_list),
                function (feature_idx) {
-                 data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
-                                        D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
-               }),
+                 R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
+                   R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+               })
+
+      # Convert it to a data.table
+      R_dt_paired_order_diff =
+        data.table::rbindlist(
+          lapply(seq_along(R_matrix_paired_order_diff_list),
+                 function (feature_idx) {
+                   data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                                          D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
+                 }),
+          idcol = "id_feature",
+          use.names = TRUE
+        )
+
+      # Change the column names
+      data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+
+      # Go from wide data.table to long data.table format
+      R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
+                                                     id.vars = c("id_feature", "id"),
+                                                     value.name = "Rij",
+                                                     variable.name = "id_combination_diff",
+                                                     variable.factor = TRUE)
+
+      # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
+      # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
+      R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
+                                             mean_abs_Rij = mean(abs(Rij))),
+                                         by = list(id_combination_diff, id_feature)]
+
+      # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
+      # we also add the index of the coalitions that are included in the paired coalitions.
+      R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
+                   id_combination_S = seq(1, 2^(M-1)),
+                   id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
+           by = id_feature]
+
+      # ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
+      #   ggplot2::geom_bar(position = "dodge", stat = "identity") +
+      #   ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
+
+      # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
+      # mean for each paired coalition. This is thus a value average over all features and test observations.
+      R_dt_aggregated = R_dt[, lapply(.SD, mean),
+                             .SDcols = c("mean_Rij", "mean_abs_Rij"),
+                             by = id_combination_diff][, data.table::setnames(.SD,
+                                                                              c("mean_Rij", "mean_abs_Rij"),
+                                                                              c("mean_R", "mean_abs_R"))]
+
+      # Add order values for the aggregated values. A low value means that it is how high importance.
+      # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
+      R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+                              mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+
+      # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
+      R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
+                                        on = "id_combination_diff"]
+
+      # Extract which order we should add the paired coalitions based on the mean_abs_R score
+      paired_coalitions = c(t(as.matrix(data.table::setorder(
+        R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+        mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+
+      return_list$paired_coalitions = paired_coalitions
+    }
+
+    # Check if doing any of the single methods
+    if (any(c("single_mean_coalition_effect",
+              "single_median_coalition_effect",
+              "single_mean_ranking_over_each_test_obs",
+              "single_median_ranking_over_each_test_obs") %in% strategies)) {
+      # We are at least doing one of these
+
+      # Note that we add 1 as we exclude the phi0, and empty place after "," is intentional.
+      R_matrix_list = lapply(seq(M), function (feature_idx) sapply(R_matrix_list_all_individuals, "[", feature_idx + 1, ))
+
+      # Convert it to a data.table
+      R_dt_tmp = data.table::rbindlist(
+        lapply(seq(M), function (feature_idx)
+          data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                                 t(R_matrix_list[[feature_idx]]))
+        ),
         idcol = "id_feature",
         use.names = TRUE
       )
 
-    # Change the column names
-    data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+      # Change the column names
+      data.table::setnames(R_dt_tmp, c("id_feature", "id", seq(2^M)))
 
-    # Go from wide data.table to long data.table format
-    R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
-                                                   id.vars = c("id_feature", "id"),
-                                                   value.name = "Rij",
-                                                   variable.name = "id_combination_diff",
-                                                   variable.factor = TRUE)
+      # Go from wide data.table to long data.table format
+      R_dt_long = data.table::melt(R_dt_tmp,
+                                   id.vars = c("id", "id_feature"),
+                                   value.name = "Rij",
+                                   variable.name = "id_combination",
+                                   variable.factor = TRUE)
 
-    # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
-    # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
-    R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
-                                           mean_abs_Rij = mean(abs(Rij))),
-                                       by = list(id_combination_diff, id_feature)]
+      # Reorder the columns and set the keys
+      data.table::setcolorder(R_dt_long, c("id", "id_combination", "id_feature", "Rij"))
+      data.table::setkeyv(R_dt_long, c("id", "id_combination", "id_feature"))
 
-    # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
-    # we also add the index of the coalitions that are included in the paired coalitions.
-    R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
-                 id_combination_S = seq(1, 2^(M-1)),
-                 id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
-         by = id_feature]
+      # Compute the absolute value of Rij
+      R_dt_long[, abs_Rij := abs(Rij)]
 
-    # ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
-    #   ggplot2::geom_bar(position = "dodge", stat = "identity") +
-    #   ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
+      # For each id and id_feature combination we compute the ordering of the absolute Rij coming from each coalition.
+      # The ordering goes from 1 to 2^M, where a large a low value means that it has a high Rij value.
+      # I.e., ordering 1 means that that coalition has the highest Rij value for that id and id_feature.
+      R_dt_long[, `:=` (order_abs_Rij = order(order(abs_Rij, decreasing = TRUE), decreasing = FALSE)),
+                by = list(id, id_feature)]
 
-    # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
-    # mean for each paired coalition. This is thus a value average over all features and test observations.
-    R_dt_aggregated = R_dt[, lapply(.SD, mean),
-                           .SDcols = c("mean_Rij", "mean_abs_Rij"),
-                           by = id_combination_diff][, data.table::setnames(.SD,
-                                                                            c("mean_Rij", "mean_abs_Rij"),
-                                                                            c("mean_R", "mean_abs_R"))]
+      # Then we average the abs_Rij scores over the features for each test observation and coalition.
+      # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to
+      # `n_id * n_id_combination`.
+      R_dt_long_agg_V1 = R_dt_long[, list(avg_abs_Rij = mean(abs_Rij)), by = list(id, id_combination)]
 
-    # Add order values for the aggregated values. A low value means that it is how high importance.
-    # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
-    R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
-                            mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+      # Compute the order of avg_abs_Rij for the different test observations.
+      R_dt_long_agg_V1[, `:=` (order_avg_abs_Rij = order(order(avg_abs_Rij, decreasing = TRUE), decreasing = FALSE)),
+                       by = list(id)]
 
-    # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
-    R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
-                                      on = "id_combination_diff"]
+      # Compute the mean ordering over all test observations
+      single_mean_ranking_over_each_test_obs =
+        as.integer(R_dt_long_agg_V1[, mean(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
+      single_median_ranking_over_each_test_obs =
+        as.integer(R_dt_long_agg_V1[, median(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
 
-    # Extract which order we should add the paired coalitions based on the mean_abs_R score
-    paired_coalitions = c(t(as.matrix(data.table::setorder(
-      R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
-      mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+      # Then we average the abs_Rij scores over the features and test observations for each coalition.
+      # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to `n_id_combination`.
+      R_dt_long_agg_V2 = R_dt_long[, list(mean_abs_Rij = mean(abs_Rij),
+                                          median_abs_Rij = median(abs_Rij)),
+                                   by = list(id_combination)]
+      single_mean_coalition_effect = order(R_dt_long_agg_V2$mean_abs_Rij, decreasing = TRUE)
+      single_median_coalition_effect = order(R_dt_long_agg_V2$median_abs_Rij, decreasing = TRUE)
 
-    return_list$paired_coalitions = paired_coalitions
-  }
+      # Add the results to the return list
+      if ("single_mean_coalition_effect" %in% strategies) {
+        return_list$single_mean_coalition_effect = single_mean_coalition_effect
+      }
+      if ("single_median_coalition_effect" %in% strategies) {
+        return_list$single_median_coalition_effect = single_median_coalition_effect
+      }
+      if ("single_mean_ranking_over_each_test_obs" %in% strategies) {
+        return_list$single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs
+      }
+      if ("single_median_ranking_over_each_test_obs" %in% strategies) {
+        return_list$single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs
+      }
 
-  # Check if doing any of the single methods
-  if (any(c("single_mean_coalition_effect",
-            "single_median_coalition_effect",
-            "single_mean_ranking_over_each_test_obs",
-            "single_median_ranking_over_each_test_obs") %in% strategies)) {
-    # We are at least doing one of these
+      # Some plots to look at the different orderings
+      # matplot(t(data.table::dcast(R_dt_long_agg_V1,
+      #                             id ~ id_combination,
+      #                             value.var = "order_avg_abs_Rij")[,-"id"])[,1:10], type = "l", lty = 1)
+      # points(single_mean_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 1)
+      # points(single_median_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 2)
+      # points(single_mean_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 3)
+      # points(single_median_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 4)
 
-    # Note that we add 1 as we exclude the phi0, and empty place after "," is intentional.
-    R_matrix_list = lapply(seq(M), function (feature_idx) sapply(R_matrix_list_all_individuals, "[", feature_idx + 1, ))
+      # dt_temp = melt(data.table::data.table(id = factor(seq(2^M)),
+      #                             single_mean_coalition_effect = single_mean_coalition_effect,
+      #                             single_median_coalition_effect = single_median_coalition_effect,
+      #                             single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs,
+      #                             single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs),
+      #      id.vars = "id",
+      #      measure.vars =
+      #        c("single_mean_coalition_effect",
+      #        "single_median_coalition_effect",
+      #        "single_mean_ranking_over_each_test_obs",
+      #        "single_median_ranking_over_each_test_obs"),
+      #      value.name = "ranking",
+      #      variable.name = "strategy",
+      #      variable.factor = TRUE)
+      #
+      #   ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:100)],
+      #                   aes(x = id, y = ranking, fill = strategy)) +
+      #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    }
 
-    # Convert it to a data.table
-    R_dt_tmp = data.table::rbindlist(
-      lapply(seq(M), function (feature_idx)
-               data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
-                                      t(R_matrix_list[[feature_idx]]))
-             ),
-      idcol = "id_feature",
-      use.names = TRUE
-    )
+    # Reorder the coalition orders such that the empty and grand coalitions are included as the first and second
+    # coalitions. I.e., such that 1 and 2^M are the two first entries.
+    if (always_empty_and_grand_coalitions_first) {
+      return_list =
+        lapply(return_list, function(coalition_order) c(1, 2^M, coalition_order[!(coalition_order %in% c(1, 2^M))]))
+    }
 
-    # Change the column names
-    data.table::setnames(R_dt_tmp, c("id_feature", "id", seq(2^M)))
-
-    # Go from wide data.table to long data.table format
-    R_dt_long = data.table::melt(R_dt_tmp,
-                                 id.vars = c("id", "id_feature"),
-                                 value.name = "Rij",
-                                 variable.name = "id_combination",
+    # Plot some figures if requested by the user
+    if (plot_figures) {
+      dt_temp = data.table::melt(cbind(id = factor(seq(2^M)), data.table::as.data.table(return_list)),
+                                 id.vars = "id",
+                                 value.name = "ranking",
+                                 variable.name = "strategy",
                                  variable.factor = TRUE)
 
-    # Reorder the columns and set the keys
-    data.table::setcolorder(R_dt_long, c("id", "id_combination", "id_feature", "Rij"))
-    data.table::setkeyv(R_dt_long, c("id", "id_combination", "id_feature"))
+      ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:20)],
+                      aes(x = id, y = ranking, fill = strategy)) +
+        ggplot2::geom_bar(position = "dodge", stat = "identity")
 
-    # Compute the absolute value of Rij
-    R_dt_long[, abs_Rij := abs(Rij)]
-
-    # For each id and id_feature combination we compute the ordering of the absolute Rij coming from each coalition.
-    # The ordering goes from 1 to 2^M, where a large a low value means that it has a high Rij value.
-    # I.e., ordering 1 means that that coalition has the highest Rij value for that id and id_feature.
-    R_dt_long[, `:=` (order_abs_Rij = order(order(abs_Rij, decreasing = TRUE), decreasing = FALSE)),
-             by = list(id, id_feature)]
-
-    # Then we average the abs_Rij scores over the features for each test observation and coalition.
-    # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to
-    # `n_id * n_id_combination`.
-    R_dt_long_agg_V1 = R_dt_long[, list(avg_abs_Rij = mean(abs_Rij)), by = list(id, id_combination)]
-
-    # Compute the order of avg_abs_Rij for the different test observations.
-    R_dt_long_agg_V1[, `:=` (order_avg_abs_Rij = order(order(avg_abs_Rij, decreasing = TRUE), decreasing = FALSE)),
-                by = list(id)]
-
-    # Compute the mean ordering over all test observations
-    single_mean_ranking_over_each_test_obs =
-      as.integer(R_dt_long_agg_V1[, mean(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
-    single_median_ranking_over_each_test_obs =
-      as.integer(R_dt_long_agg_V1[, median(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
-
-    # Then we average the abs_Rij scores over the features and test observations for each coalition.
-    # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to `n_id_combination`.
-    R_dt_long_agg_V2 = R_dt_long[, list(mean_abs_Rij = mean(abs_Rij),
-                                        median_abs_Rij = median(abs_Rij)),
-                                 by = list(id_combination)]
-    single_mean_coalition_effect = order(R_dt_long_agg_V2$mean_abs_Rij, decreasing = TRUE)
-    single_median_coalition_effect = order(R_dt_long_agg_V2$median_abs_Rij, decreasing = TRUE)
-
-    # Add the results to the return list
-    if ("single_mean_coalition_effect" %in% strategies) {
-      return_list$single_mean_coalition_effect = single_mean_coalition_effect
-    }
-    if ("single_median_coalition_effect" %in% strategies) {
-      return_list$single_median_coalition_effect = single_median_coalition_effect
-    }
-    if ("single_mean_ranking_over_each_test_obs" %in% strategies) {
-      return_list$single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs
-    }
-    if ("single_median_ranking_over_each_test_obs" %in% strategies) {
-      return_list$single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs
+      GGally::ggpairs(data.table::as.data.table(return_list)) +
+        labs(x = "Ordering (lower means more important)",
+             y = "Ordering (lower means more important)")
     }
 
-    # Some plots to look at the different orderings
-    # matplot(t(data.table::dcast(R_dt_long_agg_V1,
-    #                             id ~ id_combination,
-    #                             value.var = "order_avg_abs_Rij")[,-"id"])[,1:10], type = "l", lty = 1)
-    # points(single_mean_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 1)
-    # points(single_median_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 2)
-    # points(single_mean_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 3)
-    # points(single_median_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 4)
-
-    # dt_temp = melt(data.table::data.table(id = factor(seq(2^M)),
-    #                             single_mean_coalition_effect = single_mean_coalition_effect,
-    #                             single_median_coalition_effect = single_median_coalition_effect,
-    #                             single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs,
-    #                             single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs),
-    #      id.vars = "id",
-    #      measure.vars =
-    #        c("single_mean_coalition_effect",
-    #        "single_median_coalition_effect",
-    #        "single_mean_ranking_over_each_test_obs",
-    #        "single_median_ranking_over_each_test_obs"),
-    #      value.name = "ranking",
-    #      variable.name = "strategy",
-    #      variable.factor = TRUE)
-    #
-    #   ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:100)],
-    #                   aes(x = id, y = ranking, fill = strategy)) +
-    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    # Return the order of paired coalitions should be added
+    return(return_list)
   }
 
-  # Reorder the coalition orders such that the empty and grand coalitions are included as the first and second
-  # coalitions. I.e., such that 1 and 2^M are the two first entries.
-  if (always_empty_and_grand_coalitions_first) {
-    return_list =
-      lapply(return_list, function(coalition_order) c(1, 2^M, coalition_order[!(coalition_order %in% c(1, 2^M))]))
+
+#' Compute the aggregated results for a simulation
+#'
+#' @param M integer. The number of features
+#' @param rhos Numeric array. The correlations.
+#' @param n_train The number of training observations
+#' @param n_test The number of test observations (explicands)
+#' @param betas Numeric array. Vector containing the betas using in the setup.
+#' @param folder_save String. Path to where the files are stored.
+#' @param memory_efficient Boolean. If we are to remove all data except from the Shapley values from the objects.
+#' @param max_repetitions Integer. If we only want to use a certain amount of repetitions.
+#' @param save_results Boolean. If we should save the aggregated results in the `folder_save` folder.
+#' @param evaluation_criterion String. If we are to compute the MSE or MAE between
+#' the true and estimated Shapley values.
+#' @param level Numeric. The level of the empirical CI.
+#' @param n_workers Integer. Number of cores to compute the evaluation criterion results.
+#' Only in the aggregation step. Recommend using 1 due to large objects having to be loaded in and out of memory.
+#' So it is/can be slower with several cores.
+#' @param objects_to_return String. What objects to return. One or several of "aggregated_results", "true_Shapley",
+#' "repeated_Shapley".
+#'
+#' @return Depends on `objects_to_return`.
+#' @export
+combine_explanation_results = function(M,
+                                       rhos,
+                                       n_train,
+                                       n_test,
+                                       betas,
+                                       folder_save,
+                                       max_repetitions = NULL,
+                                       memory_efficient = TRUE,
+                                       save_results = TRUE,
+                                       evaluation_criterion = c("MAE", "MSE"),
+                                       level = 0.95,
+                                       n_workers = 1,
+                                       objects_to_return = "aggregated_results") {
+
+  # Check some of the inputs
+  if (length(betas) != M + 1) stop("Incorrect number of `betas` compared to `M`.")
+  evaluation_criterion = match.arg(evaluation_criterion)
+  objects_to_return = match.arg(arg = objects_to_return,
+                                choices = c("aggregated_results",
+                                            "true_Shapley",
+                                            "repeated_Shapley"),
+                                several.ok = TRUE)
+
+  # Result lists. They can be quite large and take up many GBs of memory for large M
+  true_explanations_list = list()
+  repeated_explanations_list = list()
+  aggregated_results_list = list()
+  return_list = list()
+
+  # Iterate over the rhos
+  rho_idx = 1
+  for (rho_idx in seq_along(rhos)) {
+    if (rho_idx > 1) cat(sprintf("\n")) # White space from previous iteration
+
+    # Get the current rho
+    rho = rhos[rho_idx]
+
+    # Update the result list
+    repeated_explanations_list[[paste0("rho_", rho)]] = list()
+
+    # Make file names
+    file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
+                      paste(as.character(betas), collapse = "_"), sep = "_")
+    save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
+    save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
+
+    #  Find the relevant files in the folder and their repetition numbers/indices
+    files_in_dir = list.files(folder_save)
+    relevant_files_in_dir = files_in_dir[grepl(paste0(file_name, "_estimated_repetition_"), files_in_dir)]
+    relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
+    if (length(relevant_files_in_dir) == 0) stop("Cannot find any files for the provided paremeters.")
+    relevant_repetitions =
+      sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
+    relevant_repetitions = relevant_repetitions[seq(min(max_repetitions, length(relevant_repetitions)))]
+    if (!is.null(max_repetitions) && max_repetitions > length(relevant_repetitions)) {
+      message(paste0("The parameter `max_repetitions` (", max_repetitions, ") is larger than the number of available ",
+                     "repetitions (", length(relevant_repetitions), "). Use all available repetitions.\n"))
+    }
+
+    # Load the setup file, i.e., the model and data
+    setup = readRDS(save_file_name_setup)
+
+    # Load the true explanations
+    true_explanations_list[[paste0("rho_", rho)]] = readRDS(save_file_name_true)
+    true_explanations_list[[paste0("rho_", rho)]]$internal$output$dt_samp_for_vS = NULL
+
+    # Iterate over the repetitions
+    repetition_idx = 1
+    for (repetition_idx in seq_along(relevant_repetitions)) {
+
+      # Get the current repetition
+      repetition = relevant_repetitions[repetition_idx]
+
+      # Small printout to the user
+      cat(sprintf("Working on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
+                  rho, rho_idx, length(rhos), repetition, repetition_idx, length(relevant_repetitions)))
+
+      # Create the save file name
+      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
+
+      # Load the rds file
+      current_repetition_results = readRDS(save_file_name_rep)
+
+      # We remove all non-essential stuff from the list
+      if (memory_efficient) {
+        cat(sprintf("Using memory efficient version: %s \U2192 ",
+                    format(object.size(current_repetition_results), units = "auto")))
+
+        for (met in names(current_repetition_results)) {
+          for (rep in names(current_repetition_results[[met]])) {
+            for (comb in names(current_repetition_results[[met]][[rep]])) {
+              tmp_res = current_repetition_results[[met]][[rep]][[comb]]
+              tmp_res[["only_save"]] = NULL
+              tmp_res$internal = NULL
+              tmp_res$timing = NULL
+              tmp_res$pred_explain = NULL
+              current_repetition_results[[met]][[rep]][[comb]] = tmp_res
+            }
+          }
+        }
+        cat(sprintf("%s.\n", format(object.size(current_repetition_results), units = "auto")))
+      }
+
+      if (repetition_idx == 1) {
+        repeated_explanations_list[[paste0("rho_", rho)]] = current_repetition_results
+      } else {
+        # Update the repetition names
+        current_repetition_results = lapply(
+          current_repetition_results, function(x) {
+            names(x) = paste0("repetition_", repetition_idx)
+            x})
+
+        # Add the results to the list
+        repeated_explanations_list[[paste0("rho_", rho)]] = modifyList(repeated_explanations_list[[paste0("rho_", rho)]],
+                                                                       current_repetition_results)
+      }
+    }
+
+    # Small printout to the user
+    cat(sprintf("Aggregating the results.\n"))
+
+    # Aggregate the results
+    aggregated_results_list[[paste0("rho_", rho)]] =
+      aggregate_results(repeated_explanations_list = repeated_explanations_list[[rho_idx]],
+                        true_explanations = true_explanations_list[[rho_idx]],
+                        evaluation_criterion = evaluation_criterion,
+                        level = level,
+                        n_workers = n_workers)
+
+    if (save_results) {
+      if (rho_idx == 1) return_list[["save_files"]] = list()
+      return_list[["save_files"]][[paste0("rho_", rho)]] =
+        file.path(folder_save, paste0(file_name, "_dt_", evaluation_criterion, ".rds"))
+      cat(sprintf("Saving the results.\n"))
+      saveRDS(aggregated_results_list[[paste0("rho_", rho)]], return_list[["save_files"]][[paste0("rho_", rho)]])
+    }
   }
 
-  # Plot some figures if requested by the user
-  if (plot_figures) {
-    dt_temp = data.table::melt(cbind(id = factor(seq(2^M)), data.table::as.data.table(return_list)),
-                               id.vars = "id",
-                               value.name = "ranking",
-                               variable.name = "strategy",
-                               variable.factor = TRUE)
+  # Find out what to return
+  if ("aggregated_results" %in% objects_to_return) return_list[["aggregated_results"]] = aggregated_results_list
+  if ("true_Shapley" %in% objects_to_return) return_list[["true_Shapley"]] = true_explanations_list
+  if ("repeated_Shapley" %in% objects_to_return) return_list[["repeated_Shapley"]] = repeated_explanations_list
+  if (length(return_list) == 1) return_list = return_list[[1]]
 
-    ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:20)],
-                    aes(x = id, y = ranking, fill = strategy)) +
-      ggplot2::geom_bar(position = "dodge", stat = "identity")
-
-    GGally::ggpairs(data.table::as.data.table(return_list)) +
-      labs(x = "Ordering (lower means more important)",
-           y = "Ordering (lower means more important)")
-  }
-
-  # Return the order of paired coalitions should be added
   return(return_list)
+}
+
+#' Function that extract the setup parameters from the file name
+#'
+#' @description
+#' It looks for the patter "M_INT_n_train_INT_n_test_INT_rho_NUMERIC_betas_NUMERIC_ARRAY_dt_STRING\\.rds"
+#'
+#' @param input_string string. The filename of the file containing the results.
+#'
+#' @return List of the the extracted values
+#' @export
+extract_parameters_from_path <- function(input_string) {
+  pattern <- "M_(\\d+)_n_train_(\\d+)_n_test_(\\d+)_rho_([0-9.]+)_betas_((?:-?\\d+(?:\\.\\d+)?_?)+)_dt_(MAE|MSE)\\.rds"
+  match_result <- regexec(pattern, input_string)
+
+  if (any(match_result[[1]] == -1)) stop("Pattern not found in the input string.")
+
+  M <- as.numeric(regmatches(input_string, match_result)[[1]][2])
+  n_train <- as.numeric(regmatches(input_string, match_result)[[1]][3])
+  n_test <- as.numeric(regmatches(input_string, match_result)[[1]][4])
+  rho <- as.numeric(regmatches(input_string, match_result)[[1]][5])
+  betas_str <- regmatches(input_string, match_result)[[1]][6]
+  betas <- as.numeric(strsplit(betas_str, "_")[[1]])
+  evaluation_criterion <- regmatches(input_string, match_result)[[1]][7]
+
+  return(list(M = M, n_train = n_train, n_test = n_test, rho = rho, betas_str = betas_str,
+              betas = betas, evaluation_criterion = evaluation_criterion))
 }
 
