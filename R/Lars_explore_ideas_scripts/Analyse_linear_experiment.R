@@ -8,7 +8,10 @@
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:10 10 1000000 1000000 1000 1000 8 0.0,0.5,0.9 1,1,1,1,1,1,1,1,1
-# Rscript Analyse_linear_experiment.R TRUE FALSE 8 0.0,0.5,0.9 1000 5000 1,1,1,1,1,1,1,1,1 MAE
+# Rscript Analyse_linear_experiment.R TRUE FALSE 8 0.0,0.5,0.9 1000 1000 1,1,1,1,1,1,1,1,1 MAE
+
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:10 8 1000000 1000000 1000 1000 8 0.0,0.5,0.9 NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 8 0.0,0.5,0.9 1000 1000 NULL MAE
 
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
