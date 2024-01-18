@@ -229,6 +229,18 @@ figures_list$`Paper3_Experiment_M_8_n_train_1000_n_test_1000_rho_0.9_betas_2_10_
 
 # TODO: when making fig, I should check if it exists and then add _1 ,_2 and so on.
 
+figures_list_M10 = figures_list[grep("M_10", names(figures_list))]
+figures_list_M10$Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_M10$Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0.5_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_M10$Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0.9_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_M10$Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0.99_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+
+figures_list_M10$`Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_M10$`Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0.5_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_M10$`Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0.9_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_M10$`Paper3_Experiment_M_10_n_train_1000_n_test_1000_rho_0.99_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+
+
 stop()
 # Exploration -----------------------------------------------------------------------------------------------------
 
