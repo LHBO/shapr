@@ -68,7 +68,27 @@ batch_compute_vS <- function(S, internal, model, predict_model, p = NULL) {
   y <- internal$data$y
   xreg <- internal$data$xreg
 
+  pca_rotation = internal$parameters$pca_rotation
+  pca_scale = internal$parameters$pca_scale
+  pca_center = internal$parameters$pca_center
+
   dt <- batch_prepare_vS(S = S, internal = internal) # Make it optional to store and return the dt_list
+
+  # add PCA step
+  if (any(!is.null(pca_rotation) || !is.null(pca_scale) || !is.null(pca_center))) {
+    # We are doing PCA_SHAP
+
+    if (any(is.null(pca_rotation) || is.null(pca_scale) || is.null(pca_center))) {
+      stop("`pca_rotation`, `pca_scale` and `pca_center` must all be provided.")
+    }
+
+    message("WE ARE DOING PCA SHAP")
+    dt_pca_k = as.matrix(dt[, ..feature_names])
+    if (!is.null(internal$parameters$plot) && isTRUE(internal$parameters$plot)) pairs(dt_pca_k)
+    dt_original_space = t(t(dt_pca_k %*% t(pca_rotation)) * pca_scale + pca_center)
+    if (!is.null(internal$parameters$plot) && isTRUE(internal$parameters$plot)) pairs(dt_original_space)
+    dt[, (feature_names) := as.data.table(dt_original_space)]
+  }
 
   pred_cols <- paste0("p_hat", seq_len(output_size))
 
