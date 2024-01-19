@@ -48,13 +48,16 @@ progressr::handlers(global = TRUE)
 progressr::handlers('cli') # requires the 'cli' package
 
 # Explain the model using conditional shapley values
-shapr::explain(model = model,
-               x_explain = x_explain,
-               x_train = x_train,
-               approach = "gaussian",
-               prediction_zero = 0,
-               n_batches = 10,
-               n_samples = 1000)
+explanation = shapr::explain(
+  model = model,
+  x_explain = x_explain,
+  x_train = x_train,
+  approach = "gaussian",
+  prediction_zero = 0,
+  n_batches = 7,
+  n_samples = 1000)
+
+max(abs(rowSums(explanation$shapley_values) - explanation$pred_explain))
 
 
 # PCA -------------------------------------------------------------------------------------------------------------
@@ -86,57 +89,72 @@ cov(x_explain_pca)
 k = 3
 
 # Use the inverse transformation to go back to the original space
-aux_pca_scale = if (pca_train$scale == FALSE) rep(1, ncol(pca_train$x)) else pca_train$scale
+aux_pca_scale = if (any(pca_train$scale == FALSE)) rep(1, ncol(pca_train$x)) else pca_train$scale
 x_explain_pca_k <- x_explain_pca
 x_explain_pca_k[, -(1:k)] = 0
-x_explain_reconstructed = t(t(x_explain_pca_k %*% t(pca_train$rotation)) * aux_pca_scale_factors + pca_train$center)
+x_explain_reconstructed = t(t(x_explain_pca_k %*% t(pca_train$rotation)) * aux_pca_scale + pca_train$center)
 
 sqrt(sum((x_explain_reconstructed - x_explain)^2) / length(x_explain))
 
+
+aux_pca_scale
+
+
+x_explain_pca_k2 = x_explain_pca_k
+x_explain_pca_k2[1:n_explain,1] = x_explain_pca_k2[n_explain:1,1]
+
+tmp = t(t(x_explain_pca_k2 %*% t(pca_train$rotation)) * aux_pca_scale + pca_train$center)
+pairs()
+tmp[1,]
+x_explain[1,]
 
 # Now, original_space_x_explain contains the data in the original space
 
 
 
+explanation_PCA = shapr::explain(
+  model = model,
+  x_explain = x_explain[1:4,],
+  x_train = x_train,
+  approach = "gaussian",
+  prediction_zero = 0,
+  n_batches = 7,
+  n_samples = 10,
+  pca_rotation = pca_train$rotation,
+  pca_scale = aux_pca_scale,
+  pca_center = pca_train$center)
+
+
+explanation_PCA$internal$parameters
 
 
 
 
-compute_and_compare_new <- function(x_train, x_explain, k, scale. = FALSE) {
+compute_and_compare_new <- function(x_train, x_explain, k, scale. = TRUE) {
+  # Step 0: tests
+  if (ncol(x_train) != ncol(x_explain)) stop("`x_train` and `x_explain` have different number of features.")
+  if (k <= 0 || k > nrow(x_train)) stop("`k` should be between 1 and the number of features.")
+
   # Step 1: Compute principal components for x_train
   pca_train <- prcomp(x_train, center = TRUE, scale. = scale.)
 
   # Step 2: Apply the transformation to x_explain
   x_explain_pca <- predict(pca_train, newdata = x_explain)
 
-  # Transformation back is influenced by if we used scaling or not.
-  if (scale.) {
-    # Step 3: Set all principal components except the first "k" principal components to zero
-    x_explain_pca_k <- x_explain_pca
-    x_explain_pca_k[, -(1:k)] = 0
+  # Step 3: Use the inverse transformation to go back to the original space
+  aux_pca_scale = if (any(pca_train$scale == FALSE)) rep(1, ncol(pca_train$x)) else pca_train$scale
+  x_explain_pca_k <- x_explain_pca
+  x_explain_pca_k[, -(1:k)] = 0
+  x_explain_reconstructed = t(t(x_explain_pca_k %*% t(pca_train$rotation)) * aux_pca_scale + pca_train$center)
 
-    # Step 4: Invert the transformations back to the original variable space
-    x_explain_reconstructed = t(t(x_explain_pca_k %*% t(pca_train$rotation)) * pca_train$scale + pca_train$center)
+  # NOTE: An alternative to the method above.
+  # See "https://stackoverflow.com/questions/29783790/how-to-reverse-pca-in-prcomp-to-get-original-data".
+  # scalling.matrix <- matrix(rep(pca_train$scale, nrow(x_explain)), ncol = ncol(x_explain), byrow = TRUE)
+  # centering.matrix <- matrix(rep(pca_train$center, nrow(x_explain)), ncol = ncol(x_explain), byrow = TRUE)
+  # x_explain_reconstructed2  = ((x_explain_pca_k %*% solve(pca_train$rotation)) * scalling.matrix) + centering.matrix
+  # max(abs(x_explain_reconstructed - x_explain_reconstructed2))
 
-    # NOTE: An alternative to the method above.
-    # See "https://stackoverflow.com/questions/29783790/how-to-reverse-pca-in-prcomp-to-get-original-data".
-    # scalling.matrix <- matrix(rep(pca_train$scale, nrow(x_explain)), ncol = ncol(x_explain), byrow = TRUE)
-    # centering.matrix <- matrix(rep(pca_train$center, nrow(x_explain)), ncol = ncol(x_explain), byrow = TRUE)
-    # x_explain_reconstructed2  = ((x_explain_pca_k %*% solve(pca_train$rotation)) * scalling.matrix) + centering.matrix
-    # max(abs(x_explain_reconstructed - x_explain_reconstructed2))
-
-  } else {
-    # Step 3: Extract the first "k" principal components
-    x_explain_pca_k <- x_explain_pca[, 1:k]
-
-    # Step 4: Invert the transformations back to the original variable space
-    x_explain_reconstructed <- t(t(x_explain_pca_k %*% t(pca_train$rotation[, 1:k])) + pca_train$center)
-
-    # NOTE: An alternative to the method above. Give equal results
-    # sweep(x_explain_pca_k %*% t(pca_train$rotation[, 1:k]), 2, pca_train$center, "+")
-  }
-
-  # Step 5: Compute a measure for how close x_explain_reconstructed is to x_explain
+  # Step 4: Compute a measure for how close x_explain_reconstructed is to x_explain
   reconstruction_error <- sqrt(sum((x_explain_reconstructed - x_explain)^2) / length(x_explain))
 
   # Return the results
@@ -150,6 +168,10 @@ compute_and_compare_new <- function(x_train, x_explain, k, scale. = FALSE) {
 
 
 compute_and_compare_old <- function(x_train, x_explain, k, scale. = FALSE) {
+  # Step 0: tests
+  if (ncol(x_train) != ncol(x_explain)) stop("`x_train` and `x_explain` have different number of features.")
+  if (k <= 0 || k > nrow(x_train)) stop("`k` should be between 1 and the number of features.")
+
   # Step 1: Compute principal components for x_train
   pca_train <- prcomp(x_train, center = TRUE, scale. = scale.)
 
@@ -195,8 +217,12 @@ compute_and_compare_old <- function(x_train, x_explain, k, scale. = FALSE) {
   ))
 }
 
-sapply(1:3, function(k) compute_and_compare(x_train, x_explain, k = k, scale. = TRUE)$reconstruction_error)
-sapply(1:3, function(k) compute_and_compare(x_train, x_explain, k = k, scale. = FALSE)$reconstruction_error)
+sapply(1:3, function(k) compute_and_compare_old(x_train, x_explain, k = k, scale. = TRUE)$reconstruction_error)
+sapply(1:3, function(k) compute_and_compare_old(x_train, x_explain, k = k, scale. = FALSE)$reconstruction_error)
+
+sapply(1:3, function(k) compute_and_compare_new(x_train, x_explain, k = k, scale. = TRUE)$reconstruction_error)
+sapply(1:3, function(k) compute_and_compare_new(x_train, x_explain, k = k, scale. = FALSE)$reconstruction_error)
+
 
 
 
