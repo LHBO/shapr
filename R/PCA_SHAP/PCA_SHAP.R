@@ -155,9 +155,7 @@ explanation_PCA = explain(
   pca_rotation = pca_rotation,
   pca_scale = pca_scale,
   pca_center = pca_center,
-  plot_ggpairs = TRUE,
-  plot_ggpairs_n_explicands = 10,
-  plot_ggpairs_id_combination = c(2),
+  plot_ggpairs = FALSE,
   keep_samp_for_vS = TRUE)
 
 
