@@ -79,7 +79,7 @@ library(data.table)
 library(progressr)
 suppressMessages(remotes::install_github("LHBO/shapr", ref = "Lars/PCA_SHAP"))
 library(shapr)
-#devtools::load_all(".")
+# devtools::load_all(".")
 ```
 
 
@@ -89,15 +89,15 @@ We first set the parameters of our simulation experiment.
 set.seed(123)
 
 # Parameters
-n_train <- 10000    # Number of training samples
-n_explain <- 1000   # Number of explicands
-n_features <- 3     # Number of features
+n_train <- 10000 # Number of training samples
+n_explain <- 1000 # Number of explicands
+n_features <- 3 # Number of features
 
 # Mean and covariance matrix for the multivariate Gaussian distribution
 mean_vector <- rep(0, n_features)
-rho = 0.75
-cov_matrix = matrix(rho, nrow = n_features, ncol = n_features)
-diag(cov_matrix) = 1
+rho <- 0.75
+cov_matrix <- matrix(rho, nrow = n_features, ncol = n_features)
+diag(cov_matrix) <- 1
 
 # Another option
 # cov_matrix <-
@@ -109,12 +109,12 @@ The we create the multivariate Gaussian distributed features. Both the training 
 # Generate x_train from multivariate Gaussian
 x_train <- MASS::mvrnorm(n = n_train, mu = mean_vector, Sigma = cov_matrix)
 
-# Generate x_explain from multivariate Gaussian with 
+# Generate x_explain from multivariate Gaussian with
 # the same mean and covariance matrix as x_train
 x_explain <- MASS::mvrnorm(n = n_explain, mu = mean_vector, Sigma = cov_matrix)
 
 # Set column names
-colnames(x_train) = colnames(x_explain) = paste0("X", seq(n_features))
+colnames(x_train) <- colnames(x_explain) <- paste0("X", seq(n_features))
 
 # Display x_train and x_explain
 pairs(x_train)
@@ -126,17 +126,17 @@ Time to create the response and the model we want to explain. We let the respons
 features and we let the model we a simple linear regression model.
 ```{r create_model}
 # Create a very simple linear response. To keep it simple, we do not add any noise now.
-beta = c(3, -2, 1)
-y_train = x_train %*% beta
-y_explain = x_explain %*% beta
+beta <- c(3, -2, 1)
+y_train <- x_train %*% beta
+y_explain <- x_explain %*% beta
 
 # Make data tables out of the training and test features + response
-data_train = as.data.table(cbind(y_train, x_train))
-data_explain = as.data.table(cbind(y_explain, x_explain))
-colnames(data_train) = colnames(data_explain) = c("y", paste0("X", seq(n_features)))
+data_train <- as.data.table(cbind(y_train, x_train))
+data_explain <- as.data.table(cbind(y_explain, x_explain))
+colnames(data_train) <- colnames(data_explain) <- c("y", paste0("X", seq(n_features)))
 
 # Train a linear model
-model = lm(y ~ ., data = data_train)
+model <- lm(y ~ ., data = data_train)
 ```
 
 
@@ -150,14 +150,14 @@ that the data follows a multivariate Gaussian distribution.
 # progressr::handlers('cli') # requires the 'cli' package
 
 # Explain the model using conditional shapley values
-explanation = explain(
+explanation <- explain(
   model = model,
   x_explain = x_explain,
   x_train = x_train,
   approach = "gaussian",
   n_batches = 5,
   prediction_zero = 0, # Set \phi_0 to be 0 as we only want $M$ dimensional Shapley values
-  n_samples = 2500     # The number of Monte Carlo samples to use
+  n_samples = 2500 # The number of Monte Carlo samples to use
 )
 
 plot(explanation, index_x_explain = 1:6)
@@ -176,7 +176,7 @@ We start by computing the PC for the training data. We see that the PCs are inde
 ```{r pca_train}
 # Compute principal components for x_train
 pca_train <- prcomp(x_train, center = TRUE, scale. = TRUE)
-x_train_pca = pca_train$x
+x_train_pca <- pca_train$x
 
 # Look at some summary to see the importance of each principal component
 summary(pca_train)
@@ -206,7 +206,7 @@ x_explain_pca <- predict(pca_train, newdata = x_explain)
 # Compute PC means and covariance
 # The means should be close to zero, but not exactly as we
 # use the training data transformations
-colMeans(x_explain_pca) 
+colMeans(x_explain_pca)
 cov(x_explain_pca)
 cor(x_explain_pca)
 
@@ -224,19 +224,19 @@ following computations:
 ```{r pca_check}
 # If we are to center or scale the data.
 # REMEMBER TO USE THE SAME AS ABOVE TRUE AND TRUE
-center = TRUE
-scale. = TRUE
+center <- TRUE
+scale. <- TRUE
 
 # Apply the h(x) function on x to get to z
-pca_train = prcomp(x_train, center = center, scale. = scale.)
+pca_train <- prcomp(x_train, center = center, scale. = scale.)
 
 # Extract the rotation matrix and if we centered or not
-pca_rotation = pca_train$rotation
-pca_center = if (any(pca_train$center == FALSE)) rep(0, ncol(pca_train$x)) else pca_train$center
-pca_scale = if (any(pca_train$scale == FALSE)) rep(1, ncol(pca_train$x)) else pca_train$scale
+pca_rotation <- pca_train$rotation
+pca_center <- if (any(pca_train$center == FALSE)) rep(0, ncol(pca_train$x)) else pca_train$center
+pca_scale <- if (any(pca_train$scale == FALSE)) rep(1, ncol(pca_train$x)) else pca_train$scale
 
 # Apply the h^{-1}(z) function on z to get to x
-h_inverse_of_z = t(t(pca_train$x %*% t(pca_rotation)) * pca_scale + pca_center)
+h_inverse_of_z <- t(t(pca_train$x %*% t(pca_rotation)) * pca_scale + pca_center)
 
 # This yields equal results for all combinations of `center` and `scale.`
 all.equal(x_train, h_inverse_of_z)
@@ -262,10 +262,10 @@ For `id_combination = 2`, we see `plot_ggpairs_n_explicands = 10` "lines" in X1,
 ```{r PCA_SHAP_pairs_2}
 # HACK NOW. SHAPR needs column names to match, so we rename PC1 -> X1, PC2 -> X2 and so on.
 # NEED TO FIX THIS IN A FINAL VERSION IF PCA_SHAP WORKS.
-colnames(x_train_pca) = colnames(x_explain_pca) = colnames(x_train)
+colnames(x_train_pca) <- colnames(x_explain_pca) <- colnames(x_train)
 
 # Create the explanations
-explanation_PCA = explain(
+explanation_PCA <- explain(
   model = model,
   x_explain = x_explain_pca,
   x_train = x_train_pca,
@@ -279,12 +279,13 @@ explanation_PCA = explain(
   plot_ggpairs = TRUE,
   plot_ggpairs_n_explicands = 10,
   plot_ggpairs_id_combination = c(2),
-  keep_samp_for_vS = TRUE)
+  keep_samp_for_vS = TRUE
+)
 ```
 
 For `id_combination = 5`, we see `plot_ggpairs_n_explicands = 5` "lines" in X1 and X2, while the last feature is random.
 ```{r PCA_SHAP_pairs_5}
-explanation_PCA = explain(
+explanation_PCA <- explain(
   model = model,
   x_explain = x_explain_pca,
   x_train = x_train_pca,
@@ -298,13 +299,14 @@ explanation_PCA = explain(
   plot_ggpairs = TRUE,
   plot_ggpairs_n_explicands = 10,
   plot_ggpairs_id_combination = c(5),
-  keep_samp_for_vS = TRUE)
+  keep_samp_for_vS = TRUE
+)
 ```
 
 Can also look at all coalitions. Then it is easier to see that we go from something that is independent to having the same 
 form as our original features.
 ```{r PCA_SHAP_pairs_all}
-explanation_PCA = explain(
+explanation_PCA <- explain(
   model = model,
   x_explain = x_explain_pca,
   x_train = x_train_pca,
@@ -318,26 +320,28 @@ explanation_PCA = explain(
   plot_ggpairs = TRUE,
   plot_ggpairs_n_explicands = 10,
   plot_ggpairs_id_combination = NULL,
-  keep_samp_for_vS = TRUE)
+  keep_samp_for_vS = TRUE
+)
 ```
 
 
 Then we skip the plotting and increase `n_samples`. `pairs` is computationally expensive to call when `n_samples` is high.
 
 ```{r PCA_SHAP_pairs_FALSE}
-explanation_PCA = explain(
+explanation_PCA <- explain(
   model = model,
   x_explain = x_explain_pca,
   x_train = x_train_pca,
   approach = "independence", # As we are doing marginal Shapley values
   prediction_zero = 0,
-  n_batches = 1, 
+  n_batches = 1,
   n_samples = 2500,
   pca_rotation = pca_rotation,
   pca_scale = pca_scale,
   pca_center = pca_center,
   plot_ggpairs = FALSE,
-  keep_samp_for_vS = TRUE)
+  keep_samp_for_vS = TRUE
+)
 ```
 
 
@@ -346,13 +350,13 @@ We can now look at the Shapley value in the two set ups and compare them.
 
 ```{r Shap_res1}
 # Phi_x
-shapley_regular = as.matrix(explanation$shapley_values[,-1])
+shapley_regular <- as.matrix(explanation$shapley_values[, -1])
 
 # Phi_z
-shapley_pca = as.matrix(explanation_PCA$shapley_values[,-1])
+shapley_pca <- as.matrix(explanation_PCA$shapley_values[, -1])
 
 # Phi_z transformed to \tilde{Phi}_x using the same transformation as above
-shapley_pca_to_regular = t(t(shapley_pca %*% t(pca_rotation)) * pca_scale + pca_center)
+shapley_pca_to_regular <- t(t(shapley_pca %*% t(pca_rotation)) * pca_scale + pca_center)
 
 # Look at the RMSE between the Shapley values and the largest absolute difference
 sqrt(mean((shapley_pca_to_regular - shapley_regular)^2))
@@ -368,14 +372,14 @@ rowSums(shapley_regular)[1:10]
 rowSums(shapley_pca_to_regular)[1:10]
 
 # Can scale it, but obviously still wrong signs and values
-tmp = sweep(shapley_pca_to_regular, 1, explanation$pred_explain/rowSums(shapley_pca_to_regular), "*")
+tmp <- sweep(shapley_pca_to_regular, 1, explanation$pred_explain / rowSums(shapley_pca_to_regular), "*")
 rowSums(tmp)[1:10]
 explanation$pred_explain[1:10]
 
-shapley_regular[1,]
-tmp[1,]
+shapley_regular[1, ]
+tmp[1, ]
 
-sqrt(mean((tmp- shapley_regular)^2))
+sqrt(mean((tmp - shapley_regular)^2))
 max(abs(tmp - shapley_regular))
 ```
 
@@ -394,23 +398,25 @@ Or we can combine all of them.
 ```{r Shap_res3}
 library(ggplot2)
 library(GGally)
-Shapley_value_results = lapply(list(shapley_pca, shapley_pca_to_regular, shapley_regular), as.data.table)
-names(Shapley_value_results) = c("Phi_z", "Phi_z_to_x", "Phi_x")
-Shapley_value_results = data.table::rbindlist(Shapley_value_results, idcol = "Shapley_type")
+Shapley_value_results <- lapply(list(shapley_pca, shapley_pca_to_regular, shapley_regular), as.data.table)
+names(Shapley_value_results) <- c("Phi_z", "Phi_z_to_x", "Phi_x")
+Shapley_value_results <- data.table::rbindlist(Shapley_value_results, idcol = "Shapley_type")
 GGally::ggpairs(Shapley_value_results,
-                columns = 2:4,
-                title = "Comparing the Shapley values",
-                ggplot2::aes(color = Shapley_type),
-                diag = list(continuous = GGally::wrap("densityDiag", alpha = 0.5)),
-                lower = list(continuous = GGally::wrap("points", alpha = 0.2)))
+  columns = 2:4,
+  title = "Comparing the Shapley values",
+  ggplot2::aes(color = Shapley_type),
+  diag = list(continuous = GGally::wrap("densityDiag", alpha = 0.5)),
+  lower = list(continuous = GGally::wrap("points", alpha = 0.2))
+)
 
 # And plot only with original and the new idea
 GGally::ggpairs(Shapley_value_results[Shapley_type %in% c("Phi_x", "Phi_z_to_x")],
-                columns = 2:4,
-                title = "Comparing the Shapley values",
-                ggplot2::aes(color = Shapley_type),
-                diag = list(continuous = GGally::wrap("densityDiag", alpha = 0.5)),
-                lower = list(continuous = GGally::wrap("points", alpha = 0.2)))
+  columns = 2:4,
+  title = "Comparing the Shapley values",
+  ggplot2::aes(color = Shapley_type),
+  diag = list(continuous = GGally::wrap("densityDiag", alpha = 0.5)),
+  lower = list(continuous = GGally::wrap("points", alpha = 0.2))
+)
 ```
 
 
@@ -418,13 +424,17 @@ We can look at and compare the Shapley value explanations for the first `6` expl
 We get very different explanations. Note that the headers are not correct as only the Shapley values of `explanation_x` 
 sum to the predicted value `pred`. This is NOT true for `explanation_z_to_x`.
 ```{r}
-explanation_z_to_x = explanation
-explanation_z_to_x$shapley_values = cbind(explanation_z_to_x$shapley_values[,"none"], shapley_pca_to_regular)
-plot_SV_several_approaches(explanation_list = list(explanation_x = explanation,
-                                                   #explanation_z = explanation_PCA,
-                                                   explanation_z_to_x = explanation_z_to_x),
-                           do_checks = FALSE, # need to set this to false as plot does not work otherwise when including explanation_z
-                           index_explicands = c(1:6))
+explanation_z_to_x <- explanation
+explanation_z_to_x$shapley_values <- cbind(explanation_z_to_x$shapley_values[, "none"], shapley_pca_to_regular)
+shapr:::plot_SV_several_approaches(
+  explanation_list = list(
+    explanation_x = explanation,
+    # explanation_z = explanation_PCA,
+    explanation_z_to_x = explanation_z_to_x
+  ),
+  do_checks = FALSE, # need to set this to false as plot does not work otherwise when including explanation_z
+  index_explicands = c(1:6)
+)
 ```
 
 
@@ -434,28 +444,26 @@ plot_SV_several_approaches(explanation_list = list(explanation_x = explanation,
 Just me checking that things give the same results:
 
 ```{r trash}
+x_explain_tilde <- t(t(x_explain_pca %*% t(pca_rotation)) * pca_scale + pca_center)
+t(t(as.matrix(explanation_PCA$internal$data$x_explain)[1:10, ] %*% t(pca_rotation)) * pca_scale + pca_center)
+x_explain[1:10, ]
+x_explain_tilde[1:10, ]
+x_explain_pca[1:10, ]
+as.matrix(explanation_PCA$internal$data$x_explain)[1:10, ]
 
-x_explain_tilde = t(t(x_explain_pca %*% t(pca_rotation)) * pca_scale + pca_center)
-t(t(as.matrix(explanation_PCA$internal$data$x_explain)[1:10,] %*% t(pca_rotation)) * pca_scale + pca_center)
-x_explain[1:10,]
-x_explain_tilde[1:10,]
-x_explain_pca[1:10,]
-as.matrix(explanation_PCA$internal$data$x_explain)[1:10,]
-
-predict(model, as.data.table(x_explain[1:10,]))
-predict(model, explanation$internal$data$x_explain[1:10,])
-predict(model, as.data.table(t(t(x_explain_pca %*% t(pca_rotation)) * pca_scale + pca_center))[1:10,])
-predict(model, as.data.table(t(t(as.matrix(explanation_PCA$internal$data$x_explain) %*% t(pca_rotation)) * pca_scale + pca_center))[1:10,])
+predict(model, as.data.table(x_explain[1:10, ]))
+predict(model, explanation$internal$data$x_explain[1:10, ])
+predict(model, as.data.table(t(t(x_explain_pca %*% t(pca_rotation)) * pca_scale + pca_center))[1:10, ])
+predict(model, as.data.table(t(t(as.matrix(explanation_PCA$internal$data$x_explain) %*% t(pca_rotation)) * pca_scale + pca_center))[1:10, ])
 explanation_PCA$pred_explain[1:10]
 explanation$pred_explain[1:10]
 
 max(abs(explanation_PCA$pred_explain - explanation$pred_explain))
 
-x_train_tilde = t(t(x_train_pca %*% t(pca_rotation)) * pca_scale + pca_center)
-x_train[1:10,]
-x_train_tilde[1:10,]
+x_train_tilde <- t(t(x_train_pca %*% t(pca_rotation)) * pca_scale + pca_center)
+x_train[1:10, ]
+x_train_tilde[1:10, ]
 
 rowSums(shapley_pca)[1:10]
 rowSums(shapley_pca_to_regular)[1:10]
 ```
-
