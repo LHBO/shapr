@@ -1,6 +1,8 @@
 # libraries -------------------------------------------------------------------------------------------------------
-library(shapr)
+library(data.table)
 library(progressr)
+# library(shapr)
+devtools::load_all(".")
 
 
 # Setup -----------------------------------------------------------------------------------------------------------
@@ -8,8 +10,8 @@ library(progressr)
 set.seed(123)
 
 # Parameters
-n_train <- 10000    # Number of training samples
-n_explain <- 1000   # Number of explincands
+n_train <- 100000   # Number of training samples
+n_explain <- 1000   # Number of explicands
 n_features <- 3     # Number of features
 
 # Mean and covariance matrix for the multivariate Gaussian distribution
@@ -28,7 +30,7 @@ colnames(x_train) = colnames(x_explain) = paste0("X", seq(n_features))
 
 # Display x_train and x_explain
 pairs(x_train)
-pairs(x_explain)
+pairs(x_explain, main = "hei")
 
 # Create some (very simple linear) response. To keep it simple, we do not add any noise now.
 beta = c(3, -2, 1)
@@ -48,13 +50,12 @@ progressr::handlers(global = TRUE)
 progressr::handlers('cli') # requires the 'cli' package
 
 # Explain the model using conditional shapley values
-explanation = shapr::explain(
+explanation = explain(
   model = model,
   x_explain = x_explain,
   x_train = x_train,
   approach = "gaussian",
   prediction_zero = 0,
-  n_batches = 7,
   n_samples = 1000)
 
 max(abs(rowSums(explanation$shapley_values) - explanation$pred_explain))
@@ -62,7 +63,7 @@ max(abs(rowSums(explanation$shapley_values) - explanation$pred_explain))
 
 # PCA -------------------------------------------------------------------------------------------------------------
 # Compute principal components for x_train
-pca_train <- prcomp(x_train, center = TRUE, scale. = FALSE)
+pca_train <- prcomp(x_train, center = FALSE, scale. = TRUE)
 x_train_pca = pca_train$x
 
 # Look at some summary to see the importance of each principal component
@@ -89,44 +90,154 @@ cov(x_explain_pca)
 k = 3
 
 # Use the inverse transformation to go back to the original space
-aux_pca_scale = if (any(pca_train$scale == FALSE)) rep(1, ncol(pca_train$x)) else pca_train$scale
-x_explain_pca_k <- x_explain_pca
-x_explain_pca_k[, -(1:k)] = 0
-x_explain_reconstructed = t(t(x_explain_pca_k %*% t(pca_train$rotation)) * aux_pca_scale + pca_train$center)
-
-sqrt(sum((x_explain_reconstructed - x_explain)^2) / length(x_explain))
+pca_rotation = pca_train$rotation
+pca_center = if (any(pca_train$center == FALSE)) rep(0, ncol(pca_train$x)) else pca_train$center
+pca_scale = if (any(pca_train$scale == FALSE)) rep(1, ncol(pca_train$x)) else pca_train$scale
 
 
-aux_pca_scale
+pca_train <- prcomp(x_train, center = TRUE, scale. = FALSE)
+pca_train$x
+pca_train$center
+
+center = TRUE
+scale. = TRUE
+means = if (center) colMeans(x_train) else rep(0, ncol(x_train))
+stds = if (scale.) apply(x_train, 2, sd) else rep(1, ncol(x_train))
+pca_train = prcomp(x_train, center = center, scale. = scale.)
+all.equal(sweep(sweep(x_train, 2, means), 2, stds, "/") %*% pca_train$rotation, pca_train$x)
 
 
-x_explain_pca_k2 = x_explain_pca_k
-x_explain_pca_k2[1:n_explain,1] = x_explain_pca_k2[n_explain:1,1]
-
-tmp = t(t(x_explain_pca_k2 %*% t(pca_train$rotation)) * aux_pca_scale + pca_train$center)
-pairs()
-tmp[1,]
-x_explain[1,]
-
-# Now, original_space_x_explain contains the data in the original space
+center = TRUE
+scale. = TRUE
+centers = if (center) colMeans(x_train) else rep(0, ncol(x_train))
+scales = if (scale.) apply(x_train, 2, sd) else rep(1, ncol(x_train))
+pca_train = prcomp(x_train, center = center, scale. = scale.)
+all.equal(x_train, t(t(pca_train$x %*% t(pca_train$rotation)) * scales + centers))
 
 
+center = FALSE
+scale. = FALSE
+pca_train = prcomp(x_train, center = center, scale. = scale.)
+pca_rotation = pca_train$rotation
+pca_center = if (any(pca_train$center == FALSE)) rep(0, ncol(pca_train$x)) else pca_train$center
+pca_scale = if (any(pca_train$scale == FALSE)) rep(1, ncol(pca_train$x)) else pca_train$scale
+all.equal(x_train, t(t(pca_train$x %*% t(pca_rotation)) * pca_scale + pca_center))
 
-explanation_PCA = shapr::explain(
+
+
+# HACK NOW. SHAPR needs column names to match, so we rename PC1 -> X1, PC2 -> X2 and so on.
+# NEED TO FIX THIS IN A FINAL VERSION IF PCA_SHAP WORKS.
+colnames(x_train_pca) = colnames(x_explain_pca) = colnames(x_train)
+
+explanation_PCA = explain(
   model = model,
-  x_explain = x_explain[1:4,],
-  x_train = x_train,
-  approach = "gaussian",
+  x_explain = x_explain_pca,
+  x_train = x_train_pca,
+  approach = "independence",
   prediction_zero = 0,
-  n_batches = 7,
-  n_samples = 10,
+  n_batches = 1,
+  n_samples = 100,
   pca_rotation = pca_train$rotation,
-  pca_scale = aux_pca_scale,
-  pca_center = pca_train$center)
+  pca_scale = pca_scale,
+  pca_center = pca_center,
+  plot_ggpairs = TRUE,
+  plot_ggpairs_n_explicands = 5,
+  keep_samp_for_vS = TRUE)
+
+explanation_PCA = explain(
+  model = model,
+  x_explain = x_explain_pca,
+  x_train = x_train_pca,
+  approach = "independence", # As we are doing marginal Shapley values
+  prediction_zero = 0,
+  n_batches = 1, # One batch as we want to plot the data
+  n_samples = 10,
+  pca_rotation = pca_rotation,
+  pca_scale = pca_scale,
+  pca_center = pca_center,
+  plot_ggpairs = TRUE,
+  plot_ggpairs_n_explicands = 10,
+  plot_ggpairs_id_combination = c(2),
+  keep_samp_for_vS = TRUE)
 
 
-explanation_PCA$internal$parameters
+x_train2 = copy(x_train)
+x_explain2 = copy(x_explain)
+x_train2[,1] = 2*x_train2[,1]
+x_explain2[,1] = 2*x_explain2[,1]
 
+# Make data tables out of the training and test features + response
+data_train2 = as.data.table(cbind(y_train, x_train2))
+data_explain2 = as.data.table(cbind(y_explain, x_explain2))
+colnames(data_train2) = colnames(data_explain2) = c("y", paste0("X", seq(n_features)))
+
+# Train a linear model
+model2 = lm(y ~ ., data = data_train2)
+summary(model2)
+predict(model2, data_train2) - predict(model, data_train)
+predict(model2, data_explain2) - predict(model, data_explain)
+
+explanation2 = explain(
+  model = model2,
+  x_explain = x_explain2,
+  x_train = x_train2,
+  approach = "gaussian",
+  n_batches = 5,
+  prediction_zero = 0, # Set \phi_0 to be 0 as we only want $M$ dimensional Shapley values
+  n_samples = 1000     # The number of Monte Carlo samples to use
+)
+
+explanation$shapley_values
+explanation2$shapley_values
+explanation$shapley_values - explanation2$shapley_values
+
+
+
+explanation_PCA$internal$output$dt_samp_for_vS
+hist(explanation_PCA$internal$output$dt_samp_for_vS$p_hat1)
+hist(y_train)
+
+explanation_PCA$shapley_values
+shapley_pca = as.matrix(explanation_PCA$shapley_values[,-1])
+pca_rotation = pca_train$rotation
+pca_scale = aux_pca_scale
+pca_center = pca_train$center
+
+explanation_PCA$internal$output$dt_samp_for_vS
+
+as.data.table(t(t(tmp %*% t(pca_rotation)) * pca_scale + pca_center))
+
+as.data.table(t(t(tmp %*% t(pca_rotation))))
+
+as.data.table(tmp %*% pca_rotation)
+
+explanation$shapley_values[, -1]
+
+shapley_regular = as.matrix(explanation$shapley_values[,-1])
+shapley_pca = as.matrix(explanation_PCA$shapley_values[,-1])
+shapley_pca_to_regular = t(t(shapley_pca %*% t(pca_rotation)) * pca_scale + pca_center)
+max(abs(shapley_pca_to_regular - shapley_regular))
+sqrt(mean((shapley_pca_to_regular - shapley_regular)^2))
+
+sqrt(sum((shapley_pca_to_regular - shapley_regular)^2) / length(shapley_regular))
+
+Shapley_value_results = lapply(list(shapley_regular, shapley_pca, shapley_pca_to_regular), as.data.table)
+names(Shapley_value_results) = c("Phi_x", "Phi_z", "Phi_z_to_x")
+Shapley_value_results = data.table::rbindlist(Shapley_value_results, idcol = "Shapley_type")
+GGally::ggpairs(Shapley_value_results,
+                columns = 2:4,
+                ggplot2::aes(color = Shapley_type),
+                diag = list(continuous = GGally::wrap("densityDiag", alpha = 0.5)),
+                lower = list(continuous = GGally::wrap("points", alpha = 0.2)))
+
+library(ggplot2)
+library(GGally)
+
+pairs(x_explain)
+pairs(explanation$shapley_values[, -1])
+
+pairs(x_explain_pca)
+pairs(explanation_PCA$shapley_values[, -1])
 
 
 
@@ -226,6 +337,29 @@ sapply(1:3, function(k) compute_and_compare_new(x_train, x_explain, k = k, scale
 
 
 
+predict(model, as.data.table(x_explain)) - explanation$pred_explain
+predict(model, as.data.table(x_explain)) - explanation_PCA$pred_explain
+
+
+# x_explain_pca_k <- x_explain_pca
+# x_explain_pca_k[, -(1:k)] = 0
+# x_explain_reconstructed = t(t(x_explain_pca_k %*% t(pca_train$rotation)) * aux_pca_scale + pca_train$center)
+#
+# sqrt(sum((x_explain_reconstructed - x_explain)^2) / length(x_explain))
+#
+#
+# aux_pca_scale
+#
+#
+# x_explain_pca_k2 = x_explain_pca_k
+# x_explain_pca_k2[1:n_explain,1] = x_explain_pca_k2[n_explain:1,1]
+#
+# tmp = t(t(x_explain_pca_k2 %*% t(pca_train$rotation)) * aux_pca_scale + pca_train$center)
+# pairs()
+# tmp[1,]
+# x_explain[1,]
+
+# Now, original_space_x_explain contains the data in the original space
 
 
 
