@@ -71,9 +71,13 @@ batch_compute_vS <- function(S, internal, model, predict_model, p = NULL) {
   pca_rotation = internal$parameters$pca_rotation
   pca_scale = internal$parameters$pca_scale
   pca_center = internal$parameters$pca_center
+  plot_ggpairs = internal$parameters$plot_ggpairs
+  plot_ggpairs_n_explicands = internal$parameters$plot_ggpairs_n_explicands
+  plot_ggpairs_id_combination = internal$parameters$plot_ggpairs_id_combination
 
   dt <- batch_prepare_vS(S = S, internal = internal) # Make it optional to store and return the dt_list
 
+  ## SHAP PCA --------------------------------------------------------------------------------------------------------
   # add PCA step
   if (any(!is.null(pca_rotation) || !is.null(pca_scale) || !is.null(pca_center))) {
     # We are doing PCA_SHAP
@@ -82,11 +86,24 @@ batch_compute_vS <- function(S, internal, model, predict_model, p = NULL) {
       stop("`pca_rotation`, `pca_scale` and `pca_center` must all be provided.")
     }
 
-    message("WE ARE DOING PCA SHAP")
+    message("Using the PCA-SHAP idea...")
     dt_pca_k = as.matrix(dt[, ..feature_names])
-    if (!is.null(internal$parameters$plot) && isTRUE(internal$parameters$plot)) pairs(dt_pca_k)
+    dt$id_seq = seq(nrow(dt))
+    if (is.null(plot_ggpairs_id_combination)) plot_ggpairs_id_combination = seq(2^internal$parameters$n_features)
+    id_seq = dt[id %in% seq(plot_ggpairs_n_explicands) & id_combination %in% plot_ggpairs_id_combination, id_seq]
+    if (!is.null(plot_ggpairs) && isTRUE(plot_ggpairs)) {
+      if (is.null(plot_ggpairs_n_explicands)) plot_ggpairs_n_explicands = min(10, max(dt$id))
+      pairs(dt_pca_k[id_seq,],
+            main = paste0("Principal component feature space (", plot_ggpairs_n_explicands,
+                          " explicands, id_comb = [", paste(plot_ggpairs_id_combination, collapse = ", "), "])"))
+    }
     dt_original_space = t(t(dt_pca_k %*% t(pca_rotation)) * pca_scale + pca_center)
-    if (!is.null(internal$parameters$plot) && isTRUE(internal$parameters$plot)) pairs(dt_original_space)
+    if (!is.null(plot_ggpairs) && isTRUE(plot_ggpairs)) {
+      if (is.null(plot_ggpairs_n_explicands)) plot_ggpairs_n_explicands = min(10, max(dt$id))
+      pairs(dt_original_space[id_seq,],
+            main = paste0("Original feature space (", plot_ggpairs_n_explicands,
+                          " explicands, id_comb = [", paste(plot_ggpairs_id_combination, collapse = ", "), "])"))
+    }
     dt[, (feature_names) := as.data.table(dt_original_space)]
   }
 
