@@ -426,7 +426,7 @@ sum to the predicted value `pred`. This is NOT true for `explanation_z_to_x`.
 ```{r}
 explanation_z_to_x <- explanation
 explanation_z_to_x$shapley_values <- cbind(explanation_z_to_x$shapley_values[, "none"], shapley_pca_to_regular)
-shapr:::plot_SV_several_approaches(
+shapr::plot_SV_several_approaches(
   explanation_list = list(
     explanation_x = explanation,
     # explanation_z = explanation_PCA,
