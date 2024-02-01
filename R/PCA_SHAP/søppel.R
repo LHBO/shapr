@@ -1,3 +1,5 @@
+
+
 # Define the GG function
 GG <- function(A, B) {
   matrix(c(
