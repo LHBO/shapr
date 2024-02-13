@@ -26,13 +26,13 @@ library(mgcv)
 
 # Parameters ------------------------------------------------------------------------------------------------------
 # Number of features
-M = 6
+M = 7
 
 # Mean of the multivariate Gaussian distribution
 mu = rep(0, times = M)
 
 # Create the covariance matrix
-rho = 0.3
+rho = 0.8
 sigma = matrix(rho, ncol = M, nrow = M) # Old
 for (i in seq(1, M-1)) {
   for (j in seq(i+1, M))
@@ -62,6 +62,16 @@ response_train = unlist(2 + 1*data_train[,1] + 0*data_train[,2] - 3*data_train[,
                           1*data_train[,4] + 1.5*data_train[,5]*data_train[,6]^2)
 response_test = unlist(2 + 1*data_test[,1] + 0*data_test[,2] - 3*data_test[,3] -
                          1*data_test[,4] + 1.5*data_test[,5]*data_test[,6]^2)
+
+response_train = unlist(2 + 1*data_train[,1] + 0.25*data_train[,2] - 3*data_train[,3] -
+                          1*data_train[,4] + 1.5*data_train[,5] + 1*data_train[,6]^2 - 0.5*data_train[,7])
+
+
+response_test = unlist(2 + 1*data_test[,1] + 0.25*data_test[,2] - 3*data_test[,3] -
+                         1*data_test[,4] + 1.5*data_test[,5] + 1*data_test[,6]^2 - 0.5*data_test[,7])
+
+
+
 
 # Just take a look at pairs plot of the data and some histograms
 pairs(data_train)
@@ -100,7 +110,7 @@ data_test_with_response  = copy(data_test)[,y := response_test]
 # mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)
 
 # Our final GAM model
-predictive_model = gam(y ~ s(X1) + s(X2) + s(X3) + s(X4) + s(X5) + s(X6) + ti(X5, X6), data = data_train_with_response)
+predictive_model = gam(y ~ s(X1) + s(X2) + s(X3) + s(X4) + s(X5) + s(X6) + s(X7), data = data_train_with_response)
 predictive_model
 
 # Look at the accuracy of the model
@@ -129,6 +139,8 @@ prediction_zero = mean(response_train)
 
 # True Shapley ----------------------------------------------------------------------------------------------------
 # Create the true Shapley value explanations
+library(future)
+future::plan(multisession, workers = 2)
 true_explanations <- explain(
   model = predictive_model,
   x_explain = data_test,
@@ -137,7 +149,7 @@ true_explanations <- explain(
   prediction_zero = prediction_zero,
   keep_samp_for_vS = TRUE,
   n_combinations = 2^M,
-  n_samples = 2000,
+  n_samples = 2500,
   n_batches = 50,
   gaussian.mu = mu,
   gaussian.cov_mat = sigma,
@@ -156,7 +168,7 @@ true_explanations =
 n_repetitions = 10
 
 # The number of MC samples
-n_samples = 100
+n_samples = 250
 
 # The number of batches
 n_batches = 10
@@ -165,10 +177,10 @@ n_batches = 10
 seed_start_value = 2
 
 # First value where the coalition/combination sampling scheme has an effect, (first two are empty and full coalitions)
-n_combinations_from = 2
+n_combinations_from = 4
 
 # We increase by one each time
-n_combinations_increment = 2
+n_combinations_increment = 4
 
 # Path to save the results temporary
 tmp_save_path = paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho,
@@ -176,10 +188,10 @@ tmp_save_path = paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M",
 
 # Which coalition/combination sampling schemes to use
 sampling_methods = c("unique",
-                     "unique_paired",
-                     "non_unique",
                      "unique_SW",
+                     "unique_paired",
                      "unique_paired_SW",
+                     "non_unique",
                      "non_unique_SW",
                      "chronological_order_increasing",
                      "chronological_order_decreasing",
@@ -188,11 +200,10 @@ sampling_methods = c("unique",
                      "smallest_weights",
                      "smallest_weights_combination_size")
 
-
 # Compute the repeated estimated Shapley values using the different sampling methods
 repeated_estimated_explanations = repeated_explanations(
   model = predictive_model,
-  x_explain = data_test[1:100,],
+  x_explain = data_test,
   x_train = data_train,
   approach = "gaussian",
   gaussian.cov_mat = sigma,
@@ -217,13 +228,13 @@ repeated_estimated_explanations =
 
 
 
+
 # Result figures --------------------------------------------------------------------------------------------------
-true_explanations2 = true_explanations
-true_explanations$shapley_values = true_explanations$shapley_values[1:100,]
+# true_explanations2 = true_explanations
+# true_explanations$shapley_values = true_explanations$shapley_values[1:100,]
 
 
-result_figures = aggregate_and_plot_results(repeated_explanations_list =
-                                              repeated_estimated_explanations,
+result_figures = aggregate_and_plot_results(repeated_explanations_list = repeated_estimated_explanations,
                                             true_explanations = true_explanations,
                                             evaluation_criterion = "MAE",
                                             plot_figures = FALSE,
@@ -258,7 +269,7 @@ aggregate_and_plot_results(repeated_explanations_list =
 
 # Smarter to add the coalitions based on larger Shapley kernel weights
 # Here we see that also adding those with small are better,
-# but I think that is a conicidence for this particular setup.
+# but I think that is a coincidence for this particular setup.
 aggregate_and_plot_results(repeated_explanations_list =
                              repeated_estimated_explanations[c("unique",
                                                                "unique_paired",
