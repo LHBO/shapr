@@ -84,8 +84,8 @@ message(paste0(
   "\nrho = [", paste(rhos, collapse = ", "), "]",
   "\nn_train = ", n_train,
   "\nn_test = ", n_test,
-  "\nbeta = [", paste(betas, collapse = ", "), "]\n",
-  "\nevaluation_criterion" = evaluation_criterion))
+  "\nbeta = [", paste(betas, collapse = ", "), "]",
+  "\nevaluation_criterion = ", evaluation_criterion))
 
 
 
