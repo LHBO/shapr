@@ -182,8 +182,11 @@ if (do_figures) {
 
 
 
+
+
 # All run setups --------------------------------------------------------------------------------------------------
 stop()
+
 files_in_dir = list.files(folder_save)
 relevant_files_in_dir = files_in_dir[grepl("dt_M.E.rds", files_in_dir)]
 relevant_files_full_path = file.path(folder_save, relevant_files_in_dir)
@@ -212,7 +215,7 @@ figures_list = lapply(relevant_files, function(save_file){
                brewer_direction = 1,
                flip_coordinates = FALSE,
                legend_position = NULL,
-               scale_y_log10 = FALSE,
+               scale_y_log10 = TRUE,
                scale_x_log10 = FALSE,
                n.dodge = 2,
                plot_figures = FALSE)})

@@ -5,6 +5,35 @@ library(future)
 library(future.apply)
 
 # Functions -------------------------------------------------------------------------------------------------------
+## File functions --------------------------------------------------------------------------------------------------
+#' Function that extract the setup parameters from the file name
+#'
+#' @description
+#' It looks for the patter "M_INT_n_train_INT_n_test_INT_rho_NUMERIC_betas_NUMERIC_ARRAY_dt_STRING\\.rds"
+#'
+#' @param input_string string. The filename of the file containing the results.
+#'
+#' @return List of the the extracted values
+#' @export
+extract_parameters_from_path <- function(input_string) {
+  pattern <- "M_(\\d+)_n_train_(\\d+)_n_test_(\\d+)_rho_([0-9.]+)_betas_((?:-?\\d+(?:\\.\\d+)?_?)+)_dt_(MAE|MSE)\\.rds"
+  match_result <- regexec(pattern, input_string)
+
+  if (any(match_result[[1]] == -1)) stop("Pattern not found in the input string.")
+
+  M <- as.numeric(regmatches(input_string, match_result)[[1]][2])
+  n_train <- as.numeric(regmatches(input_string, match_result)[[1]][3])
+  n_test <- as.numeric(regmatches(input_string, match_result)[[1]][4])
+  rho <- as.numeric(regmatches(input_string, match_result)[[1]][5])
+  betas_str <- regmatches(input_string, match_result)[[1]][6]
+  betas <- as.numeric(strsplit(betas_str, "_")[[1]])
+  evaluation_criterion <- regmatches(input_string, match_result)[[1]][7]
+
+  return(list(M = M, n_train = n_train, n_test = n_test, rho = rho, betas_str = betas_str,
+              betas = betas, evaluation_criterion = evaluation_criterion))
+}
+
+## Evaluation metrics ----------------------------------------------------------------------------------------------
 #' Compute MAE and MSE errors
 #'
 #' @description
@@ -66,6 +95,12 @@ compute_MAE_MSE_fast = function(mat_1, mat_2, evaluation_criterion = c("MSE", "M
   if (evaluation_criterion == "MSE") mean((mat_1[,-1] - mat_2[,-1])^2) else mean(abs(mat_1[,-1] - mat_2[,-1]))
 }
 
+
+
+
+
+
+## Shapley value functions ------------------------------------------------------------------------------------------
 
 #' Repeatedly explain the output of ML models with conditional Shapley values
 #'
@@ -336,7 +371,7 @@ repeated_explanations = function(model,
 
       # Get the `specific_coalition_set`.
       #specific_coalition_set = pilot_estimates_paired_order(explanation_precomputed_vS, plot_figures = TRUE)
-      specific_coalition_set = pilot_estimates_coalition_inclusion_order(explanation_precomputed_vS)
+      specific_coalition_set = pilot_estimates_coal_order(explanation_precomputed_vS)
 
       # TODO: REMOVE THIS PRINTOUT
       # print(specific_coalition_set)
@@ -497,9 +532,6 @@ repeated_explanations = function(model,
   # return the results
   return(result_list)
 }
-
-
-
 
 
 #' Title
@@ -701,7 +733,7 @@ future_compute_SV_function = function(compute_SV_function,
 
 
 
-
+## Gaussian-LM functions-----------------------------------------------------------------------------------------------
 #' Compute more precise Shapley values for linear model with the Gaussian approach
 #'
 #' @param explanation list. The returned object from the [shapr::explain()] function.
@@ -840,7 +872,602 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
 }
 
 
-#' Aggregate the results of repeated explanations and plot them
+
+
+
+
+
+
+
+
+
+
+
+
+## Pilot estimates functions ---------------------------------------------------------------------------------------
+
+#' Extract best coalition order with highest absolute importance
+#'
+#' @param explanation A [shapr] explanation object with all coalitions. Should be "true_explanations" in the beggining.
+#' But later these will be the pilot estimates from e.g. a liner model.
+#' @param plot_figures Boolean. If we are to plot figures.
+#' @param strategies
+#' @param always_empty_and_grand_coalitions_first
+#'
+#' @return array with the indices of the coalitions that we should add in decreasing importance order.
+#' I.e., the first one is the most important.
+#' @export
+#'
+#' @examples
+pilot_estimates_coal_order = function(explanation,
+                                      strategies = c("paired_coalitions",
+                                                     "single_mean_coalition_effect",
+                                                     "single_median_coalition_effect",
+                                                     "single_mean_ranking_over_each_test_obs",
+                                                     "single_median_ranking_over_each_test_obs"),
+                                      plot_figures = FALSE,
+                                      always_empty_and_grand_coalitions_first = TRUE) {
+
+  # Check for valid strategies
+  strategies = match.arg(strategies, several.ok = TRUE)
+
+  # Extract the internal list from the explanation object
+  internal = explanation$internal
+
+  # Get the number of features
+  M = internal$parameters$n_features
+
+  if (2^M != internal$parameters$n_combinations) {
+    stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
+    # TODO: we can later remove this if we do not need this as we can rather return the features to use
+    # internal$objects$X$features instead of using the index of these.
+  }
+
+  # We extract the W and S matrices
+  W = explanation$internal$objects$W
+  S = explanation$internal$objects$S
+
+  # Extract the v(S) elements
+  dt_vS = explanation$internal$output$dt_vS
+
+  # Compute the R's. I.e., W * v(s), but without adding them together.
+  # So not a matrix product, but rather an element wise multiplication.
+  # Do it for all test observations and store the results in a list.
+  R_matrix_list_all_individuals =
+    lapply(seq(ncol(dt_vS[, -"id_combination"])),
+           function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
+
+  # List to store the results to be returned
+  return_list = list()
+
+  if ("paired_coalitions" %in% strategies) {
+    # We are doing the paired version
+    # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+    # then the second largest and so on.
+    alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
+
+    # Change the order of the coalitions such that we have S (odd indices) and then S_bar (even indices),
+    # for all possible coalitions. Note that we add 1 as we exclude the phi0.
+    R_matrix_paired_order_list =
+      lapply(seq(M), function (investigate_feature_number) {
+        sapply(R_matrix_list_all_individuals,
+               "[",
+               investigate_feature_number + 1, )[alternating_indices,]
+      })
+
+    # We compute the difference between the S and S_bar entries. Odd minus even indices.
+    R_matrix_paired_order_diff_list =
+      lapply(seq_along(R_matrix_paired_order_list),
+             function (feature_idx) {
+               R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
+                 R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+             })
+
+    # Convert it to a data.table
+    R_dt_paired_order_diff =
+      data.table::rbindlist(
+        lapply(seq_along(R_matrix_paired_order_diff_list),
+               function (feature_idx) {
+                 data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                                        D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
+               }),
+        idcol = "id_feature",
+        use.names = TRUE
+      )
+
+    # Change the column names
+    data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+
+    # Go from wide data.table to long data.table format
+    R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
+                                                   id.vars = c("id_feature", "id"),
+                                                   value.name = "Rij",
+                                                   variable.name = "id_combination_diff",
+                                                   variable.factor = TRUE)
+
+    # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
+    # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
+    R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
+                                           mean_abs_Rij = mean(abs(Rij))),
+                                       by = list(id_combination_diff, id_feature)]
+
+    # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
+    # we also add the index of the coalitions that are included in the paired coalitions.
+    R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
+                 id_combination_S = seq(1, 2^(M-1)),
+                 id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
+         by = id_feature]
+
+    # ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
+    #   ggplot2::geom_bar(position = "dodge", stat = "identity") +
+    #   ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
+
+    # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
+    # mean for each paired coalition. This is thus a value average over all features and test observations.
+    R_dt_aggregated = R_dt[, lapply(.SD, mean),
+                           .SDcols = c("mean_Rij", "mean_abs_Rij"),
+                           by = id_combination_diff][, data.table::setnames(.SD,
+                                                                            c("mean_Rij", "mean_abs_Rij"),
+                                                                            c("mean_R", "mean_abs_R"))]
+
+    # Add order values for the aggregated values. A low value means that it is how high importance.
+    # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
+    R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+                            mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+
+    # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
+    R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
+                                      on = "id_combination_diff"]
+
+    # Extract which order we should add the paired coalitions based on the mean_abs_R score
+    paired_coalitions = c(t(as.matrix(data.table::setorder(
+      R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+      mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+
+    return_list$paired_coalitions = paired_coalitions
+  }
+
+  # Check if doing any of the single methods
+  if (any(c("single_mean_coalition_effect",
+            "single_median_coalition_effect",
+            "single_mean_ranking_over_each_test_obs",
+            "single_median_ranking_over_each_test_obs") %in% strategies)) {
+    # We are at least doing one of these
+
+    # Note that we add 1 as we exclude the phi0, and empty place after "," is intentional.
+    R_matrix_list = lapply(seq(M), function (feature_idx) sapply(R_matrix_list_all_individuals, "[", feature_idx + 1, ))
+
+    # Convert it to a data.table
+    R_dt_tmp = data.table::rbindlist(
+      lapply(seq(M), function (feature_idx)
+        data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+                               t(R_matrix_list[[feature_idx]]))
+      ),
+      idcol = "id_feature",
+      use.names = TRUE
+    )
+
+    # Change the column names
+    data.table::setnames(R_dt_tmp, c("id_feature", "id", seq(2^M)))
+
+    # Go from wide data.table to long data.table format
+    R_dt_long = data.table::melt(R_dt_tmp,
+                                 id.vars = c("id", "id_feature"),
+                                 value.name = "Rij",
+                                 variable.name = "id_combination",
+                                 variable.factor = TRUE)
+
+    # Reorder the columns and set the keys
+    data.table::setcolorder(R_dt_long, c("id", "id_combination", "id_feature", "Rij"))
+    data.table::setkeyv(R_dt_long, c("id", "id_combination", "id_feature"))
+
+    # Compute the absolute value of Rij
+    R_dt_long[, abs_Rij := abs(Rij)]
+
+    # For each id and id_feature combination we compute the ordering of the absolute Rij coming from each coalition.
+    # The ordering goes from 1 to 2^M, where a large a low value means that it has a high Rij value.
+    # I.e., ordering 1 means that that coalition has the highest Rij value for that id and id_feature.
+    R_dt_long[, `:=` (order_abs_Rij = order(order(abs_Rij, decreasing = TRUE), decreasing = FALSE)),
+              by = list(id, id_feature)]
+
+    # Then we average the abs_Rij scores over the features for each test observation and coalition.
+    # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to
+    # `n_id * n_id_combination`.
+    R_dt_long_agg_V1 = R_dt_long[, list(avg_abs_Rij = mean(abs_Rij)), by = list(id, id_combination)]
+
+    # Compute the order of avg_abs_Rij for the different test observations.
+    R_dt_long_agg_V1[, `:=` (order_avg_abs_Rij = order(order(avg_abs_Rij, decreasing = TRUE), decreasing = FALSE)),
+                     by = list(id)]
+
+    # Compute the mean ordering over all test observations
+    single_mean_ranking_over_each_test_obs =
+      as.integer(R_dt_long_agg_V1[, mean(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
+    single_median_ranking_over_each_test_obs =
+      as.integer(R_dt_long_agg_V1[, median(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
+
+    # Then we average the abs_Rij scores over the features and test observations for each coalition.
+    # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to `n_id_combination`.
+    R_dt_long_agg_V2 = R_dt_long[, list(mean_abs_Rij = mean(abs_Rij),
+                                        median_abs_Rij = median(abs_Rij)),
+                                 by = list(id_combination)]
+    single_mean_coalition_effect = order(R_dt_long_agg_V2$mean_abs_Rij, decreasing = TRUE)
+    single_median_coalition_effect = order(R_dt_long_agg_V2$median_abs_Rij, decreasing = TRUE)
+
+    # Add the results to the return list
+    if ("single_mean_coalition_effect" %in% strategies) {
+      return_list$single_mean_coalition_effect = single_mean_coalition_effect
+    }
+    if ("single_median_coalition_effect" %in% strategies) {
+      return_list$single_median_coalition_effect = single_median_coalition_effect
+    }
+    if ("single_mean_ranking_over_each_test_obs" %in% strategies) {
+      return_list$single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs
+    }
+    if ("single_median_ranking_over_each_test_obs" %in% strategies) {
+      return_list$single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs
+    }
+
+    # Some plots to look at the different orderings
+    # matplot(t(data.table::dcast(R_dt_long_agg_V1,
+    #                             id ~ id_combination,
+    #                             value.var = "order_avg_abs_Rij")[,-"id"])[,1:10], type = "l", lty = 1)
+    # points(single_mean_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 1)
+    # points(single_median_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 2)
+    # points(single_mean_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 3)
+    # points(single_median_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 4)
+
+    # dt_temp = melt(data.table::data.table(id = factor(seq(2^M)),
+    #                             single_mean_coalition_effect = single_mean_coalition_effect,
+    #                             single_median_coalition_effect = single_median_coalition_effect,
+    #                             single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs,
+    #                             single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs),
+    #      id.vars = "id",
+    #      measure.vars =
+    #        c("single_mean_coalition_effect",
+    #        "single_median_coalition_effect",
+    #        "single_mean_ranking_over_each_test_obs",
+    #        "single_median_ranking_over_each_test_obs"),
+    #      value.name = "ranking",
+    #      variable.name = "strategy",
+    #      variable.factor = TRUE)
+    #
+    #   ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:100)],
+    #                   aes(x = id, y = ranking, fill = strategy)) +
+    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+  }
+
+  # Reorder the coalition orders such that the empty and grand coalitions are included as the first and second
+  # coalitions. I.e., such that 1 and 2^M are the two first entries.
+  if (always_empty_and_grand_coalitions_first) {
+    return_list =
+      lapply(return_list, function(coalition_order) c(1, 2^M, coalition_order[!(coalition_order %in% c(1, 2^M))]))
+  }
+
+  # Plot some figures if requested by the user
+  if (plot_figures) {
+    dt_temp = data.table::melt(cbind(id = factor(seq(2^M)), data.table::as.data.table(return_list)),
+                               id.vars = "id",
+                               value.name = "ranking",
+                               variable.name = "strategy",
+                               variable.factor = TRUE)
+
+    ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:20)],
+                    aes(x = id, y = ranking, fill = strategy)) +
+      ggplot2::geom_bar(position = "dodge", stat = "identity")
+
+    GGally::ggpairs(data.table::as.data.table(return_list)) +
+      labs(x = "Ordering (lower means more important)",
+           y = "Ordering (lower means more important)")
+  }
+
+  # Return the order of paired coalitions should be added
+  return(return_list)
+}
+
+
+#' Extract best paired coalition order
+#'
+#' @param explanation A [shapr] explanation object with all coalitions. Should be "true_explanations".
+#' @param plot_figures Boolean. If we are to plot figures.
+#'
+#' @return array with the indices of the coalitions that we should add in decreasing importance order.
+#' I.e., the first one is the most important.
+#' @export
+#'
+#' @examples
+# pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
+#
+#   # Extract the internal list from the explanation object
+#   internal = explanation$internal
+#
+#   # Get the number of features
+#   M = internal$parameters$n_features
+#
+#   if (2^M != internal$parameters$n_combinations) {
+#     stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
+#     # TODO: we can later remove this if we do not need this as we can rather return the features to use
+#     # internal$objects$X$features instead of using the index of these.
+#   }
+#
+#   # We extract the W and S matrices
+#   W = explanation$internal$objects$W
+#   S = explanation$internal$objects$S
+#
+#   # Extract the v(S) elements
+#   dt_vS = explanation$internal$output$dt_vS
+#
+#   # Compute the R's. I.e., W * v(s), but without adding them together.
+#   # So not a matrix product, but rather an element wise multiplication.
+#   # Do it for all test observations and store the results in a list.
+#   R_matrix_list_all_individuals =
+#     lapply(seq(ncol(dt_vS[, -"id_combination"])),
+#            function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
+#
+#   # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+#   # then the second largest and so on.
+#   alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
+#
+#   # Change the order of the coalitions such that we have S (odd indices) and
+#   # then S_bar (even indices), for all possible coalitions.
+#   # Note that we add 1 as we exclude the phi0.
+#   R_matrix_paired_order_list =
+#     lapply(seq(M), function (investigate_feature_number) {
+#       sapply(R_matrix_list_all_individuals,
+#              "[",
+#              investigate_feature_number + 1, )[alternating_indices,]
+#     })
+#
+#   # We compute the difference between the S and S_bar entries. Odd minus even indices.
+#   R_matrix_paired_order_diff_list =
+#     lapply(seq_along(R_matrix_paired_order_list),
+#            function (feature_idx) {
+#              R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
+#                R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+#            })
+#
+#   # Convert it to a data.table
+#   R_dt_paired_order_diff =
+#     data.table::rbindlist(
+#       lapply(seq_along(R_matrix_paired_order_diff_list),
+#              function (feature_idx) {
+#                data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+#                                       D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
+#              }),
+#       idcol = "id_feature",
+#       use.names = TRUE
+#     )
+#
+#   # Change the column names
+#   data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+#
+#   # Go from wide data.table to long data.table format
+#   R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
+#                                                  id.vars = c("id_feature", "id"),
+#                                                  value.name = "Rij",
+#                                                  variable.name = "id_combination_diff",
+#                                                  variable.factor = TRUE)
+#
+#   # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
+#   # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
+#   R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
+#                                          mean_abs_Rij = mean(abs(Rij))),
+#                                      by = list(id_combination_diff, id_feature)]
+#
+#   # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
+#   # we also add the index of the coalitions that are included in the paired coalitions.
+#   R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
+#                id_combination_S = seq(1, 2^(M-1)),
+#                id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
+#        by = id_feature]
+#
+#
+#   if (plot_figures) {
+#     ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
+#       ggplot2::geom_bar(position = "dodge", stat = "identity") +
+#       ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
+#   }
+#
+#   # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
+#   # mean for each paired coalition. This is thus a value average over all features and test observations.
+#   R_dt_aggregated = R_dt[, lapply(.SD, mean),
+#                          .SDcols = c("mean_Rij", "mean_abs_Rij"),
+#                          by = id_combination_diff][, data.table::setnames(.SD,
+#                                                                           c("mean_Rij", "mean_abs_Rij"),
+#                                                                           c("mean_R", "mean_abs_R"))]
+#
+#   # Add order values for the aggreagated values. A low value means that it is how high importance.
+#   # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
+#   R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+#                           mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+#
+#   # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
+#   R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
+#                                     on = "id_combination_diff"]
+#
+#   # Extract which order we should add the paired coalitions based on the mean_abs_R score
+#   specific_coalition_set = c(t(as.matrix(data.table::setorder(
+#     R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+#     mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+#
+#
+#   # Return the order of paired coalitions should be added
+#   return(specific_coalition_set)
+# }
+
+
+## Aggregation functions -------------------------------------------------------------------------------------------
+#' Compute the aggregated results for a simulation
+#'
+#' @param M integer. The number of features
+#' @param rhos Numeric array. The correlations.
+#' @param n_train The number of training observations
+#' @param n_test The number of test observations (explicands)
+#' @param betas Numeric array. Vector containing the betas using in the setup.
+#' @param folder_save String. Path to where the files are stored.
+#' @param memory_efficient Boolean. If we are to remove all data except from the Shapley values from the objects.
+#' @param max_repetitions Integer. If we only want to use a certain amount of repetitions.
+#' @param save_results Boolean. If we should save the aggregated results in the `folder_save` folder.
+#' @param evaluation_criterion String. If we are to compute the MSE or MAE between
+#' the true and estimated Shapley values.
+#' @param level Numeric. The level of the empirical CI.
+#' @param n_workers Integer. Number of cores to compute the evaluation criterion results.
+#' Only in the aggregation step. Recommend using 1 due to large objects having to be loaded in and out of memory.
+#' So it is/can be slower with several cores.
+#' @param objects_to_return String. What objects to return. One or several of "aggregated_results", "true_Shapley",
+#' "repeated_Shapley".
+#'
+#' @return Depends on `objects_to_return`.
+#' @export
+combine_explanation_results = function(M,
+                                       rhos,
+                                       n_train,
+                                       n_test,
+                                       betas,
+                                       folder_save,
+                                       max_repetitions = NULL,
+                                       memory_efficient = TRUE,
+                                       save_results = TRUE,
+                                       evaluation_criterion = c("MAE", "MSE"),
+                                       level = 0.95,
+                                       n_workers = 1,
+                                       objects_to_return = "aggregated_results") {
+
+  # Check some of the inputs
+  if (length(betas) != M + 1) stop("Incorrect number of `betas` compared to `M`.")
+  evaluation_criterion = match.arg(evaluation_criterion)
+  objects_to_return = match.arg(arg = objects_to_return,
+                                choices = c("aggregated_results",
+                                            "true_Shapley",
+                                            "repeated_Shapley"),
+                                several.ok = TRUE)
+
+  # Result lists. They can be quite large and take up many GBs of memory for large M
+  true_explanations_list = list()
+  repeated_explanations_list = list()
+  aggregated_results_list = list()
+  return_list = list()
+
+  # Iterate over the rhos
+  rho_idx = 1
+  for (rho_idx in seq_along(rhos)) {
+    if (rho_idx > 1) cat(sprintf("\n")) # White space from previous iteration
+
+    # Get the current rho
+    rho = rhos[rho_idx]
+
+    # Update the result list
+    repeated_explanations_list[[paste0("rho_", rho)]] = list()
+
+    # Make file names
+    file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
+                      paste(as.character(betas), collapse = "_"), sep = "_")
+    save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
+    save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
+
+    #  Find the relevant files in the folder and their repetition numbers/indices
+    files_in_dir = list.files(folder_save)
+    relevant_files_in_dir = files_in_dir[grepl(paste0(file_name, "_estimated_repetition_"), files_in_dir)]
+    relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
+    if (length(relevant_files_in_dir) == 0) {
+      stop("Cannot find any files for the provided paremeters. Looking for file name structures '%d'.", file_name)
+    }
+    relevant_repetitions =
+      sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
+    relevant_repetitions = relevant_repetitions[seq(min(max_repetitions, length(relevant_repetitions)))]
+    if (!is.null(max_repetitions) && max_repetitions > length(relevant_repetitions)) {
+      message(paste0("The parameter `max_repetitions` (", max_repetitions, ") is larger than the number of available ",
+                     "repetitions (", length(relevant_repetitions), "). Use all available repetitions.\n"))
+    }
+
+    # Load the setup file, i.e., the model and data
+    setup = readRDS(save_file_name_setup)
+
+    # Load the true explanations
+    true_explanations_list[[paste0("rho_", rho)]] = readRDS(save_file_name_true)
+    true_explanations_list[[paste0("rho_", rho)]]$internal$output$dt_samp_for_vS = NULL
+
+    # Iterate over the repetitions
+    repetition_idx = 1
+    for (repetition_idx in seq_along(relevant_repetitions)) {
+
+      # Get the current repetition
+      repetition = relevant_repetitions[repetition_idx]
+
+      # Small printout to the user
+      cat(sprintf("Working on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
+                  rho, rho_idx, length(rhos), repetition, repetition_idx, length(relevant_repetitions)))
+
+      # Create the save file name
+      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
+
+      # Load the rds file
+      current_repetition_results = readRDS(save_file_name_rep)
+
+      # We remove all non-essential stuff from the list
+      if (memory_efficient) {
+        cat(sprintf("Using memory efficient version: %s \U2192 ",
+                    format(object.size(current_repetition_results), units = "auto")))
+
+        for (met in names(current_repetition_results)) {
+          for (rep in names(current_repetition_results[[met]])) {
+            for (comb in names(current_repetition_results[[met]][[rep]])) {
+              tmp_res = current_repetition_results[[met]][[rep]][[comb]]
+              tmp_res[["only_save"]] = NULL
+              tmp_res$internal = NULL
+              tmp_res$timing = NULL
+              tmp_res$pred_explain = NULL
+              current_repetition_results[[met]][[rep]][[comb]] = tmp_res
+            }
+          }
+        }
+        cat(sprintf("%s.\n", format(object.size(current_repetition_results), units = "auto")))
+      }
+
+      if (repetition_idx == 1) {
+        repeated_explanations_list[[paste0("rho_", rho)]] = current_repetition_results
+      } else {
+        # Update the repetition names
+        current_repetition_results = lapply(
+          current_repetition_results, function(x) {
+            names(x) = paste0("repetition_", repetition_idx)
+            x})
+
+        # Add the results to the list
+        repeated_explanations_list[[paste0("rho_", rho)]] = modifyList(repeated_explanations_list[[paste0("rho_", rho)]],
+                                                                       current_repetition_results)
+      }
+    }
+
+    # Small printout to the user
+    cat(sprintf("Aggregating the results.\n"))
+
+    # Aggregate the results
+    aggregated_results_list[[paste0("rho_", rho)]] =
+      aggregate_results(repeated_explanations_list = repeated_explanations_list[[rho_idx]],
+                        true_explanations = true_explanations_list[[rho_idx]],
+                        evaluation_criterion = evaluation_criterion,
+                        level = level,
+                        n_workers = n_workers)
+
+    if (save_results) {
+      if (rho_idx == 1) return_list[["save_files"]] = list()
+      return_list[["save_files"]][[paste0("rho_", rho)]] =
+        file.path(folder_save, paste0(file_name, "_dt_", evaluation_criterion, ".rds"))
+      cat(sprintf("Saving the results.\n"))
+      saveRDS(aggregated_results_list[[paste0("rho_", rho)]], return_list[["save_files"]][[paste0("rho_", rho)]])
+    }
+  }
+
+  # Find out what to return
+  if ("aggregated_results" %in% objects_to_return) return_list[["aggregated_results"]] = aggregated_results_list
+  if ("true_Shapley" %in% objects_to_return) return_list[["true_Shapley"]] = true_explanations_list
+  if ("repeated_Shapley" %in% objects_to_return) return_list[["repeated_Shapley"]] = repeated_explanations_list
+  if (length(return_list) == 1) return_list = return_list[[1]]
+
+  return(return_list)
+}
+
+#' Aggregate the results of repeated explanations
 #'
 #' @param repeated_explanations_list List. Output from the [shapr::repeated_explanations()] function.
 #' @param true_explanations Shapr object.
@@ -963,9 +1590,15 @@ aggregate_results = function(repeated_explanations_list,
 
   return(list(dt_CI = results_dt,
               dt_wide = result_dt_alternative,
-              dt_long = result_dt_alternative_long))
+              dt_long = result_dt_alternative_long,
+              level = level,
+              evaluation_criterion = evaluation_criterion))
 }
 
+
+
+
+## Plot functions --------------------------------------------------------------------------------------------------
 #' Plot the aggregated results
 #'
 #' @param dt_CI Data.table. Returned data.table from call to the `aggregate_results()` function.
@@ -1007,12 +1640,22 @@ aggregate_results = function(repeated_explanations_list,
 #' @param plot_figures Boolean. If `TRUE`, then plot the figures.
 #' @param n.dodge Integer. The number of rows to put the labels on the x-axis of the box plots.
 #' I.e., the parameter to [scale_x_discrete(guide = guide_axis(n.dodge = n.dodge))].
+#' @param level Numeric between 0 and 1. Must be the same as in [shapr::aggreate_results()]. Only needed if
+#' user specifies `dt_CI` and `dt_long`. If user provides `file_path`, then `level` is stored in the file.
+#' @param remove_last_value Boolean. Default is to be the same as `scale_y_log10`, as the logarithm of zero is
+#' minus infinity. If `TRUE`, then we remove the last value where all coalitions are included
+#' (i.e., here the error is 0). If `FALSE`, then we keep the last value.
+#' @param evaluation_criterion String. The name of the evaluation criterion. Possible values are `MAE` and `MSE`.
+#' Must be the same as in [shapr::aggreate_results()]. Only needed if user specifies `dt_CI` and `dt_long`.
+#' If user provides `file_path`, then `evaluation_criterion` is stored in the file.
 #'
 #' @return List of [ggplot2::ggplot()] figures, based on the `figures_to_make` parameter.
 #' @export
 plot_results = function(dt_CI = NULL,
                         dt_long = NULL,
                         file_path = NULL,
+                        level = NULL,
+                        evaluation_criterion = NULL,
                         index_combinations = NULL,
                         only_these_sampling_methods = NULL,
                         figures_to_make = c("figure_CI",
@@ -1030,17 +1673,24 @@ plot_results = function(dt_CI = NULL,
                         scale_y_log10 = FALSE,
                         scale_x_log10 = FALSE,
                         n.dodge = 2,
-                        plot_figures = FALSE) {
+                        plot_figures = FALSE,
+                        remove_last_value = scale_y_log10) {
   ### Check parameters
   figures_to_make = match.arg(figures_to_make, several.ok = TRUE)
+  if (!is.null(dt_CI) && is.null(level)) stop("`level` must be provided.")
+  if (!is.null(dt_CI) && is.null(evaluation_criterion)) stop("`evaluation_criterion` must be provided.")
+  if (!is.null(evaluation_criterion) && !evaluation_criterion %in% c("MSE", "MAE")) {
+    stop("`evaluation_criterion` must be either 'MSE' or 'MAE'.")
+  }
 
   # Load data.tables from file
   if (!is.null(file_path)) {
     if (!(is.null(dt_CI) && is.null(dt_long))) stop("Do not provide `file_path` when provding `dt_CI` and `dt_long`.")
-    cat(sprintf("Loading data tables from file_path = '%s'.\n", file_path))
+    message(sprintf("Loading data tables from file_path = '%s'.\n", file_path))
     file = readRDS(file_path)
     dt_CI = file$dt_CI
     dt_long = file$dt_long
+    level = file$level
   }
 
   ### Fix the data.tables
@@ -1060,6 +1710,12 @@ plot_results = function(dt_CI = NULL,
   if (!is.null(only_these_sampling_methods)) {
     dt_long = dt_long[sampling %in% only_these_sampling_methods]
     dt_CI = dt_CI[sampling %in% only_these_sampling_methods]
+  }
+
+  # Remove the evaluation criterion for the last coalition
+  if (isTRUE(remove_last_value)) {
+    dt_long = dt_long[n_combinations != max(dt_CI$n_combinations)]
+    dt_CI = dt_CI[n_combinations != max(dt_CI$n_combinations)]
   }
 
   # For the box plots to work we need the combinations to be a factor
@@ -1265,6 +1921,9 @@ plot_results = function(dt_CI = NULL,
   return(figure_list)
 }
 
+
+
+## Old functions ---------------------------------------------------------------------------------------------------
 #' Aggregate the results of repeated explanations and plot them
 #'
 #' @param repeated_explanations_list List. Output from the [shapr::repeated_explanations()] function.
@@ -1333,7 +1992,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
                                       dt_long = NULL,
                                       only_these_sampling_methods = NULL,
                                       n_workers = 1) {
-  # Setup and checks ----------------------------------------------------------------------------
+  ### Setup and checks
   # Check that ggplot2 is installed
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("ggplot2 is not installed. Please run install.packages('ggplot2')")
@@ -1380,7 +2039,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
   # Get the number of repetitions
   n_repetitions = length(repeated_explanations_list[[1]])
 
-  # Make data.tables ------------------------------------------------------------------------------------------------
+  ### Make data.tables
   if (is.null(dt_CI)) {
     # Create list where each entry is a `n_coalitions` times `n_repetitions` matrix containing
     # the overall evaluation criterion (MAE or MSE) between the true Shapley values
@@ -1480,7 +2139,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
 
 
 
-  # Make the figures ------------------------------------------------------------------------------------------------
+  ### Make the figures
   # A list to store the figures
   figure_list = list()
 
@@ -1668,7 +2327,7 @@ aggregate_and_plot_results = function(repeated_explanations_list,
   # If plot figures, then plot the figures
   if (plot_figures) lapply(rev(figure_list), plot)
 
-  # Return the results ---------------------------------------------------------------------------------------------
+  ### Return the results
   # Check if we are to return figure or data.table
   if (return_figures || return_dt) {
     # Create a list to store the objects to return.
@@ -1693,784 +2352,154 @@ aggregate_and_plot_results = function(repeated_explanations_list,
   }
 }
 
-
-
-
-
-#' Extract best paired coalition order
-#'
-#' @param explanation A [shapr] explanation object with all coalitions. Should be "true_explanations".
-#' @param plot_figures Boolean. If we are to plot figures.
-#'
-#' @return array with the indices of the coalitions that we should add in decreasing importance order.
-#' I.e., the first one is the most important.
-#' @export
-#'
-#' @examples
-pilot_estimates_paired_order = function(explanation, plot_figures = FALSE) {
-
-  # Extract the internal list from the explanation object
-  internal = explanation$internal
-
-  # Get the number of features
-  M = internal$parameters$n_features
-
-  if (2^M != internal$parameters$n_combinations) {
-    stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
-    # TODO: we can later remove this if we do not need this as we can rather return the features to use
-    # internal$objects$X$features instead of using the index of these.
-  }
-
-  # We extract the W and S matrices
-  W = explanation$internal$objects$W
-  S = explanation$internal$objects$S
-
-  # Extract the v(S) elements
-  dt_vS = explanation$internal$output$dt_vS
-
-  # Compute the R's. I.e., W * v(s), but without adding them together.
-  # So not a matrix product, but rather an element wise multiplication.
-  # Do it for all test observations and store the results in a list.
-  R_matrix_list_all_individuals =
-    lapply(seq(ncol(dt_vS[, -"id_combination"])),
-           function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
-
-  # Alternate them such that we extract the smallest, then the largest, then the second smallest,
-  # then the second largest and so on.
-  alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
-
-  # Change the order of the coalitions such that we have S (odd indices) and
-  # then S_bar (even indices), for all possible coalitions.
-  # Note that we add 1 as we exclude the phi0.
-  R_matrix_paired_order_list =
-    lapply(seq(M), function (investigate_feature_number) {
-      sapply(R_matrix_list_all_individuals,
-             "[",
-             investigate_feature_number + 1, )[alternating_indices,]
-    })
-
-  # We compute the difference between the S and S_bar entries. Odd minus even indices.
-  R_matrix_paired_order_diff_list =
-    lapply(seq_along(R_matrix_paired_order_list),
-           function (feature_idx) {
-             R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
-               R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
-           })
-
-  # Convert it to a data.table
-  R_dt_paired_order_diff =
-    data.table::rbindlist(
-      lapply(seq_along(R_matrix_paired_order_diff_list),
-             function (feature_idx) {
-               data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
-                                      D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
-             }),
-      idcol = "id_feature",
-      use.names = TRUE
-    )
-
-  # Change the column names
-  data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
-
-  # Go from wide data.table to long data.table format
-  R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
-                                                 id.vars = c("id_feature", "id"),
-                                                 value.name = "Rij",
-                                                 variable.name = "id_combination_diff",
-                                                 variable.factor = TRUE)
-
-  # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
-  # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
-  R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
-                                         mean_abs_Rij = mean(abs(Rij))),
-                                     by = list(id_combination_diff, id_feature)]
-
-  # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
-  # we also add the index of the coalitions that are included in the paired coalitions.
-  R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
-               id_combination_S = seq(1, 2^(M-1)),
-               id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
-       by = id_feature]
-
-
-  if (plot_figures) {
-    ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
-      ggplot2::geom_bar(position = "dodge", stat = "identity") +
-      ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
-  }
-
-  # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
-  # mean for each paired coalition. This is thus a value average over all features and test observations.
-  R_dt_aggregated = R_dt[, lapply(.SD, mean),
-                         .SDcols = c("mean_Rij", "mean_abs_Rij"),
-                         by = id_combination_diff][, data.table::setnames(.SD,
-                                                                          c("mean_Rij", "mean_abs_Rij"),
-                                                                          c("mean_R", "mean_abs_R"))]
-
-  # Add order values for the aggreagated values. A low value means that it is how high importance.
-  # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
-  R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
-                          mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
-
-  # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
-  R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
-                                    on = "id_combination_diff"]
-
-  # Extract which order we should add the paired coalitions based on the mean_abs_R score
-  specific_coalition_set = c(t(as.matrix(data.table::setorder(
-    R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
-    mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
-
-
-  # Return the order of paired coalitions should be added
-  return(specific_coalition_set)
-}
-
-
-pilot_estimates_paired_order_V2 = function(explanation,
-                                           figures_to_plot = NULL,
-                                           objects_to_return = "order") {
-  if (any(!figures_to_plot %in% c(NULL, "Rij_ind", "Rij_aggregated", "R_aggregated"))) stop("Invalid figures.")
-  if (any(!objects_to_return %in% c("order", "R_dt", "R_dt_aggregated", "R_matrix_list_all_individuals"))) {
-    stop("Invalid return objects.")
-  }
-
-  # Extract the internal list from the explanation object
-  internal = explanation$internal
-
-  # Get the number of features
-  M = internal$parameters$n_features
-
-  if (2^M != internal$parameters$n_combinations) {
-    stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
-    # TODO: we can later remove this if we do not need this as we can rather return the features to use
-    # internal$objects$X$features instead of using the index of these.
-  }
-
-  # We extract the W and S matrices
-  W = explanation$internal$objects$W
-  S = explanation$internal$objects$S
-
-  # Extract the v(S) elements
-  dt_vS = explanation$internal$output$dt_vS
-
-  # Compute the R's. I.e., W * v(s), but without adding them together.
-  # So not a matrix product, but rather an element wise multiplication.
-  # Do it for all test observations and store the results in a list.
-  R_matrix_list_all_individuals =
-    lapply(seq(ncol(dt_vS[, -"id_combination"])),
-           function (test_obs_idx) t(t(W)*as.matrix(dt_vS[, -"id_combination"])[,test_obs_idx]))
-
-  # Alternate them such that we extract the smallest, then the largest, then the second smallest,
-  # then the second largest and so on.
-  alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
-
-  # Change the order of the coalitions such that we have S (odd indices) and
-  # then S_bar (even indices), for all possible coalitions.
-  # Note that we add 1 as we exclude the phi0.
-  R_matrix_paired_order_list =
-    lapply(seq(M), function (investigate_feature_number) {
-      sapply(R_matrix_list_all_individuals,
-             "[",
-             investigate_feature_number + 1, )[alternating_indices,]
-    })
-
-  # We compute the difference between the S and S_bar entries. Odd minus even indices.
-  R_matrix_paired_order_diff_list =
-    lapply(seq_along(R_matrix_paired_order_list),
-           function (feature_idx) {
-             R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
-               R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
-           })
-
-  # Convert it to a data.table
-  R_dt_paired_order_diff =
-    data.table::rbindlist(
-      lapply(seq_along(R_matrix_paired_order_diff_list),
-             function (feature_idx) {
-               data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
-                          D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
-             }),
-      idcol = "id_feature",
-      use.names = TRUE
-    )
-
-  # Change the column names
-  setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
-
-  # Go from wide data.table to long data.table format
-  R_dt_paired_order_diff_long = melt(R_dt_paired_order_diff,
-                                     id.vars = c("id_feature", "id"),
-                                     value.name = "Rij",
-                                     variable.name = "id_combination_diff",
-                                     variable.factor = TRUE)
-
-  if ("Rij_ind" %in% figures_to_plot) {
-    plot(ggplot(data = R_dt_paired_order_diff_long[id %in% 1:100],
-                aes(fill = id, y = Rij, x = id_combination_diff)) +
-           geom_bar(position = "dodge", stat = "identity") +
-           facet_grid(rows = vars(id_feature)) +
-           scale_x_discrete(guide = guide_axis(n.dodge = 3)))
-  }
-
-  # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
-  # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
-  R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
-                                         mean_abs_Rij = mean(abs(Rij))),
-                                     by = list(id_combination_diff, id_feature)]
-
-  # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
-  # we also add the index of the coalitions that are included in the paired coalitions.
-  R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
-               id_combination_S = seq(1, 2^(M-1)),
-               id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
-       by = id_feature]
-
-  # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
-  # mean for each paired coalition. This is thus a value average over all features and test observations.
-  R_dt_aggregated = R_dt[, lapply(.SD, mean),
-                         .SDcols = c("mean_Rij", "mean_abs_Rij"),
-                         by = id_combination_diff][, setnames(.SD,
-                                                              c("mean_Rij", "mean_abs_Rij"),
-                                                              c("mean_R", "mean_abs_R"))]
-
-  if ("R_aggregated" %in% figures_to_plot) {
-    plot(ggplot(data = R_dt_aggregated, aes(x = id_combination_diff, y = mean_abs_R)) +
-           geom_bar(position="dodge", stat="identity") +
-           coord_flip())
-  }
-
-  if ("Rij_aggregated" %in% figures_to_plot) {
-    R_dt_aggregated2 =
-      data.table::copy(R_dt_aggregated)[,`id_feature` := "agr"][, setnames(.SD, "mean_abs_R", "mean_abs_Rij")]
-    R_dt2 = rbindlist(list(R_dt, R_dt_aggregated2), use.names = TRUE, fill = TRUE)
-    plot(ggplot(data = R_dt2, aes(x = id_combination_diff, y = mean_abs_Rij)) +
-           geom_bar(position = "dodge", stat = "identity") +
-           facet_grid(rows = vars(id_feature)) +
-           scale_x_discrete(guide = guide_axis(n.dodge = 2)))
-  }
-
-  # Add order values for the aggregated values. A low value means that it is how high importance.
-  # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
-  R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
-                          mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
-
-  # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
-  R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
-                                    on = "id_combination_diff"]
-
-  # Extract which order we should add the paired coalitions based on the mean_abs_R score
-  specific_coalition_set = c(t(as.matrix(setorder(
-    R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
-    mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
-
-  # Return the results
-  return_list = list()
-  if ("order" %in% objects_to_return) return_list[["order"]] = specific_coalition_set
-  if ("R_dt" %in% objects_to_return) return_list[["R_dt"]] = R_dt
-  if ("R_dt_aggregated" %in% objects_to_return) return_list[["R_dt_aggregated"]] = R_dt_aggregated
-  if ("R_matrix_list_all_individuals" %in% objects_to_return) {
-    return_list[["R_matrix_list_all_individuals"]] = R_matrix_list_all_individuals
-  }
-  if (length(return_list) == 1) return_list = return_list[[1]]
-
-  # Return the order of paired coalitions should be added
-  return(return_list)
-}
-
-
-
-#' Auxillary
-#'
-#' @param specific_coalition_set
-#' @param n_combinations
-#'
-#' @return
-#' @export
-#'
-#' @examples
-extract_specific_coalition_set = function(specific_coalition_set, n_combinations) {
-  specific_coalition_set[c(1,3:n_combinations,2)]
-}
-
-
-
-
-
-
-#' Extract best coalition order with highest abs importance
-#'
-#' @param explanation A [shapr] explanation object with all coalitions. Should be "true_explanations".
-#' @param plot_figures Boolean. If we are to plot figures.
-#'
-#' @return array with the indices of the coalitions that we should add in decreasing importance order.
-#' I.e., the first one is the most important.
-#' @export
-#'
-#' @examples
-pilot_estimates_coalition_inclusion_order =
-  function(explanation,
-           strategies = c("paired_coalitions",
-                          "single_mean_coalition_effect",
-                          "single_median_coalition_effect",
-                          "single_mean_ranking_over_each_test_obs",
-                          "single_median_ranking_over_each_test_obs"),
-           plot_figures = FALSE,
-           always_empty_and_grand_coalitions_first = TRUE) {
-
-    # Check for valid strategies
-    strategies = match.arg(strategies, several.ok = TRUE)
-
-    # Extract the internal list from the explanation object
-    internal = explanation$internal
-
-    # Get the number of features
-    M = internal$parameters$n_features
-
-    if (2^M != internal$parameters$n_combinations) {
-      stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
-      # TODO: we can later remove this if we do not need this as we can rather return the features to use
-      # internal$objects$X$features instead of using the index of these.
-    }
-
-    # We extract the W and S matrices
-    W = explanation$internal$objects$W
-    S = explanation$internal$objects$S
-
-    # Extract the v(S) elements
-    dt_vS = explanation$internal$output$dt_vS
-
-    # Compute the R's. I.e., W * v(s), but without adding them together.
-    # So not a matrix product, but rather an element wise multiplication.
-    # Do it for all test observations and store the results in a list.
-    R_matrix_list_all_individuals =
-      lapply(seq(ncol(dt_vS[, -"id_combination"])),
-             function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
-
-    # List to store the results to be returned
-    return_list = list()
-
-    if ("paired_coalitions" %in% strategies) {
-      # We are doing the paired version
-      # Alternate them such that we extract the smallest, then the largest, then the second smallest,
-      # then the second largest and so on.
-      alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
-
-      # Change the order of the coalitions such that we have S (odd indices) and
-      # then S_bar (even indices), for all possible coalitions.
-      # Note that we add 1 as we exclude the phi0.
-      R_matrix_paired_order_list =
-        lapply(seq(M), function (investigate_feature_number) {
-          sapply(R_matrix_list_all_individuals,
-                 "[",
-                 investigate_feature_number + 1, )[alternating_indices,]
-        })
-
-      # We compute the difference between the S and S_bar entries. Odd minus even indices.
-      R_matrix_paired_order_diff_list =
-        lapply(seq_along(R_matrix_paired_order_list),
-               function (feature_idx) {
-                 R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
-                   R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
-               })
-
-      # Convert it to a data.table
-      R_dt_paired_order_diff =
-        data.table::rbindlist(
-          lapply(seq_along(R_matrix_paired_order_diff_list),
-                 function (feature_idx) {
-                   data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
-                                          D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
-                 }),
-          idcol = "id_feature",
-          use.names = TRUE
-        )
-
-      # Change the column names
-      data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
-
-      # Go from wide data.table to long data.table format
-      R_dt_paired_order_diff_long = data.table::melt(R_dt_paired_order_diff,
-                                                     id.vars = c("id_feature", "id"),
-                                                     value.name = "Rij",
-                                                     variable.name = "id_combination_diff",
-                                                     variable.factor = TRUE)
-
-      # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
-      # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
-      R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
-                                             mean_abs_Rij = mean(abs(Rij))),
-                                         by = list(id_combination_diff, id_feature)]
-
-      # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
-      # we also add the index of the coalitions that are included in the paired coalitions.
-      R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
-                   id_combination_S = seq(1, 2^(M-1)),
-                   id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
-           by = id_feature]
-
-      # ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
-      #   ggplot2::geom_bar(position = "dodge", stat = "identity") +
-      #   ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
-
-      # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
-      # mean for each paired coalition. This is thus a value average over all features and test observations.
-      R_dt_aggregated = R_dt[, lapply(.SD, mean),
-                             .SDcols = c("mean_Rij", "mean_abs_Rij"),
-                             by = id_combination_diff][, data.table::setnames(.SD,
-                                                                              c("mean_Rij", "mean_abs_Rij"),
-                                                                              c("mean_R", "mean_abs_R"))]
-
-      # Add order values for the aggregated values. A low value means that it is how high importance.
-      # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
-      R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
-                              mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
-
-      # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
-      R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
-                                        on = "id_combination_diff"]
-
-      # Extract which order we should add the paired coalitions based on the mean_abs_R score
-      paired_coalitions = c(t(as.matrix(data.table::setorder(
-        R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
-        mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
-
-      return_list$paired_coalitions = paired_coalitions
-    }
-
-    # Check if doing any of the single methods
-    if (any(c("single_mean_coalition_effect",
-              "single_median_coalition_effect",
-              "single_mean_ranking_over_each_test_obs",
-              "single_median_ranking_over_each_test_obs") %in% strategies)) {
-      # We are at least doing one of these
-
-      # Note that we add 1 as we exclude the phi0, and empty place after "," is intentional.
-      R_matrix_list = lapply(seq(M), function (feature_idx) sapply(R_matrix_list_all_individuals, "[", feature_idx + 1, ))
-
-      # Convert it to a data.table
-      R_dt_tmp = data.table::rbindlist(
-        lapply(seq(M), function (feature_idx)
-          data.table::data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
-                                 t(R_matrix_list[[feature_idx]]))
-        ),
-        idcol = "id_feature",
-        use.names = TRUE
-      )
-
-      # Change the column names
-      data.table::setnames(R_dt_tmp, c("id_feature", "id", seq(2^M)))
-
-      # Go from wide data.table to long data.table format
-      R_dt_long = data.table::melt(R_dt_tmp,
-                                   id.vars = c("id", "id_feature"),
-                                   value.name = "Rij",
-                                   variable.name = "id_combination",
-                                   variable.factor = TRUE)
-
-      # Reorder the columns and set the keys
-      data.table::setcolorder(R_dt_long, c("id", "id_combination", "id_feature", "Rij"))
-      data.table::setkeyv(R_dt_long, c("id", "id_combination", "id_feature"))
-
-      # Compute the absolute value of Rij
-      R_dt_long[, abs_Rij := abs(Rij)]
-
-      # For each id and id_feature combination we compute the ordering of the absolute Rij coming from each coalition.
-      # The ordering goes from 1 to 2^M, where a large a low value means that it has a high Rij value.
-      # I.e., ordering 1 means that that coalition has the highest Rij value for that id and id_feature.
-      R_dt_long[, `:=` (order_abs_Rij = order(order(abs_Rij, decreasing = TRUE), decreasing = FALSE)),
-                by = list(id, id_feature)]
-
-      # Then we average the abs_Rij scores over the features for each test observation and coalition.
-      # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to
-      # `n_id * n_id_combination`.
-      R_dt_long_agg_V1 = R_dt_long[, list(avg_abs_Rij = mean(abs_Rij)), by = list(id, id_combination)]
-
-      # Compute the order of avg_abs_Rij for the different test observations.
-      R_dt_long_agg_V1[, `:=` (order_avg_abs_Rij = order(order(avg_abs_Rij, decreasing = TRUE), decreasing = FALSE)),
-                       by = list(id)]
-
-      # Compute the mean ordering over all test observations
-      single_mean_ranking_over_each_test_obs =
-        as.integer(R_dt_long_agg_V1[, mean(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
-      single_median_ranking_over_each_test_obs =
-        as.integer(R_dt_long_agg_V1[, median(order_avg_abs_Rij), by = id_combination][order(V1)]$"id_combination")
-
-      # Then we average the abs_Rij scores over the features and test observations for each coalition.
-      # So we go from a data.table of length `n_id * n_id_combination * n_id_features` to `n_id_combination`.
-      R_dt_long_agg_V2 = R_dt_long[, list(mean_abs_Rij = mean(abs_Rij),
-                                          median_abs_Rij = median(abs_Rij)),
-                                   by = list(id_combination)]
-      single_mean_coalition_effect = order(R_dt_long_agg_V2$mean_abs_Rij, decreasing = TRUE)
-      single_median_coalition_effect = order(R_dt_long_agg_V2$median_abs_Rij, decreasing = TRUE)
-
-      # Add the results to the return list
-      if ("single_mean_coalition_effect" %in% strategies) {
-        return_list$single_mean_coalition_effect = single_mean_coalition_effect
-      }
-      if ("single_median_coalition_effect" %in% strategies) {
-        return_list$single_median_coalition_effect = single_median_coalition_effect
-      }
-      if ("single_mean_ranking_over_each_test_obs" %in% strategies) {
-        return_list$single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs
-      }
-      if ("single_median_ranking_over_each_test_obs" %in% strategies) {
-        return_list$single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs
-      }
-
-      # Some plots to look at the different orderings
-      # matplot(t(data.table::dcast(R_dt_long_agg_V1,
-      #                             id ~ id_combination,
-      #                             value.var = "order_avg_abs_Rij")[,-"id"])[,1:10], type = "l", lty = 1)
-      # points(single_mean_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 1)
-      # points(single_median_ranking_over_each_test_obs, seq(128), pch = 16, cex = 1.5, col = 2)
-      # points(single_mean_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 3)
-      # points(single_median_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 4)
-
-      # dt_temp = melt(data.table::data.table(id = factor(seq(2^M)),
-      #                             single_mean_coalition_effect = single_mean_coalition_effect,
-      #                             single_median_coalition_effect = single_median_coalition_effect,
-      #                             single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs,
-      #                             single_median_ranking_over_each_test_obs = single_median_ranking_over_each_test_obs),
-      #      id.vars = "id",
-      #      measure.vars =
-      #        c("single_mean_coalition_effect",
-      #        "single_median_coalition_effect",
-      #        "single_mean_ranking_over_each_test_obs",
-      #        "single_median_ranking_over_each_test_obs"),
-      #      value.name = "ranking",
-      #      variable.name = "strategy",
-      #      variable.factor = TRUE)
-      #
-      #   ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:100)],
-      #                   aes(x = id, y = ranking, fill = strategy)) +
-      #     ggplot2::geom_bar(position = "dodge", stat = "identity")
-    }
-
-    # Reorder the coalition orders such that the empty and grand coalitions are included as the first and second
-    # coalitions. I.e., such that 1 and 2^M are the two first entries.
-    if (always_empty_and_grand_coalitions_first) {
-      return_list =
-        lapply(return_list, function(coalition_order) c(1, 2^M, coalition_order[!(coalition_order %in% c(1, 2^M))]))
-    }
-
-    # Plot some figures if requested by the user
-    if (plot_figures) {
-      dt_temp = data.table::melt(cbind(id = factor(seq(2^M)), data.table::as.data.table(return_list)),
-                                 id.vars = "id",
-                                 value.name = "ranking",
-                                 variable.name = "strategy",
-                                 variable.factor = TRUE)
-
-      ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:20)],
-                      aes(x = id, y = ranking, fill = strategy)) +
-        ggplot2::geom_bar(position = "dodge", stat = "identity")
-
-      GGally::ggpairs(data.table::as.data.table(return_list)) +
-        labs(x = "Ordering (lower means more important)",
-             y = "Ordering (lower means more important)")
-    }
-
-    # Return the order of paired coalitions should be added
-    return(return_list)
-  }
-
-
-#' Compute the aggregated results for a simulation
-#'
-#' @param M integer. The number of features
-#' @param rhos Numeric array. The correlations.
-#' @param n_train The number of training observations
-#' @param n_test The number of test observations (explicands)
-#' @param betas Numeric array. Vector containing the betas using in the setup.
-#' @param folder_save String. Path to where the files are stored.
-#' @param memory_efficient Boolean. If we are to remove all data except from the Shapley values from the objects.
-#' @param max_repetitions Integer. If we only want to use a certain amount of repetitions.
-#' @param save_results Boolean. If we should save the aggregated results in the `folder_save` folder.
-#' @param evaluation_criterion String. If we are to compute the MSE or MAE between
-#' the true and estimated Shapley values.
-#' @param level Numeric. The level of the empirical CI.
-#' @param n_workers Integer. Number of cores to compute the evaluation criterion results.
-#' Only in the aggregation step. Recommend using 1 due to large objects having to be loaded in and out of memory.
-#' So it is/can be slower with several cores.
-#' @param objects_to_return String. What objects to return. One or several of "aggregated_results", "true_Shapley",
-#' "repeated_Shapley".
-#'
-#' @return Depends on `objects_to_return`.
-#' @export
-combine_explanation_results = function(M,
-                                       rhos,
-                                       n_train,
-                                       n_test,
-                                       betas,
-                                       folder_save,
-                                       max_repetitions = NULL,
-                                       memory_efficient = TRUE,
-                                       save_results = TRUE,
-                                       evaluation_criterion = c("MAE", "MSE"),
-                                       level = 0.95,
-                                       n_workers = 1,
-                                       objects_to_return = "aggregated_results") {
-
-  # Check some of the inputs
-  if (length(betas) != M + 1) stop("Incorrect number of `betas` compared to `M`.")
-  evaluation_criterion = match.arg(evaluation_criterion)
-  objects_to_return = match.arg(arg = objects_to_return,
-                                choices = c("aggregated_results",
-                                            "true_Shapley",
-                                            "repeated_Shapley"),
-                                several.ok = TRUE)
-
-  # Result lists. They can be quite large and take up many GBs of memory for large M
-  true_explanations_list = list()
-  repeated_explanations_list = list()
-  aggregated_results_list = list()
-  return_list = list()
-
-  # Iterate over the rhos
-  rho_idx = 1
-  for (rho_idx in seq_along(rhos)) {
-    if (rho_idx > 1) cat(sprintf("\n")) # White space from previous iteration
-
-    # Get the current rho
-    rho = rhos[rho_idx]
-
-    # Update the result list
-    repeated_explanations_list[[paste0("rho_", rho)]] = list()
-
-    # Make file names
-    file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
-                      paste(as.character(betas), collapse = "_"), sep = "_")
-    save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
-    save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
-
-    #  Find the relevant files in the folder and their repetition numbers/indices
-    files_in_dir = list.files(folder_save)
-    relevant_files_in_dir = files_in_dir[grepl(paste0(file_name, "_estimated_repetition_"), files_in_dir)]
-    relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
-    if (length(relevant_files_in_dir) == 0) {
-      stop("Cannot find any files for the provided paremeters. Looking for file name structures '%d'.", file_name)
-    }
-    relevant_repetitions =
-      sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
-    relevant_repetitions = relevant_repetitions[seq(min(max_repetitions, length(relevant_repetitions)))]
-    if (!is.null(max_repetitions) && max_repetitions > length(relevant_repetitions)) {
-      message(paste0("The parameter `max_repetitions` (", max_repetitions, ") is larger than the number of available ",
-                     "repetitions (", length(relevant_repetitions), "). Use all available repetitions.\n"))
-    }
-
-    # Load the setup file, i.e., the model and data
-    setup = readRDS(save_file_name_setup)
-
-    # Load the true explanations
-    true_explanations_list[[paste0("rho_", rho)]] = readRDS(save_file_name_true)
-    true_explanations_list[[paste0("rho_", rho)]]$internal$output$dt_samp_for_vS = NULL
-
-    # Iterate over the repetitions
-    repetition_idx = 1
-    for (repetition_idx in seq_along(relevant_repetitions)) {
-
-      # Get the current repetition
-      repetition = relevant_repetitions[repetition_idx]
-
-      # Small printout to the user
-      cat(sprintf("Working on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
-                  rho, rho_idx, length(rhos), repetition, repetition_idx, length(relevant_repetitions)))
-
-      # Create the save file name
-      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
-
-      # Load the rds file
-      current_repetition_results = readRDS(save_file_name_rep)
-
-      # We remove all non-essential stuff from the list
-      if (memory_efficient) {
-        cat(sprintf("Using memory efficient version: %s \U2192 ",
-                    format(object.size(current_repetition_results), units = "auto")))
-
-        for (met in names(current_repetition_results)) {
-          for (rep in names(current_repetition_results[[met]])) {
-            for (comb in names(current_repetition_results[[met]][[rep]])) {
-              tmp_res = current_repetition_results[[met]][[rep]][[comb]]
-              tmp_res[["only_save"]] = NULL
-              tmp_res$internal = NULL
-              tmp_res$timing = NULL
-              tmp_res$pred_explain = NULL
-              current_repetition_results[[met]][[rep]][[comb]] = tmp_res
-            }
-          }
-        }
-        cat(sprintf("%s.\n", format(object.size(current_repetition_results), units = "auto")))
-      }
-
-      if (repetition_idx == 1) {
-        repeated_explanations_list[[paste0("rho_", rho)]] = current_repetition_results
-      } else {
-        # Update the repetition names
-        current_repetition_results = lapply(
-          current_repetition_results, function(x) {
-            names(x) = paste0("repetition_", repetition_idx)
-            x})
-
-        # Add the results to the list
-        repeated_explanations_list[[paste0("rho_", rho)]] = modifyList(repeated_explanations_list[[paste0("rho_", rho)]],
-                                                                       current_repetition_results)
-      }
-    }
-
-    # Small printout to the user
-    cat(sprintf("Aggregating the results.\n"))
-
-    # Aggregate the results
-    aggregated_results_list[[paste0("rho_", rho)]] =
-      aggregate_results(repeated_explanations_list = repeated_explanations_list[[rho_idx]],
-                        true_explanations = true_explanations_list[[rho_idx]],
-                        evaluation_criterion = evaluation_criterion,
-                        level = level,
-                        n_workers = n_workers)
-
-    if (save_results) {
-      if (rho_idx == 1) return_list[["save_files"]] = list()
-      return_list[["save_files"]][[paste0("rho_", rho)]] =
-        file.path(folder_save, paste0(file_name, "_dt_", evaluation_criterion, ".rds"))
-      cat(sprintf("Saving the results.\n"))
-      saveRDS(aggregated_results_list[[paste0("rho_", rho)]], return_list[["save_files"]][[paste0("rho_", rho)]])
-    }
-  }
-
-  # Find out what to return
-  if ("aggregated_results" %in% objects_to_return) return_list[["aggregated_results"]] = aggregated_results_list
-  if ("true_Shapley" %in% objects_to_return) return_list[["true_Shapley"]] = true_explanations_list
-  if ("repeated_Shapley" %in% objects_to_return) return_list[["repeated_Shapley"]] = repeated_explanations_list
-  if (length(return_list) == 1) return_list = return_list[[1]]
-
-  return(return_list)
-}
-
-#' Function that extract the setup parameters from the file name
-#'
-#' @description
-#' It looks for the patter "M_INT_n_train_INT_n_test_INT_rho_NUMERIC_betas_NUMERIC_ARRAY_dt_STRING\\.rds"
-#'
-#' @param input_string string. The filename of the file containing the results.
-#'
-#' @return List of the the extracted values
-#' @export
-extract_parameters_from_path <- function(input_string) {
-  pattern <- "M_(\\d+)_n_train_(\\d+)_n_test_(\\d+)_rho_([0-9.]+)_betas_((?:-?\\d+(?:\\.\\d+)?_?)+)_dt_(MAE|MSE)\\.rds"
-  match_result <- regexec(pattern, input_string)
-
-  if (any(match_result[[1]] == -1)) stop("Pattern not found in the input string.")
-
-  M <- as.numeric(regmatches(input_string, match_result)[[1]][2])
-  n_train <- as.numeric(regmatches(input_string, match_result)[[1]][3])
-  n_test <- as.numeric(regmatches(input_string, match_result)[[1]][4])
-  rho <- as.numeric(regmatches(input_string, match_result)[[1]][5])
-  betas_str <- regmatches(input_string, match_result)[[1]][6]
-  betas <- as.numeric(strsplit(betas_str, "_")[[1]])
-  evaluation_criterion <- regmatches(input_string, match_result)[[1]][7]
-
-  return(list(M = M, n_train = n_train, n_test = n_test, rho = rho, betas_str = betas_str,
-              betas = betas, evaluation_criterion = evaluation_criterion))
-}
+# pilot_estimates_paired_order_V2 = function(explanation,
+#                                            figures_to_plot = NULL,
+#                                            objects_to_return = "order") {
+#   if (any(!figures_to_plot %in% c(NULL, "Rij_ind", "Rij_aggregated", "R_aggregated"))) stop("Invalid figures.")
+#   if (any(!objects_to_return %in% c("order", "R_dt", "R_dt_aggregated", "R_matrix_list_all_individuals"))) {
+#     stop("Invalid return objects.")
+#   }
+#
+#   # Extract the internal list from the explanation object
+#   internal = explanation$internal
+#
+#   # Get the number of features
+#   M = internal$parameters$n_features
+#
+#   if (2^M != internal$parameters$n_combinations) {
+#     stop("Currently we need the `explanation` to have `n_combinations` = 2^M, where M is the number of featuers.")
+#     # TODO: we can later remove this if we do not need this as we can rather return the features to use
+#     # internal$objects$X$features instead of using the index of these.
+#   }
+#
+#   # We extract the W and S matrices
+#   W = explanation$internal$objects$W
+#   S = explanation$internal$objects$S
+#
+#   # Extract the v(S) elements
+#   dt_vS = explanation$internal$output$dt_vS
+#
+#   # Compute the R's. I.e., W * v(s), but without adding them together.
+#   # So not a matrix product, but rather an element wise multiplication.
+#   # Do it for all test observations and store the results in a list.
+#   R_matrix_list_all_individuals =
+#     lapply(seq(ncol(dt_vS[, -"id_combination"])),
+#            function (test_obs_idx) t(t(W)*as.matrix(dt_vS[, -"id_combination"])[,test_obs_idx]))
+#
+#   # Alternate them such that we extract the smallest, then the largest, then the second smallest,
+#   # then the second largest and so on.
+#   alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
+#
+#   # Change the order of the coalitions such that we have S (odd indices) and
+#   # then S_bar (even indices), for all possible coalitions.
+#   # Note that we add 1 as we exclude the phi0.
+#   R_matrix_paired_order_list =
+#     lapply(seq(M), function (investigate_feature_number) {
+#       sapply(R_matrix_list_all_individuals,
+#              "[",
+#              investigate_feature_number + 1, )[alternating_indices,]
+#     })
+#
+#   # We compute the difference between the S and S_bar entries. Odd minus even indices.
+#   R_matrix_paired_order_diff_list =
+#     lapply(seq_along(R_matrix_paired_order_list),
+#            function (feature_idx) {
+#              R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
+#                R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+#            })
+#
+#   # Convert it to a data.table
+#   R_dt_paired_order_diff =
+#     data.table::rbindlist(
+#       lapply(seq_along(R_matrix_paired_order_diff_list),
+#              function (feature_idx) {
+#                data.table(id = factor(seq(nrow(explanation$internal$data$x_explain))),
+#                           D = t(R_matrix_paired_order_diff_list[[feature_idx]]))
+#              }),
+#       idcol = "id_feature",
+#       use.names = TRUE
+#     )
+#
+#   # Change the column names
+#   setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
+#
+#   # Go from wide data.table to long data.table format
+#   R_dt_paired_order_diff_long = melt(R_dt_paired_order_diff,
+#                                      id.vars = c("id_feature", "id"),
+#                                      value.name = "Rij",
+#                                      variable.name = "id_combination_diff",
+#                                      variable.factor = TRUE)
+#
+#   if ("Rij_ind" %in% figures_to_plot) {
+#     plot(ggplot(data = R_dt_paired_order_diff_long[id %in% 1:100],
+#                 aes(fill = id, y = Rij, x = id_combination_diff)) +
+#            geom_bar(position = "dodge", stat = "identity") +
+#            facet_grid(rows = vars(id_feature)) +
+#            scale_x_discrete(guide = guide_axis(n.dodge = 3)))
+#   }
+#
+#   # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
+#   # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
+#   R_dt = R_dt_paired_order_diff_long[, .(mean_Rij = mean(Rij),
+#                                          mean_abs_Rij = mean(abs(Rij))),
+#                                      by = list(id_combination_diff, id_feature)]
+#
+#   # Add columns with the order of the mean_abs_Rij for each feature and each paired coalitions,
+#   # we also add the index of the coalitions that are included in the paired coalitions.
+#   R_dt[, `:=` (order_mean_abs_Rij = order(order(mean_abs_Rij, decreasing = TRUE), decreasing = FALSE),
+#                id_combination_S = seq(1, 2^(M-1)),
+#                id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
+#        by = id_feature]
+#
+#   # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
+#   # mean for each paired coalition. This is thus a value average over all features and test observations.
+#   R_dt_aggregated = R_dt[, lapply(.SD, mean),
+#                          .SDcols = c("mean_Rij", "mean_abs_Rij"),
+#                          by = id_combination_diff][, setnames(.SD,
+#                                                               c("mean_Rij", "mean_abs_Rij"),
+#                                                               c("mean_R", "mean_abs_R"))]
+#
+#   if ("R_aggregated" %in% figures_to_plot) {
+#     plot(ggplot(data = R_dt_aggregated, aes(x = id_combination_diff, y = mean_abs_R)) +
+#            geom_bar(position="dodge", stat="identity") +
+#            coord_flip())
+#   }
+#
+#   if ("Rij_aggregated" %in% figures_to_plot) {
+#     R_dt_aggregated2 =
+#       data.table::copy(R_dt_aggregated)[,`id_feature` := "agr"][, setnames(.SD, "mean_abs_R", "mean_abs_Rij")]
+#     R_dt2 = rbindlist(list(R_dt, R_dt_aggregated2), use.names = TRUE, fill = TRUE)
+#     plot(ggplot(data = R_dt2, aes(x = id_combination_diff, y = mean_abs_Rij)) +
+#            geom_bar(position = "dodge", stat = "identity") +
+#            facet_grid(rows = vars(id_feature)) +
+#            scale_x_discrete(guide = guide_axis(n.dodge = 2)))
+#   }
+#
+#   # Add order values for the aggregated values. A low value means that it is how high importance.
+#   # I.e., if `mean_abs_R_ordered = 1` then this is the most important paired coalition.
+#   R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
+#                           mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
+#
+#   # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
+#   R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
+#                                     on = "id_combination_diff"]
+#
+#   # Extract which order we should add the paired coalitions based on the mean_abs_R score
+#   specific_coalition_set = c(t(as.matrix(setorder(
+#     R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+#     mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+#
+#   # Return the results
+#   return_list = list()
+#   if ("order" %in% objects_to_return) return_list[["order"]] = specific_coalition_set
+#   if ("R_dt" %in% objects_to_return) return_list[["R_dt"]] = R_dt
+#   if ("R_dt_aggregated" %in% objects_to_return) return_list[["R_dt_aggregated"]] = R_dt_aggregated
+#   if ("R_matrix_list_all_individuals" %in% objects_to_return) {
+#     return_list[["R_matrix_list_all_individuals"]] = R_matrix_list_all_individuals
+#   }
+#   if (length(return_list) == 1) return_list = return_list[[1]]
+#
+#   # Return the order of paired coalitions should be added
+#   return(return_list)
+# }
 
