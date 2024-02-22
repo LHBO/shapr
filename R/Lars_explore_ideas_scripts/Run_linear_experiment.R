@@ -54,7 +54,7 @@
 # rhos (Nummeric, or list of nummeric, e.g. "0.0,0.4,0.9")
 
 
-# Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
 if (length(args) < 11) {
