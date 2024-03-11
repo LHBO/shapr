@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   understanding_shapr: understanding_shapr.html
   understanding_shapr_vaeac: understanding_shapr_vaeac.html
-last_built: 2024-03-06T09:26Z
+last_built: 2024-03-11T14:14Z
 urls:
   reference: https://norskregnesentral.github.io/shapr/reference
   article: https://norskregnesentral.github.io/shapr/articles
