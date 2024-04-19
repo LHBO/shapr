@@ -24,3 +24,6 @@ docs
 /Meta/
 .idea
 .DS_Store
+vignettes/cache_main/
+vignettes/cache_vaeac/
+vignettes/cache_regression/
