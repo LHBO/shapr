@@ -9,7 +9,8 @@ feature_combinations(
   exact = TRUE,
   n_combinations = 200,
   weight_zero_m = 10^6,
-  group_num = NULL
+  group_num = NULL,
+  internal = NULL
 )
 }
 \arguments{
@@ -27,6 +28,8 @@ weights when doing numerical operations.}
 
 \item{group_num}{List. Contains vector of integers indicating the feature numbers for the
 different groups.}
+
+\item{internal}{List. Containing objects used internally in the package.}
 }
 \value{
 A data.table that contains the following columns:
