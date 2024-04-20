@@ -1,2 +1,5 @@
 *.html
 *.R
+cache_main/
+cache_vaeac/
+cache_regression/
