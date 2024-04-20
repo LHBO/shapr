@@ -15,6 +15,22 @@ test_that("output_lm_numeric_independence", {
   )
 })
 
+test_that("output_lm_numeric_independence_MSEv_Shapley_weights", {
+  expect_snapshot_rds(
+    explain(
+      model = model_lm_numeric,
+      x_explain = x_explain_numeric,
+      x_train = x_train_numeric,
+      approach = "independence",
+      prediction_zero = p0,
+      n_batches = 1,
+      timing = FALSE,
+      MSEv_uniform_comb_weights = FALSE
+    ),
+    "output_lm_numeric_independence_MSEv_Shapley_weights"
+  )
+})
+
 test_that("output_lm_numeric_empirical", {
   expect_snapshot_rds(
     explain(
@@ -144,6 +160,28 @@ test_that("output_lm_numeric_ctree", {
   )
 })
 
+test_that("output_lm_numeric_vaeac", {
+  expect_snapshot_rds(
+    explain(
+      model = model_lm_numeric,
+      x_explain = x_explain_numeric,
+      x_train = x_train_numeric,
+      approach = "vaeac",
+      prediction_zero = p0,
+      n_batches = 1,
+      timing = FALSE,
+      n_samples = 10, # Low value here to speed up the time
+      vaeac.epochs = 4, # Low value here to speed up the time
+      vaeac.n_vaeacs_initialize = 2, # Low value here to speed up the time
+      vaeac.extra_parameters = list(
+        vaeac.epochs_initiation_phase = 2, # Low value here to speed up the time
+        vaeac.save_model = FALSE # Removes names and objects such as tmpdir and tmpfile
+      )
+    ),
+    "output_lm_numeric_vaeac"
+  )
+})
+
 test_that("output_lm_categorical_ctree", {
   expect_snapshot_rds(
     explain(
@@ -156,6 +194,28 @@ test_that("output_lm_categorical_ctree", {
       timing = FALSE
     ),
     "output_lm_categorical_ctree"
+  )
+})
+
+test_that("output_lm_categorical_vaeac", {
+  expect_snapshot_rds(
+    explain(
+      model = model_lm_categorical,
+      x_explain = x_explain_categorical,
+      x_train = x_train_categorical,
+      approach = "vaeac",
+      prediction_zero = p0,
+      n_batches = 1,
+      timing = FALSE,
+      n_samples = 10, # Low value here to speed up the time
+      vaeac.epochs = 4, # Low value here to speed up the time
+      vaeac.n_vaeacs_initialize = 2, # Low value here to speed up the time
+      vaeac.extra_parameters = list(
+        vaeac.epochs_initiation_phase = 2, # Low value here to speed up the time
+        vaeac.save_model = FALSE # Removes tmpdir and tmpfiles
+      )
+    ),
+    "output_lm_categorical_vaeac"
   )
 })
 
@@ -211,9 +271,9 @@ test_that("output_lm_numeric_comb1", {
       model = model_lm_numeric,
       x_explain = x_explain_numeric,
       x_train = x_train_numeric,
-      approach = c("gaussian", "empirical", "ctree", "independence", "empirical"),
+      approach = c("gaussian", "empirical", "ctree", "independence"),
       prediction_zero = p0,
-      n_batches = 1,
+      n_batches = 4,
       timing = FALSE
     ),
     "output_lm_numeric_comb1"
@@ -226,9 +286,9 @@ test_that("output_lm_numeric_comb2", {
       model = model_lm_numeric,
       x_explain = x_explain_numeric,
       x_train = x_train_numeric,
-      approach = c("ctree", "copula", "independence", "copula", "empirical"),
+      approach = c("ctree", "copula", "independence", "copula"),
       prediction_zero = p0,
-      n_batches = 1,
+      n_batches = 3,
       timing = FALSE
     ),
     "output_lm_numeric_comb2"
@@ -241,9 +301,9 @@ test_that("output_lm_numeric_comb3", {
       model = model_lm_numeric,
       x_explain = x_explain_numeric,
       x_train = x_train_numeric,
-      approach = c("independence", "empirical", "gaussian", "empirical", "gaussian"),
+      approach = c("independence", "empirical", "gaussian", "empirical"),
       prediction_zero = p0,
-      n_batches = 1,
+      n_batches = 3,
       timing = FALSE
     ),
     "output_lm_numeric_comb3"
@@ -283,6 +343,28 @@ test_that("output_lm_mixed_ctree", {
   )
 })
 
+test_that("output_lm_mixed_vaeac", {
+  expect_snapshot_rds(
+    explain(
+      model = model_lm_mixed,
+      x_explain = x_explain_mixed,
+      x_train = x_train_mixed,
+      approach = "vaeac",
+      prediction_zero = p0,
+      n_batches = 1,
+      timing = FALSE,
+      n_samples = 10, # Low value here to speed up the time
+      vaeac.epochs = 4, # Low value here to speed up the time
+      vaeac.n_vaeacs_initialize = 2, # Low value here to speed up the time
+      vaeac.extra_parameters = list(
+        vaeac.epochs_initiation_phase = 2, # Low value here to speed up the time
+        vaeac.save_model = FALSE # Removes tmpdir and tmpfiles
+      )
+    ),
+    "output_lm_mixed_vaeac"
+  )
+})
+
 test_that("output_lm_mixed_comb", {
   set.seed(123)
   expect_snapshot_rds(
@@ -290,9 +372,9 @@ test_that("output_lm_mixed_comb", {
       model = model_lm_mixed,
       x_explain = x_explain_mixed,
       x_train = x_train_mixed,
-      approach = c("ctree", "independence", "ctree", "independence", "independence"),
+      approach = c("ctree", "independence", "ctree", "independence"),
       prediction_zero = p0,
-      n_batches = 1,
+      n_batches = 2,
       timing = FALSE
     ),
     "output_lm_mixed_comb"
