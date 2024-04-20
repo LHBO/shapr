@@ -4,7 +4,8 @@
 #' [stats::lm()],
 #' [stats::glm()],
 #' [ranger::ranger()],
-#' [mgcv::gam()] and
+#' [mgcv::gam()],
+#' [workflows::workflow()] (i.e., `tidymodels` models), and
 #' [xgboost::xgb.train()] with binary or continuous
 #' response. See details for more information.
 #'
@@ -21,6 +22,7 @@
 #' \item [stats::glm()]
 #' \item [ranger::ranger()]
 #' \item [mgcv::gam()]
+#' \item [workflows::workflow()]
 #' \item [xgboost::xgb.train()]
 #' }
 #'
@@ -167,7 +169,7 @@ get_supported_models <- function() {
   DT_predict_model[, predict_model := 1]
   DT_predict_model[, c("visible", "from", "generic", "isS4") := NULL]
 
-  DT <- merge(DT_get_model_specs, DT_predict_model, by = "rn", all = TRUE, allow.cartesian = TRUE, nomatch = 0)
+  DT <- merge(DT_get_model_specs, DT_predict_model, by = "rn", all = TRUE, allow.cartesian = TRUE)
   DT[, (colnames(DT)[-1]) := lapply(.SD, data.table::nafill, fill = 0), .SDcols = colnames(DT)[-1]]
   DT[, (colnames(DT)[2:3]) := lapply(.SD, as.logical), .SDcols = colnames(DT)[2:3]]
   data.table::setnames(DT, "rn", "model_class")
