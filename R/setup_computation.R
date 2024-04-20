@@ -9,15 +9,10 @@ setup_computation <- function(internal, model, predict_model) {
   type <- internal$parameters$type
 
   # setup the Shapley framework
-  if (type == "forecast") {
-    internal <- shapley_setup_forecast(internal)
-  } else {
-    internal <- shapley_setup(internal)
-  }
+  internal <- if (type == "forecast") shapley_setup_forecast(internal) else shapley_setup(internal)
 
   # Setup for approach
   internal <- setup_approach(internal, model = model, predict_model = predict_model)
-
 
   return(internal)
 }
@@ -337,11 +332,16 @@ feature_exact <- function(m, weight_zero_m = 10^6) {
   return(dt)
 }
 
-#' @param m
-#' @param n_combinations
-#' @param weight_zero_m
+#' Sample feature combinations when not using all possible combinations
+#'
+#' @param m Positive integer. Total number of features.
+#' @param n_combinations Positive integer. Note that if `exact = TRUE`,
+#' `n_combinations` is ignored. However, if `m > 12` you'll need to add a positive integer
+#' value for `n_combinations`.
+#' @param weight_zero_m Positive integer. Represents the Shapley weight for two special
+#' cases, i.e. the case where you have either `0` or `m` features/feature groups.
 #' @param sampling_method String. Specifying which of the coalition sampling methods to use.
-#' @param pilot_estimates_vS
+#' @param pilot_estimates_vS LARS ADD DESCRIPTION
 #' @param specific_coalition_set Integers. Array of integers of length `n_combinations`, where the first and last
 #' entries are 1 and 2^m, respectively.
 #' @param specific_coalition_set_weights Numerics. Array of numerics of length `n_combinations` where the i'th entry
@@ -803,6 +803,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
 #' @param weight_zero_m Positive integer. Represents the Shapley weight for two special
 #' cases, i.e. the case where you have either `0` or `m` features/feature groups.
 #'
+#'
 #' @return Numeric
 #' @keywords internal
 #'
@@ -1004,6 +1005,7 @@ create_S_batch_new <- function(internal, seed = NULL) {
 
   X <- internal$objects$X
 
+  if (!is.null(seed)) set.seed(seed)
 
   if (length(approach0) > 1) {
     X[!(n_features %in% c(0, n_features0)), approach := approach0[n_features]]
@@ -1014,6 +1016,28 @@ create_S_batch_new <- function(internal, seed = NULL) {
         pmax(1, round(.N / (n_combinations - 2) * n_batches)),
       n_S_per_approach = .N
     ), by = approach]
+
+    # Ensures that the number of batches corresponds to `n_batches`
+    if (sum(batch_count_dt$n_batches_per_approach) != n_batches) {
+      # Ensure that the number of batches is not larger than `n_batches`.
+      # Remove one batch from the approach with the most batches.
+      while (sum(batch_count_dt$n_batches_per_approach) > n_batches) {
+        batch_count_dt[
+          which.max(n_batches_per_approach),
+          n_batches_per_approach := n_batches_per_approach - 1
+        ]
+      }
+
+      # Ensure that the number of batches is not lower than `n_batches`.
+      # Add one batch to the approach with most coalitions per batch
+      while (sum(batch_count_dt$n_batches_per_approach) < n_batches) {
+        batch_count_dt[
+          which.max(n_S_per_approach / n_batches_per_approach),
+          n_batches_per_approach := n_batches_per_approach + 1
+        ]
+      }
+    }
+
     batch_count_dt[, n_leftover_first_batch := n_S_per_approach %% n_batches_per_approach]
     data.table::setorder(batch_count_dt, -n_leftover_first_batch)
 
@@ -1022,7 +1046,6 @@ create_S_batch_new <- function(internal, seed = NULL) {
 
     # Randomize order before ordering spreading the batches on the different approaches as evenly as possible
     # with respect to shapley_weight
-    set.seed(seed)
     X[, randomorder := sample(.N)]
     data.table::setorder(X, randomorder) # To avoid smaller id_combinations always proceeding large ones
     data.table::setorder(X, shapley_weight)

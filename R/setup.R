@@ -29,6 +29,7 @@ setup <- function(x_train,
                   seed,
                   keep_samp_for_vS,
                   feature_specs,
+                  MSEv_uniform_comb_weights = TRUE,
                   type = "normal",
                   horizon = NULL,
                   y = NULL,
@@ -39,6 +40,7 @@ setup <- function(x_train,
                   explain_xreg_lags = NULL,
                   group_lags = NULL,
                   timing,
+                  verbose,
                   is_python = FALSE,
                   precomputed_vS = NULL,
                   pilot_estimates_vS = NULL,
@@ -47,7 +49,6 @@ setup <- function(x_train,
                   specific_coalition_set_weights = NULL,
                   ...) {
   internal <- list()
-
 
   internal$parameters <- get_parameters(
     approach = approach,
@@ -66,7 +67,9 @@ setup <- function(x_train,
     explain_y_lags = explain_y_lags,
     explain_xreg_lags = explain_xreg_lags,
     group_lags = group_lags,
+    MSEv_uniform_comb_weights = MSEv_uniform_comb_weights,
     timing = timing,
+    verbose = verbose,
     is_python = is_python,
     precomputed_vS = precomputed_vS,
     pilot_estimates_vS = pilot_estimates_vS,
@@ -78,33 +81,17 @@ setup <- function(x_train,
 
   # Sets up and organizes data
   if (type == "forecast") {
-    internal$data <- get_data_forecast(
-      y,
-      xreg,
-      train_idx,
-      explain_idx,
-      explain_y_lags,
-      explain_xreg_lags,
-      horizon
-    )
-
-    internal$parameters$output_labels <- cbind(
-      rep(explain_idx, horizon),
-      rep(seq_len(horizon), each = length(explain_idx))
-    )
+    internal$data <- get_data_forecast(y, xreg, train_idx, explain_idx, explain_y_lags, explain_xreg_lags, horizon)
+    internal$parameters$output_labels <-
+      cbind(rep(explain_idx, horizon), rep(seq_len(horizon), each = length(explain_idx)))
     colnames(internal$parameters$output_labels) <- c("explain_idx", "horizon")
     internal$parameters$explain_idx <- explain_idx
     internal$parameters$explain_lags <- list(y = explain_y_lags, xreg = explain_xreg_lags)
 
     # TODO: Consider handling this parameter update somewhere else (like in get_extra_parameters?)
-    if (group_lags) {
-      internal$parameters$group <- internal$data$group
-    }
+    if (group_lags) internal$parameters$group <- internal$data$group
   } else {
-    internal$data <- get_data(
-      x_train,
-      x_explain
-    )
+    internal$data <- get_data(x_train, x_explain)
   }
 
   internal$objects <- list(feature_specs = feature_specs)
@@ -112,7 +99,6 @@ setup <- function(x_train,
   check_data(internal)
 
   internal <- get_extra_parameters(internal) # This includes both extra parameters and other objects
-
 
   internal <- check_and_set_parameters(internal)
 
@@ -130,24 +116,14 @@ check_and_set_parameters <- function(internal) {
   is_groupwise <- internal$parameters$is_groupwise
   exact <- internal$parameters$exact
 
+  if (!is.null(group)) check_groups(feature_names, group)
 
-  if (!is.null(group)) {
-    check_groups(feature_names, group)
-  }
-
-  if (!exact) {
-    if (!is_groupwise) {
-      internal$parameters$used_n_combinations <- min(2^n_features, n_combinations)
-    } else {
-      internal$parameters$used_n_combinations <- min(2^n_groups, n_combinations)
-    }
-    check_n_combinations(internal)
+  if (exact) {
+    internal$parameters$used_n_combinations <- if (is_groupwise) 2^n_groups else 2^n_features
   } else {
-    if (!is_groupwise) {
-      internal$parameters$used_n_combinations <- 2^n_features
-    } else {
-      internal$parameters$used_n_combinations <- 2^n_groups
-    }
+    internal$parameters$used_n_combinations <-
+      if (is_groupwise) min(2^n_groups, n_combinations) else min(2^n_features, n_combinations)
+    check_n_combinations(internal)
   }
 
   # Check approach
@@ -159,6 +135,35 @@ check_and_set_parameters <- function(internal) {
   # Checking n_batches vs n_combinations etc
   check_n_batches(internal)
 
+  # Check regression if we are doing regression
+  if (internal$parameters$regression) internal <- regression.check(internal)
+
+  return(internal)
+}
+
+#' @keywords internal
+#' @author Lars Henry Berge Olsen
+regression.check <- function(internal) {
+  # Check that the model outputs one-dimensional predictions
+  if (internal$parameters$output_size != 1) {
+    stop("`regression_separate` and `regression_surrogate` only support models with one-dimensional output")
+  }
+
+  # Check that we are NOT explaining a forecast model
+  if (internal$parameters$type == "forecast") {
+    stop("`regression_separate` and `regression_surrogate` does not support `forecast`.")
+  }
+
+  # Check that we are not to keep the Monte Carlo samples
+  if (internal$parameters$keep_samp_for_vS) {
+    stop(paste(
+      "`keep_samp_for_vS` must be `FALSE` for the `regression_separate` and `regression_surrogate`",
+      "approaches as there are no Monte Carlo samples to keep for these approaches."
+    ))
+  }
+
+  # Remove n_samples if we are doing regression, as we are not doing MC sampling
+  internal$parameters$n_samples <- NULL
 
   return(internal)
 }
@@ -200,13 +205,9 @@ check_n_combinations <- function(internal) {
     # Remove this in this branch as I want to include situations with fewer combinations.
     # The minimum I can use is 2 (empty and full coalitions). Code works for that edge case.
     # if (!is_groupwise) {
-    #   if (n_combinations <= n_features) {
-    #     stop("`n_combinations` has to be greater than the number of features.")
-    #   }
+    #   if (n_combinations <= n_features) stop("`n_combinations` has to be greater than the number of features.")
     # } else {
-    #   if (n_combinations <= n_groups) {
-    #     stop("`n_combinations` has to be greater than the number of groups.")
-    #   }
+    #   if (n_combinations <= n_groups) stop("`n_combinations` has to be greater than the number of groups.")
     # }
   }
 }
@@ -220,6 +221,7 @@ check_n_batches <- function(internal) {
   n_combinations <- internal$parameters$n_combinations
   is_groupwise <- internal$parameters$is_groupwise
   n_groups <- internal$parameters$n_groups
+  n_unique_approaches <- internal$parameters$n_unique_approaches
 
   if (!is_groupwise) {
     actual_n_combinations <- ifelse(is.null(n_combinations), 2^n_features, n_combinations)
@@ -229,8 +231,15 @@ check_n_batches <- function(internal) {
 
   if (n_batches >= actual_n_combinations) {
     stop(paste0(
-      "`n_batches` (", n_batches, ") must be smaller than the number feature combinations/`n_combinations` (",
+      "`n_batches` (", n_batches, ") must be smaller than the number of feature combinations/`n_combinations` (",
       actual_n_combinations, ")"
+    ))
+  }
+
+  if (n_batches < n_unique_approaches) {
+    stop(paste0(
+      "`n_batches` (", n_batches, ") must be larger than the number of unique approaches in `approach` (",
+      n_unique_approaches, ")."
     ))
   }
 }
@@ -255,7 +264,6 @@ check_data <- function(internal) {
   NA_labels <- any(is.na(model_feature_specs$labels))
   NA_classes <- any(is.na(model_feature_specs$classes))
   NA_factor_levels <- any(is.na(model_feature_specs$factor_levels))
-
 
   if (is.null(model_feature_specs)) {
     message(
@@ -288,7 +296,6 @@ check_data <- function(internal) {
 
     model_feature_specs$factor_levels <- x_train_feature_specs$factor_levels
   }
-
 
   # Check model vs x_train (allowing different label ordering in specs from model)
   compare_feature_specs(model_feature_specs, x_train_feature_specs, "model", "x_train", sort_labels = TRUE)
@@ -380,13 +387,18 @@ get_extra_parameters <- function(internal) {
     internal$parameters$n_groups <- NULL
   }
 
+  # Get the number of unique approaches
+  internal$parameters$n_approaches <- length(internal$parameters$approach)
+  internal$parameters$n_unique_approaches <- length(unique(internal$parameters$approach))
+
   return(internal)
 }
 
 #' @keywords internal
 get_parameters <- function(approach, prediction_zero, output_size = 1, n_combinations, group, n_samples,
                            n_batches, seed, keep_samp_for_vS, type, horizon, train_idx, explain_idx, explain_y_lags,
-                           explain_xreg_lags, group_lags = NULL, timing, is_python, ...) {
+                           explain_xreg_lags, group_lags = NULL, MSEv_uniform_comb_weights, timing, verbose,
+                           is_python, ...) {
   # Check input type for approach
 
   # approach is checked more comprehensively later
@@ -422,7 +434,6 @@ get_parameters <- function(approach, prediction_zero, output_size = 1, n_combina
     stop("`n_batches` must be NULL or a single positive integer.")
   }
 
-
   # seed is already set, so we know it works
   # keep_samp_for_vS
   if (!(is.logical(timing) &&
@@ -439,6 +450,11 @@ get_parameters <- function(approach, prediction_zero, output_size = 1, n_combina
   # type
   if (!(type %in% c("normal", "forecast"))) {
     stop("`type` must be either `normal` or `forecast`.\n")
+  }
+
+  # verbose
+  if (!is.numeric(verbose) || !(verbose %in% c(0, 1, 2))) {
+    stop("`verbose` must be either `0` (no verbosity), `1` (low verbosity), or `2` (high verbosity).")
   }
 
   # parameters only used for type "forecast"
@@ -472,8 +488,12 @@ get_parameters <- function(approach, prediction_zero, output_size = 1, n_combina
     }
   }
 
-  #### Tests combining more than one parameter ####
+  # Parameter used in the MSEv evaluation criterion
+  if (!(is.logical(MSEv_uniform_comb_weights) && length(MSEv_uniform_comb_weights) == 1)) {
+    stop("`MSEv_uniform_comb_weights` must be single logical.")
+  }
 
+  #### Tests combining more than one parameter ####
   # prediction_zero vs output_size
   if (!all((is.numeric(prediction_zero)) &&
     all(length(prediction_zero) == output_size) &&
@@ -484,9 +504,6 @@ get_parameters <- function(approach, prediction_zero, output_size = 1, n_combina
       paste0(output_size, collapse = ", "), ")."
     ))
   }
-
-
-
 
   # Getting basic input parameters
   parameters <- list(
@@ -503,15 +520,19 @@ get_parameters <- function(approach, prediction_zero, output_size = 1, n_combina
     type = type,
     horizon = horizon,
     group_lags = group_lags,
-    timing = timing
+    MSEv_uniform_comb_weights = MSEv_uniform_comb_weights,
+    timing = timing,
+    verbose = verbose
   )
 
   # Getting additional parameters from ...
   parameters <- append(parameters, list(...))
 
-
   # Setting exact based on n_combinations (TRUE if NULL)
   parameters$exact <- ifelse(is.null(parameters$n_combinations), TRUE, FALSE)
+
+  # Setting that we are using regression based the approach name (any in case several approaches)
+  parameters$regression <- any(grepl("regression", parameters$approach))
 
   return(parameters)
 }
@@ -593,8 +614,6 @@ get_data_specs <- function(x) {
   return(feature_specs)
 }
 
-
-
 #' Check that the group parameter has the right form and content
 #'
 #'
@@ -670,15 +689,20 @@ check_approach <- function(internal) {
   supported_approaches <- get_supported_approaches()
 
   if (!(is.character(approach) &&
-    (length(approach) == 1 || length(approach) == n_features) &&
+    (length(approach) == 1 || length(approach) == n_features - 1) &&
     all(is.element(approach, supported_approaches)))
   ) {
     stop(
-      paste(
-        "`approach` must be one of the following: \n", paste0(supported_approaches, collapse = ", "), "\n",
-        "or a vector of length equal to the number of features (", n_features, ") with only the above strings."
+      paste0(
+        "`approach` must be one of the following: '", paste0(supported_approaches, collapse = "', '"), "'.\n",
+        "These can also be combined (except 'regression_surrogate' and 'regression_separate') by passing a vector ",
+        "of length one less than the number of features (", n_features - 1, ")."
       )
     )
+  }
+
+  if (length(approach) > 1 && any(grepl("regression", approach))) {
+    stop("The `regression_separate` and `regression_surrogate` approaches cannot be combined with other approaches.")
   }
 }
 
@@ -687,33 +711,33 @@ set_defaults <- function(internal) {
   # Set defaults for certain arguments (based on other input)
 
   approach <- internal$parameters$approach
+  n_unique_approaches <- internal$parameters$n_unique_approaches
   used_n_combinations <- internal$parameters$used_n_combinations
   n_batches <- internal$parameters$n_batches
 
   # n_batches
   if (is.null(n_batches)) {
-    internal$parameters$n_batches <- get_default_n_batches(approach, used_n_combinations)
+    internal$parameters$n_batches <- get_default_n_batches(approach, n_unique_approaches, used_n_combinations)
   }
 
   return(internal)
 }
+
 #' @keywords internal
-get_default_n_batches <- function(approach, n_combinations) {
+get_default_n_batches <- function(approach, n_unique_approaches, n_combinations) {
   used_approach <- names(sort(table(approach), decreasing = TRUE))[1] # Most frequent used approach (when more present)
 
   if (used_approach %in% c("ctree", "gaussian", "copula")) {
     suggestion <- ceiling(n_combinations / 10)
     this_min <- 10
     this_max <- 1000
-    min_checked <- max(c(this_min, suggestion))
-    ret <- min(c(this_max, min_checked))
   } else {
     suggestion <- ceiling(n_combinations / 100)
     this_min <- 2
     this_max <- 100
-    min_checked <- max(c(this_min, suggestion))
-    ret <- min(c(this_max, min_checked))
   }
+  min_checked <- max(c(this_min, suggestion, n_unique_approaches))
+  ret <- min(c(this_max, min_checked, n_combinations - 1))
   message(
     paste0(
       "Setting parameter 'n_batches' to ", ret, " as a fair trade-off between memory consumption and ",
