@@ -140,7 +140,7 @@ prediction_zero = mean(response_train)
 # True Shapley ----------------------------------------------------------------------------------------------------
 # Create the true Shapley value explanations
 library(future)
-future::plan(multisession, workers = 2)
+future::plan(multisession, workers = 4)
 true_explanations <- explain(
   model = predictive_model,
   x_explain = data_test,
@@ -158,9 +158,11 @@ true_explanations <- explain(
 
 # Save them just in case
 saveRDS(true_explanations,
-        paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho, "true.rds", sep = "_"))
+        paste("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M",
+              M, "rho", rho, "true.rds", sep = "_"))
 true_explanations =
-  readRDS(paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho, "true.rds", sep = "_"))
+  readRDS(paste("~/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M",
+                M, "rho", rho, "true.rds", sep = "_"))
 
 
 # Estimated Shapley -----------------------------------------------------------------------------------------------

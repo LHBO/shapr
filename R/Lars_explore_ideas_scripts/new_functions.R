@@ -143,6 +143,14 @@ compute_MAE_MSE_fast = function(mat_1, mat_2, evaluation_criterion = c("MSE", "M
 #' @param use_precomputed_vS Logical. If we are to only compute the v(S) once for each repetition and use them
 #' for all coalition sampling schemes, as this saves a lot of time.
 #' @param save_path String. A save path where to save the results after each repetition.
+#' @param use_pilot_estimates_regression Boolean. If `TRUE`, then we compute the pilot estimate using regression.
+#'   If `FALSE`, then we use the true contribution function values as the estimates and `pilot_approach_regression`
+#'   and `pilot_regression_model` are ignored.
+#' @param pilot_approach_regression String containing the regression approach (i.e., separate or surrogate)
+#'   to use to compute the pilot estimates if `use_pilot_estimates_regression` is `TRUE.`
+#' @param pilot_regression_model String containing the regression model to use to compute the pilot estimates if
+#'  `use_pilot_estimates_regression` is `TRUE.`
+#' @param n_combinations_array Array of integers containing the number of coalitions we should consider.
 #'
 #' @return List of objects of class `c("shapr", "list")`. Contains the following items:
 #' \describe{
@@ -183,6 +191,9 @@ repeated_explanations = function(model,
                                                       "pilot_estimates_paired"),
                                  n_repetitions = 10,
                                  use_precomputed_vS = TRUE,
+                                 use_pilot_estimates_regression = TRUE,
+                                 pilot_approach_regression = "regression_surrogate",
+                                 pilot_regression_model = "parsnip::linear_reg()",
                                  seed_start_value = 1,
                                  n_combinations_from = 2, #ncol(x_explain) + 1,
                                  n_combinations_to = 2^ncol(x_explain),
@@ -199,6 +210,10 @@ repeated_explanations = function(model,
 
   # Check for valid sampling methods
   sampling_methods = match.arg(sampling_methods, several.ok = TRUE)
+
+  if (!is.character(pilot_approach_regression) || !is.character(pilot_regression_model)) {
+    stop("Both `pilot_approach_regression` and `pilot_regression_model` must be strings.")
+  }
 
   # Create a list of the strategies that use pre-computed pilot-estimates
   specific_coalition_set_strategies = c("paired_coalitions",
@@ -262,12 +277,15 @@ repeated_explanations = function(model,
   idx_rep = 1
   for (idx_rep in seq(n_repetitions)) {
 
+    # A string used in the result list
+    idx_rep_str = paste0("repetition_", idx_rep)
+
     # If we are to use precomputed
     if (use_precomputed_vS) {
 
       # Check what kind of precomputed_vS we are going to use
       if (use_precomputed_vS_gaussian_lm) {
-        # We are using the Gaussian approach or the predictive model is a linear model
+        # We are using the Gaussian approach and the predictive model is a linear model
 
         # Small message to user
         if (n_repetitions == 1) {
@@ -369,12 +387,40 @@ repeated_explanations = function(model,
     # Check if we need to compute the `specific_coalition_set`.
     if (using_specific_coalition_set) {
 
+      specific_coalition_set_true = pilot_estimates_coal_order(explanation_precomputed_vS)
+
+      # If we want to estimate the pilot estimates using
+      if (use_pilot_estimates_regression) {
+
+        progressr::with_progress({
+          explanation_precomputed_vS = suppressWarnings(suppressMessages(
+            shapr::explain(
+              model = model,
+              x_explain = x_explain,
+              x_train = x_train,
+              prediction_zero = prediction_zero,
+              keep_samp_for_vS = FALSE,
+              n_combinations = 2^ncol(x_explain),
+              n_batches = n_batches,
+              seed = seed,
+              approach = pilot_approach_regression,
+              regression.model = pilot_regression_model,
+              regression.tune_values = NULL,
+              regression.vfold_cv_para = NULL,
+              regression.recipe_func = NULL,
+              ...
+            )))}, enable = TRUE)
+      }
+
       # Get the `specific_coalition_set`.
       #specific_coalition_set = pilot_estimates_paired_order(explanation_precomputed_vS, plot_figures = TRUE)
       specific_coalition_set = pilot_estimates_coal_order(explanation_precomputed_vS)
 
-      # TODO: REMOVE THIS PRINTOUT
-      # print(specific_coalition_set)
+      # TODO: REMOVE THIS PRINTOUT Compare the order using the true quantities and the regression method
+      # print(Map(rbind, specific_coalition_set_true, specific_coalition_set))
+      result_list[["True_vs_Pilot_Order"]][[idx_rep_str]] = Map(rbind, specific_coalition_set_true, specific_coalition_set)
+      print(result_list[["True_vs_Pilot_Order"]][[idx_rep_str]])
+      message(result_list[["True_vs_Pilot_Order"]][[idx_rep_str]])
 
       # TODO: we use the Shapley kernel weights now, but might change that in the future.
       specific_coalition_set_weights = lapply(seq_along(specific_coalition_set), function(x) NULL)
@@ -396,9 +442,6 @@ repeated_explanations = function(model,
                         idx_rep, idx_rep, n_repetitions,
                         sampling_method, sampling_method_idx, n_sampling_methods))
       }
-
-      # A string used in the result list
-      idx_rep_str = paste0("repetition_", idx_rep)
 
       # Add a new empty sub sub list in the result list
       result_list[[sampling_method]][[idx_rep_str]] = list()
@@ -438,8 +481,7 @@ repeated_explanations = function(model,
             if (sampling_method %in% specific_coalition_set_strategies) specific_coalition_set[[sampling_method]] else NULL,
           specific_coalition_set_weights =
             if (sampling_method %in% specific_coalition_set_strategies) specific_coalition_set_weights[[sampling_method]] else NULL,
-          n_repetitions = n_repetitions,
-          ...),
+          n_repetitions = n_repetitions),
         enable = TRUE)
 
       #
@@ -524,9 +566,7 @@ repeated_explanations = function(model,
     seed = seed + 1
 
     # Save the results if a save path has been provided
-    if (!is.null(save_path)) {
-      saveRDS(result_list, save_path)
-    }
+    if (!is.null(save_path)) saveRDS(result_list, save_path)
   }
 
   # return the results
@@ -1324,6 +1364,9 @@ combine_explanation_results = function(M,
                                        n_test,
                                        betas,
                                        folder_save,
+                                       use_pilot_estimates_regression,
+                                       pilot_approach_regression,
+                                       pilot_regression_model,
                                        max_repetitions = NULL,
                                        memory_efficient = TRUE,
                                        save_results = TRUE,
@@ -1361,6 +1404,12 @@ combine_explanation_results = function(M,
     # Make file names
     file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
                       paste(as.character(betas), collapse = "_"), sep = "_")
+    if (use_pilot_estimates_regression) {
+      file_name_updated = paste(file_name, "pilot", strsplit(pilot_approach_regression, "_")[[1]][2],
+                               sub(".*::([^\\(]+)\\(.*", "\\1",  pilot_regression_model), sep = "_")
+    } else {
+      file_name_updated = file_name
+    }
     save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
     save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
 
@@ -1452,7 +1501,7 @@ combine_explanation_results = function(M,
     if (save_results) {
       if (rho_idx == 1) return_list[["save_files"]] = list()
       return_list[["save_files"]][[paste0("rho_", rho)]] =
-        file.path(folder_save, paste0(file_name, "_dt_", evaluation_criterion, ".rds"))
+        file.path(folder_save, paste0(file_name_updated, "_dt_", evaluation_criterion, ".rds"))
       cat(sprintf("Saving the results.\n"))
       saveRDS(aggregated_results_list[[paste0("rho_", rho)]], return_list[["save_files"]][[paste0("rho_", rho)]])
     }

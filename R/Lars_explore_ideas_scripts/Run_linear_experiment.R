@@ -44,6 +44,7 @@
 # do_setup (Boolean)
 # compute_true_explanations (Boolean)
 # compute_repeated_explanations (Boolean)
+# use_pilot_estimates_regression (Boolean)
 # repetitions (Integer, or array of integers "c(1, 4, 6)", "1:10". Different seeds)
 # n_workers (Integer)
 # n_samples_true (Integer, but can also be NULL)
@@ -51,7 +52,11 @@
 # n_train (Integer)
 # n_test (Integer)
 # M (Integer)
-# rhos (Nummeric, or list of nummeric, e.g. "0.0,0.4,0.9")
+# rhos (Numeric, or list of numeric, e.g. "0.0,0.4,0.9")
+# pilot_approach_regression (string either "regression_separate" or "regression_surrogate" (default))
+# pilot_regression_model (String, e.g., "parsnip::linear_reg()" (default))
+
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 4 1000000 1000000 1000 250 5 0.7 NULL NULL NULL
 
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
@@ -65,6 +70,7 @@ if (length(args) < 11) {
 do_setup = TRUE
 compute_true_explanations = TRUE
 compute_repeated_explanations = FALSE
+use_pilot_estimates_regression = TRUE
 repetitions = 1
 n_workers = 4
 n_samples_true = 1000000
@@ -73,6 +79,8 @@ n_train = 1000
 n_test = 250
 M = 5
 rhos = 0.7
+pilot_approach_regression = "regression_surrogate"
+pilot_regression_model = "parsnip::linear_reg()"
 
 # Extract if we are to generate the data and model
 do_setup = as.logical(args[1])
@@ -83,8 +91,11 @@ compute_true_explanations = as.logical(args[2])
 # Extract if we are to compute the repeated estimated Shapley values
 compute_repeated_explanations = as.logical(args[3])
 
+# If we are to use pilot estimates or not
+use_pilot_estimates_regression = as.logical(args[4])
+
 # Extract which repetition we are to do
-repetitions = as.character(args[4])
+repetitions = as.character(args[5])
 if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   if (grepl(",", repetitions)) {
     repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
@@ -101,23 +112,23 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 }
 
 # Extract the number of workers / cores to run on
-n_workers = as.integer(args[5])
+n_workers = as.integer(args[6])
 
 # Extract the number of MC samples
-n_samples_true = as.integer(args[6])
-n_samples = as.integer(args[7])
+n_samples_true = as.integer(args[7])
+n_samples = as.integer(args[8])
 
 # Extract the number of training observations
-n_train = as.integer(args[8])
+n_train = as.integer(args[9])
 
 # Extract the number of test observations
-n_test = as.integer(args[9])
+n_test = as.integer(args[10])
 
 # Extract the number of features
-M = as.integer(args[10])
+M = as.integer(args[11])
 
 # Extract the correlation level
-rhos = unlist(strsplit(args[11], ","))
+rhos = unlist(strsplit(args[12], ","))
 if (length(rhos) > 1) {
   rhos = unname(sapply(rhos, function(i) as.numeric(i)))
 } else {
@@ -125,7 +136,7 @@ if (length(rhos) > 1) {
 }
 
 # Extract the correlation level
-betas = as.character(args[12])
+betas = as.character(args[13])
 if (betas != "NULL") {
   betas = unlist(strsplit(betas, ","))
   if (length(betas) > 1) {
@@ -142,12 +153,19 @@ if (betas != "NULL") {
 }
 
 
+# Extract the kind of regression model
+pilot_approach_regression = as.character(args[14])
+pilot_regression_model = as.character(args[15])
+if (pilot_approach_regression %in% c("NULL", "NA", "NaN")) pilot_approach_regression = "regression_surrogate"
+if (pilot_regression_model %in% c("NULL", "NA", "NaN")) pilot_regression_model = "parsnip::linear_reg()"
+
 # Small printout to the user
 message(paste0(
   "Set up:",
 "\ndo_setup = ", do_setup,
 "\ncompute_true_explanations = ", compute_true_explanations,
 "\ncompute_repeated_explanations = ", compute_repeated_explanations,
+"\nuse_pilot_estimates_regression = ", use_pilot_estimates_regression,
 "\nrepetitions = [", paste(repetitions, collapse = ", "), "]",
 "\nn_workers = ", n_workers,
 "\nn_samples_true = ", n_samples_true,
@@ -156,7 +174,10 @@ message(paste0(
 "\nn_test = ", n_test,
 "\nM = ", M,
 "\nrho = [", paste(rhos, collapse = ", "), "]",
-"\nbeta = [", paste(betas, collapse = ", "), "]\n"))
+"\nbeta = [", paste(betas, collapse = ", "), "]",
+"\npilot_approach_regression = ", pilot_approach_regression,
+"\npilot_regression_model = ", pilot_regression_model, "\n"))
+
 
 
 
@@ -227,13 +248,12 @@ library(future)
 # Small variable check --------------------------------------------------------------------------------------------
 n_max_workers = future::availableCores()
 if (n_workers > n_max_workers) {
-  warning(sprintf("Too many workers. Change from %d to %d (max available cores).",
-                  n_workers, n_max_workers))
+  warning(sprintf("Too many workers. Change from %d to %d (max available cores).", n_workers, n_max_workers))
   n_workers = n_max_workers
 }
 
 
-# Fixed parameters ------------------------------------------------------------------------------------------------------
+# Fixed parameters -----------------------------------------------------------------------------------------------------
 # Mean of the multivariate Gaussian distribution
 mu = rep(0, times = M)
 
@@ -374,6 +394,7 @@ for (rho_idx in seq_along(rhos)) {
                      predictive_model = predictive_model)
 
     # Save the results
+    if (file.exists(save_file_name_setup)) warning(paste0("The file `", save_file_name_setup, "` already exists."))
     saveRDS(save_list, save_file_name_setup)
 
   } else {
@@ -479,6 +500,7 @@ for (rho_idx in seq_along(rhos)) {
 
     # Save the true explanations just in case
     message("Start saving the true explanations.")
+    if (exist(save_file_name_true)) warning(paste0("The file `", save_file_name_true, "` already exists."))
     saveRDS(true_explanations, save_file_name_true)
     message("Saved the true explanations.")
   } else {
@@ -502,16 +524,21 @@ for (rho_idx in seq_along(rhos)) {
                   rho, rho_idx, length(rhos), repetition, repetition_idx, length(repetitions)))
 
       # Create the save file name
-      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
-      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name, "_estimated_repetition_tmp", repetition, ".rds"))
+      file_name_update = file_name
+      if (use_pilot_estimates_regression) {
+        file_name_update = paste(file_name, "pilot", strsplit(pilot_approach_regression, "_")[[1]][2],
+                                  sub(".*::([^\\(]+)\\(.*", "\\1",  pilot_regression_model), sep = "_")
+      }
+      save_file_name_rep = file.path(folder_save, paste0(file_name_update, "_estimated_repetition_", repetition, ".rds"))
+      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name_update, "_estimated_repetition_tmp", repetition, ".rds"))
 
       # Estimated Shapley -----------------------------------------------------------------------------------------------
       # Get the seed for the current repetition
       seed_start_value_now = seed_start_value + repetition - 1
 
-      # Path to save the results temporary
-      tmp_save_path = paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho,
-                            "MC", n_samples, "estimated_specific_tmp.rds", sep = "_")
+      # # Path to save the results temporary
+      # tmp_save_path = paste("~/PhD/Paper3/shapr/Paper3_rds_saves/Paper3_Experiment_M", M, "rho", rho,
+      #                       "MC", n_samples, "estimated_specific_tmp.rds", sep = "_")
 
       # Set if we are doing the computations in parallel or sequential
       if (n_workers > 1) {
@@ -536,8 +563,12 @@ for (rho_idx in seq_along(rhos)) {
         seed_start_value = seed_start_value_now,
         n_combinations_from = n_combinations_from,
         n_combinations_increment = n_combinations_increment,
+        n_combinations_to = 2^ncol(data_test),
         n_combinations_array = n_combinations_array,
         use_precomputed_vS = TRUE,
+        use_pilot_estimates_regression = use_pilot_estimates_regression,
+        pilot_approach_regression = pilot_approach_regression,
+        pilot_regression_model = pilot_regression_model,
         sampling_methods = sampling_methods,
         save_path = save_file_name_rep_tmp)))
       # model = predictive_model
@@ -554,7 +585,9 @@ for (rho_idx in seq_along(rhos)) {
       # seed_start_value = seed_start_value_now
       # n_combinations_from = n_combinations_from
       # n_combinations_increment = n_combinations_increment
+      # n_combinations_array = n_combinations_array
       # use_precomputed_vS = TRUE
+      # use_pilot_estimates_regression = TRUE
       # sampling_methods = sampling_methods
       # save_path = save_file_name_rep_tmp
 

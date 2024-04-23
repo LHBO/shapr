@@ -23,12 +23,15 @@ if (length(args) < 8) {
 
 do_dt = TRUE
 do_figures = FALSE
-M = 6
-rhos = c(0.0, 0.5)
+M = 5
+rhos = c(0.7)
 n_train = 1000
-n_test = 5000
-betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5)
+n_test = 250
+betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5)[seq(M+1)]
 evaluation_criterion = "MAE"
+use_pilot_estimates_regression = TRUE
+pilot_approach_regression = "regression_surrogate"
+pilot_regression_model = "parsnip::linear_reg()"
 
 
 # Extract if we are to compute the data.tables containing the aggregated results
@@ -74,6 +77,16 @@ if (betas != "NULL") {
 # Extract the evaluation criterion
 evaluation_criterion = as.character(args[8])
 
+# If we are to use pilot estimates or not
+use_pilot_estimates_regression = as.logical(args[9])
+
+# Extract the kind of regression model
+pilot_approach_regression = as.character(args[10])
+pilot_regression_model = as.character(args[11])
+if (pilot_approach_regression %in% c("NULL", "NA", "NaN")) pilot_approach_regression = "regression_surrogate"
+if (pilot_regression_model %in% c("NULL", "NA", "NaN")) pilot_regression_model = "parsnip::linear_reg()"
+
+
 
 # Small printout to the user
 message(paste0(
@@ -85,7 +98,10 @@ message(paste0(
   "\nn_train = ", n_train,
   "\nn_test = ", n_test,
   "\nbeta = [", paste(betas, collapse = ", "), "]",
-  "\nevaluation_criterion = ", evaluation_criterion))
+  "\nevaluation_criterion = ", evaluation_criterion,
+  "\nuse_pilot_estimates_regression = ", use_pilot_estimates_regression,
+  "\npilot_approach_regression = ", pilot_approach_regression,
+  "\npilot_regression_model = ", pilot_regression_model, "\n"))
 
 
 
@@ -133,6 +149,9 @@ if (do_dt) {
     betas = betas,
     folder_save = folder_save,
     evaluation_criterion = evaluation_criterion,
+    use_pilot_estimates_regression = use_pilot_estimates_regression,
+    pilot_approach_regression = pilot_approach_regression,
+    pilot_regression_model = pilot_regression_model,
     memory_efficient = TRUE,
     save_results = TRUE,
     level = 0.95,
@@ -219,6 +238,7 @@ figures_list = lapply(relevant_files, function(save_file){
                scale_x_log10 = FALSE,
                n.dodge = 2,
                plot_figures = FALSE)})
+
 
 figures_list$`Paper3_Experiment_M_6_n_train_1000_n_test_5000_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds`$figure_CI
 
@@ -571,7 +591,7 @@ repeated_explanations_list$rho_0.5$repetition1$unique$repetition_1
 
 
 ## Load from disk --------------------------------------------------------------------------------------------------
-rho = 0.0
+rho = 0.5
 file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
                   paste(as.character(betas), collapse = "_"), sep = "_")
 save_obj = readRDS(file.path(folder_save, paste0(file_name, "_dt.rds")))
