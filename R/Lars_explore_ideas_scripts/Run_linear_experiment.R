@@ -66,6 +66,8 @@
 
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 32 1000000 1000000 1000 500 15 0.3,0.6,0.9,0.0 NULL NULL NULL (nam2)
 
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 12 0.6 NULL regression_surrogate NULL (sidana)
+
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -237,9 +239,9 @@ if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
   # devtools::clean_dll()
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 }
-devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
-library(shapr)
-#devtools::load_all(".")
+#devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+# library(shapr)
+devtools::load_all(".")
 
 
 # Libraries -------------------------------------------------------------------------------------------------------
@@ -309,19 +311,27 @@ sampling_methods = c("unique",
                      "single_mean_ranking_over_each_test_obs",
                      "single_median_ranking_over_each_test_obs")
 
+sampling_methods = c("unique",
+                     "unique_paired",
+                     "paired_coalitions",
+                     "single_mean_coalition_effect",
+                     "single_median_coalition_effect",
+                     "single_mean_ranking_over_each_test_obs",
+                     "single_median_ranking_over_each_test_obs")
+
 
 # First value where the coalition/combination sampling scheme has an effect, (first two are empty and full coalitions)
 n_combinations_from = 2
 
 # We increase by one each time
-n_combinations_increment = 4
+n_combinations_increment = 10
 
 # Or we can define it to do more coalitions in the beginning as it seems to be then that we get the largest
 # changes in the MAE, i.e, it is better to use some extra time to do the computations there and be more coarse
 # for the coalition sizes in the middle.
 n_combinations_array =
-  sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features
-                seq(M + choose(M, 2), 2^M - M, n_combinations_increment), # Then include 4 new coalitions at the time
+  sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
+                seq(M + choose(M, 2), 2^M - M, n_combinations_increment), # Then include `n_combinations_increment` new coalitions at the time
                 seq(2^M-M, 2^M)))) # Include the coalitions that are missing 1 feature
 
 if (M <= 8) n_combinations_array = seq(2, 2^M)

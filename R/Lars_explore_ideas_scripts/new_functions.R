@@ -1456,7 +1456,7 @@ combine_explanation_results = function(M,
                   rho, rho_idx, length(rhos), repetition, repetition_idx, length(relevant_repetitions)))
 
       # Create the save file name
-      save_file_name_rep = file.path(folder_save, paste0(file_name, "_estimated_repetition_", repetition, ".rds"))
+      save_file_name_rep = file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, ".rds"))
 
       # Load the rds file
       current_repetition_results = readRDS(save_file_name_rep)
@@ -1467,6 +1467,7 @@ combine_explanation_results = function(M,
                     format(object.size(current_repetition_results), units = "auto")))
 
         for (met in names(current_repetition_results)) {
+          if (met == "True_vs_Pilot_Order") next
           for (rep in names(current_repetition_results[[met]])) {
             for (comb in names(current_repetition_results[[met]][[rep]])) {
               tmp_res = current_repetition_results[[met]][[rep]][[comb]]
@@ -1499,9 +1500,11 @@ combine_explanation_results = function(M,
     # Small printout to the user
     cat(sprintf("Aggregating the results.\n"))
 
+    valid_methods = names(repeated_explanations_list[[rho_idx]])[names(repeated_explanations_list[[rho_idx]]) != "True_vs_Pilot_Order"]
+
     # Aggregate the results
     aggregated_results_list[[paste0("rho_", rho)]] =
-      aggregate_results(repeated_explanations_list = repeated_explanations_list[[rho_idx]],
+      aggregate_results(repeated_explanations_list = repeated_explanations_list[[rho_idx]][valid_methods],
                         true_explanations = true_explanations_list[[rho_idx]],
                         evaluation_criterion = evaluation_criterion,
                         level = level,

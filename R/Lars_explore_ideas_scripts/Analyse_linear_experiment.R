@@ -13,6 +13,9 @@
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:10 8 1000000 1000000 1000 1000 8 0.0,0.5,0.9 NULL
 # Rscript Analyse_linear_experiment.R TRUE FALSE 8 0.0,0.5,0.9 1000 1000 NULL MAE
 
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 1000 500 NULL MAE TRUE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.6 1000 500 NULL MAE TRUE NULL NULL
+
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -26,7 +29,7 @@ do_figures = FALSE
 M = 5
 rhos = c(0.7)
 n_train = 1000
-n_test = 250
+n_test = 500
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5)[seq(M+1)]
 evaluation_criterion = "MAE"
 use_pilot_estimates_regression = TRUE
@@ -135,9 +138,9 @@ setwd(folder)
 
 # Load the new functions
 source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
-devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas") # Only need
-library(shapr) # This must be the shapr version in the github repository.
-# devtools::load_all(".")
+# devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas") # Only need
+# library(shapr) # This must be the shapr version in the github repository.
+devtools::load_all(".")
 
 # Create data.tables ----------------------------------------------------------------------------------------------
 if (do_dt) {
