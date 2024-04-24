@@ -427,8 +427,8 @@ repeated_explanations = function(model,
       # TODO: REMOVE THIS PRINTOUT Compare the order using the true quantities and the regression method
       # print(Map(rbind, specific_coalition_set_true, specific_coalition_set))
       result_list[["True_vs_Pilot_Order"]][[idx_rep_str]] = Map(rbind, specific_coalition_set_true, specific_coalition_set)
-      print(result_list[["True_vs_Pilot_Order"]][[idx_rep_str]])
-      message(result_list[["True_vs_Pilot_Order"]][[idx_rep_str]])
+      #print(result_list[["True_vs_Pilot_Order"]][[idx_rep_str]])
+      #message(result_list[["True_vs_Pilot_Order"]][[idx_rep_str]])
 
       # TODO: we use the Shapley kernel weights now, but might change that in the future.
       specific_coalition_set_weights = lapply(seq_along(specific_coalition_set), function(x) NULL)
@@ -1423,10 +1423,11 @@ combine_explanation_results = function(M,
 
     #  Find the relevant files in the folder and their repetition numbers/indices
     files_in_dir = list.files(folder_save)
-    relevant_files_in_dir = files_in_dir[grepl(paste0(file_name, "_estimated_repetition_"), files_in_dir)]
+    relevant_files_in_dir = files_in_dir[grepl(paste0(file_name_updated, "_estimated_repetition_"), files_in_dir)]
     relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
     if (length(relevant_files_in_dir) == 0) {
-      stop("Cannot find any files for the provided paremeters. Looking for file name structures '%d'.", file_name)
+      stop(paste0("Cannot find any files for the provided paremeters. ",
+                  "Looking for file name structures '", file_name, "'."))
     }
     relevant_repetitions =
       sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
