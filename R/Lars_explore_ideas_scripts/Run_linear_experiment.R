@@ -4,6 +4,7 @@
 # #  ixion bastet
 # # #
 # tmux new -s paper3
+# module load R/4.2.0-foss-2021b
 # module load R/4.2.1-foss-2022a
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R
 # git checkout Lars/paper3_ideas
@@ -58,10 +59,12 @@
 
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 4 1000000 1000000 1000 250 5 0.7 NULL NULL NULL
 
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.0 NULL NULL NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.3 NULL NULL NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.6 NULL NULL NULL
-# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.9 NULL NULL NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 12 0.0 NULL NULL NULL (sumeru)
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 12 0.3 NULL NULL NULL (bastet)
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 12 0.6 NULL NULL NULL (nyx)
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 12 0.9 NULL NULL NULL (ixion)
+
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 32 1000000 1000000 1000 500 15 0.3,0.6,0.9,0.0 NULL NULL NULL (nam2)
 
 
 # Input From Command Line ----------------------------------------------------------------------------------------------

@@ -266,6 +266,8 @@ repeated_explanations = function(model,
     use_precomputed_vS_gaussian_lm = FALSE
   }
 
+  print(use_precomputed_vS_gaussian_lm)
+
   # Extract the seed value
   seed = seed_start_value
 
@@ -392,6 +394,9 @@ repeated_explanations = function(model,
       # If we want to estimate the pilot estimates using
       if (use_pilot_estimates_regression) {
 
+        message(paste0("Started to train the `", pilot_approach_regression, "` approach with `",
+                       pilot_regression_model,"` regression model(s)."))
+
         progressr::with_progress({
           explanation_precomputed_vS = suppressWarnings(suppressMessages(
             shapr::explain(
@@ -408,8 +413,11 @@ repeated_explanations = function(model,
               regression.tune_values = NULL,
               regression.vfold_cv_para = NULL,
               regression.recipe_func = NULL,
+              regression.surrogate_n_comb = min(1000, 2^ncol(x_explain)-2),
               ...
             )))}, enable = TRUE)
+
+        message(paste0("Done with training the regression model(s)."))
       }
 
       # Get the `specific_coalition_set`.
