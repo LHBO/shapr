@@ -58,6 +58,11 @@
 
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 4 1000000 1000000 1000 250 5 0.7 NULL NULL NULL
 
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.0 NULL NULL NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.3 NULL NULL NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.6 NULL NULL NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 5 0.9 NULL NULL NULL
+
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -500,7 +505,7 @@ for (rho_idx in seq_along(rhos)) {
 
     # Save the true explanations just in case
     message("Start saving the true explanations.")
-    if (exist(save_file_name_true)) warning(paste0("The file `", save_file_name_true, "` already exists."))
+    if (file.exists(save_file_name_true)) warning(paste0("The file `", save_file_name_true, "` already exists."))
     saveRDS(true_explanations, save_file_name_true)
     message("Saved the true explanations.")
   } else {
