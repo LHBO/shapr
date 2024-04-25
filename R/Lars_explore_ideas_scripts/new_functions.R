@@ -398,7 +398,7 @@ repeated_explanations = function(model,
                        pilot_regression_model,"` regression model(s)."))
 
         progressr::with_progress({
-          explanation_precomputed_vS = suppressWarnings(suppressMessages(
+          explanation_precomputed_vS =
             shapr::explain(
               model = model,
               x_explain = x_explain,
@@ -415,7 +415,7 @@ repeated_explanations = function(model,
               regression.recipe_func = NULL,
               regression.surrogate_n_comb = min(1000, 2^ncol(x_explain)-2),
               ...
-            )))}, enable = TRUE)
+            )}, enable = TRUE)
 
         message(paste0("Done with training the regression model(s)."))
       }
