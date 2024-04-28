@@ -1368,6 +1368,7 @@ pilot_estimates_coal_order = function(explanation,
 #' @export
 combine_explanation_results = function(M,
                                        rhos,
+                                       rho_equi,
                                        n_train,
                                        n_test,
                                        betas,
@@ -1410,8 +1411,8 @@ combine_explanation_results = function(M,
     repeated_explanations_list[[paste0("rho_", rho)]] = list()
 
     # Make file names
-    file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
-                      paste(as.character(betas), collapse = "_"), sep = "_")
+    file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                      "betas", paste(as.character(betas), collapse = "_"), sep = "_")
     if (use_pilot_estimates_regression) {
       file_name_updated = paste(file_name, "pilot", strsplit(pilot_approach_regression, "_")[[1]][2],
                                sub(".*::([^\\(]+)\\(.*", "\\1",  pilot_regression_model), sep = "_")
