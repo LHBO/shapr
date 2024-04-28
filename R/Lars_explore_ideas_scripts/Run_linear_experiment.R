@@ -68,13 +68,39 @@
 
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 12 0.6 NULL regression_separate NULL (sidana)
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 500 10 0.9 NULL regression_separate NULL (sumeru)
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE FALSE 1:10 6 1000000 1000000 1000 500 10 0.9 NULL NULL NULL
+
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 10 0.7 NULL regression_separate NULL (sidana)
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.7 NULL NULL NULL (Sumeru)
+
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.21 1,1,1,1,1,1,1,1,1,1,1 NULL NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 10 0.21 1,1,1,1,1,1,1,1,1,1,1 regression_separate NULL
+# Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 10 0.21 1,1,1,1,1,1,1,1,1,1,1 regression_surrogate NULL
+
+
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE 1,1,1,1,1,1,1,1,1,1,1,1,1 NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE 1,1,1,1,1,1,1,1,1,1,1,1,1 NULL NULL (adroa)
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE 1,1,1,1,1,1,1,1,1,1,1,1,1 regression_separate NULL (bastet)
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE 1,1,1,1,1,1,1,1,1,1,1,1,1 regression_surrogate NULL (ixion)
+
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE NULL NULL NULL (nyx)
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE NULL regression_separate NULL (sidana)
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE NULL regression_surrogate NULL (sumeru)
+
+#Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:2 6 1000000 1000000 1000 1000 10 0.0,0.1,0.3 TRUE NULL NULL NULL (Sumeru)
+#Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:2 6 1000000 1000000 1000 1000 10 0.6,0.9,0.99 TRUE NULL NULL NULL ()
+#Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:2 6 1000000 1000000 1000 1000 10 0.0,0.1,0.3 TRUE 1,1,1,1,1,1,1,1,1,1,1 NULL NULL (adroa)
+#Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:2 6 1000000 1000000 1000 1000 10 0.6,0.9,0.99 TRUE 1,1,1,1,1,1,1,1,1,1,1 NULL NULL ()
+
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
-if (length(args) < 11) {
-  stop("Must provide all parameters (do_setup, compute_true_explanations, compute_repeated_explanations, repetitions,
-       n_workers, n_samples_true, n_samples, n_train, n_test, M, rho, beta)!", call.=FALSE)
+if (length(args) < 16) {
+  stop("Must provide all parameters (do_setup, compute_true_explanations, compute_repeated_explanations,
+       use_pilot_estimates_regression, repetitions, n_workers, n_samples_true, n_samples, n_train, n_test, M,
+       rho, rho_equi, beta, pilot_approach_regression, pilot_regression_model)!", call.=FALSE)
 }
 
 do_setup = TRUE
@@ -87,9 +113,10 @@ n_samples_true = 1000000
 n_samples = 1000000
 n_train = 1000
 n_test = 250
-M = 5
+M = 10
 rhos = 0.7
-pilot_approach_regression = "regression_surrogate"
+rho_equi = TRUE
+pilot_approach_regression = "regression_separate"
 pilot_regression_model = "parsnip::linear_reg()"
 
 # Extract if we are to generate the data and model
@@ -145,8 +172,11 @@ if (length(rhos) > 1) {
   rhos = as.numeric(rhos)
 }
 
+# If we are to use equicorrelation matrix
+rho_equi = as.logical(args[13])
+
 # Extract the correlation level
-betas = as.character(args[13])
+betas = as.character(args[14])
 if (betas != "NULL") {
   betas = unlist(strsplit(betas, ","))
   if (length(betas) > 1) {
@@ -164,8 +194,8 @@ if (betas != "NULL") {
 
 
 # Extract the kind of regression model
-pilot_approach_regression = as.character(args[14])
-pilot_regression_model = as.character(args[15])
+pilot_approach_regression = as.character(args[15])
+pilot_regression_model = as.character(args[16])
 if (pilot_approach_regression %in% c("NULL", "NA", "NaN")) pilot_approach_regression = "regression_surrogate"
 if (pilot_regression_model %in% c("NULL", "NA", "NaN")) pilot_regression_model = "parsnip::linear_reg()"
 
@@ -184,6 +214,7 @@ message(paste0(
 "\nn_test = ", n_test,
 "\nM = ", M,
 "\nrho = [", paste(rhos, collapse = ", "), "]",
+"\nrho_equi = ", rho_equi,
 "\nbeta = [", paste(betas, collapse = ", "), "]",
 "\npilot_approach_regression = ", pilot_approach_regression,
 "\npilot_regression_model = ", pilot_regression_model, "\n"))
@@ -314,6 +345,10 @@ sampling_methods = c("unique",
 sampling_methods = c("unique",
                      "unique_paired",
                      "paired_coalitions",
+                     "paired_coalitions_sub",
+                     "paired_coalitions_scaled",
+                     "paired_coalitions_avg",
+                     "paired_coalitions_norm",
                      "single_mean_coalition_effect",
                      "single_median_coalition_effect",
                      "single_mean_ranking_over_each_test_obs",
@@ -351,16 +386,19 @@ for (rho_idx in seq_along(rhos)) {
   message(paste0("Working on rho = ", rho, " (", rho_idx, " of ", length(rhos), ")"))
 
   # Create the covariance matrix
-  sigma = matrix(rho, ncol = M, nrow = M) # Old
-  for (i in seq(1, M-1)) {
-    for (j in seq(i+1, M))
-      sigma[i,j] = sigma[j,i] = rho^abs(i-j)
+  if (rho_equi) {
+    sigma = matrix(rho, ncol = M, nrow = M) # Old
+  } else {
+    for (i in seq(1, M-1)) {
+      for (j in seq(i+1, M))
+        sigma[i,j] = sigma[j,i] = rho^abs(i-j)
+    }
   }
   diag(sigma) = 1
 
   # Make some of the save file names
-  file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
-                    paste(as.character(betas), collapse = "_"), sep = "_")
+  file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                    "betas", paste(as.character(betas), collapse = "_"), sep = "_")
   save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
   save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
 
@@ -483,6 +521,20 @@ for (rho_idx in seq_along(rhos)) {
           gaussian.cov_mat = sigma,
           seed = 1,
           precomputed_vS = list(dt_vS = dt_vS)
+        )}, enable = TRUE)
+
+
+      progressr::with_progress({
+        true_explanations_tmp_reg <- explain(
+          model = predictive_model,
+          x_explain = data_test,
+          x_train = data_train,
+          approach = "regression_separate",
+          prediction_zero = prediction_zero,
+          keep_samp_for_vS = FALSE,
+          exact = TRUE,
+          n_batches = 2^(M-2),
+          seed = 1
         )}, enable = TRUE)
 
       # Compute the true explanations using the LM-Gaussian strategy

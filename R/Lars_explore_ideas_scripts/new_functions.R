@@ -184,6 +184,10 @@ repeated_explanations = function(model,
                                                       "smallest_weights_constant_SW",
                                                       "smallest_weights_combination_size",
                                                       "paired_coalitions",
+                                                      "paired_coalitions_sub",
+                                                      "paired_coalitions_scaled",
+                                                      "paired_coalitions_avg",
+                                                      "paired_coalitions_norm",
                                                       "single_mean_coalition_effect",
                                                       "single_median_coalition_effect",
                                                       "single_mean_ranking_over_each_test_obs",
@@ -217,6 +221,10 @@ repeated_explanations = function(model,
 
   # Create a list of the strategies that use pre-computed pilot-estimates
   specific_coalition_set_strategies = c("paired_coalitions",
+                                        "paired_coalitions_sub",
+                                        "paired_coalitions_scaled",
+                                        "paired_coalitions_avg",
+                                        "paired_coalitions_norm",
                                         "single_mean_coalition_effect",
                                         "single_median_coalition_effect",
                                         "single_mean_ranking_over_each_test_obs",
@@ -949,6 +957,10 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
 #' @examples
 pilot_estimates_coal_order = function(explanation,
                                       strategies = c("paired_coalitions",
+                                                     "paired_coalitions_sub",
+                                                     "paired_coalitions_scaled",
+                                                     "paired_coalitions_avg",
+                                                     "paired_coalitions_norm",
                                                      "single_mean_coalition_effect",
                                                      "single_median_coalition_effect",
                                                      "single_mean_ranking_over_each_test_obs",
@@ -978,9 +990,9 @@ pilot_estimates_coal_order = function(explanation,
   # Extract the v(S) elements
   dt_vS = explanation$internal$output$dt_vS
 
-  # Compute the R's. I.e., W * v(s), but without adding them together.
-  # So not a matrix product, but rather an element wise multiplication.
-  # Do it for all test observations and store the results in a list.
+  # Compute the R's. I.e., W * v(s), but without adding them together. So not a matrix product, but rather
+  # an element wise multiplication. Do it for all test observations and store the results in a list.
+  # So the list contains `N_explain` matrices of dimension `(M+1) x 2^M`
   R_matrix_list_all_individuals =
     lapply(seq(ncol(dt_vS[, -"id_combination"])),
            function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
@@ -988,14 +1000,46 @@ pilot_estimates_coal_order = function(explanation,
   # List to store the results to be returned
   return_list = list()
 
-  if ("paired_coalitions" %in% strategies) {
+  if (any(c("paired_coalitions", "paired_coalitions_sub", "paired_coalitions_scaled", "paired_coalitions_avg",
+            "paired_coalitions_norm") %in% strategies)) {
     # We are doing the paired version
     # Alternate them such that we extract the smallest, then the largest, then the second smallest,
     # then the second largest and so on.
     alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
 
+    # {
+    #   tmp = W[4, alternating_indices]
+    #   par(mfrow = c(2,2))
+    #   plot(tmp)
+    #   plot(abs(tmp))
+    #   tmp2 = tmp[seq(1, 2^M - 1, 2)] - tmp[seq(2, 2^M, 2)]
+    #   plot(tmp2)
+    #   plot(abs(tmp2))
+    #   par(mfrow = c(1,1))
+    # }
+    # {
+    #   par(mfrow = c(2,2))
+    #   tmp = W[-1, alternating_indices]
+    #   matplot(t(tmp), type = "b")
+    #   matplot(t(abs(tmp)), type = "b")
+    #   tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
+    #   matplot(t(tmp2))
+    #   matplot(t(abs(tmp2)))
+    #   par(mfrow = c(1,1))
+    # }
+    # {
+    #   par(mfrow = c(2,2))
+    #   tmp = W[-1, alternating_indices]
+    #   tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
+    #   standard_weight = colMeans(abs(tmp2))
+    #   plot(colMeans(abs(tmp2)))
+    #   plot(colMeans(abs(W[-1, alternating_indices])))
+    #   plot(colMeans(abs(W[-1,])))
+    # }
+
     # Change the order of the coalitions such that we have S (odd indices) and then S_bar (even indices),
     # for all possible coalitions. Note that we add 1 as we exclude the phi0.
+    # The list contains `M` matrices of dimension `2^M x N_explain`
     R_matrix_paired_order_list =
       lapply(seq(M), function (investigate_feature_number) {
         sapply(R_matrix_list_all_individuals,
@@ -1004,14 +1048,17 @@ pilot_estimates_coal_order = function(explanation,
       })
 
     # We compute the difference between the S and S_bar entries. Odd minus even indices.
+    # The list contains `M` matrices of dimension `2^(M-1) x N_explain`
     R_matrix_paired_order_diff_list =
       lapply(seq_along(R_matrix_paired_order_list),
              function (feature_idx) {
-               R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M,2), ] -
-                 R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M,2), ]
+               R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M - 1, 2), ] -
+                 R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M, 2), ]
              })
 
-    # Convert it to a data.table
+    # Convert it to a data.table of dimension `(M * N_explain) x (2^(M-1) + 2)`.
+    # The plus two is because of two id_cols (`id_feature` and `id`), while the remaining `2^(M-1)` columns
+    # are the differences
     R_dt_paired_order_diff =
       data.table::rbindlist(
         lapply(seq_along(R_matrix_paired_order_diff_list),
@@ -1063,16 +1110,65 @@ pilot_estimates_coal_order = function(explanation,
     R_dt_aggregated[, `:=` (mean_abs_R_ordered = order(order(mean_abs_R, decreasing = TRUE), decreasing = FALSE),
                             mean_R_ordered = order(order(mean_R, decreasing = TRUE), decreasing = FALSE))]
 
+    # 2024: Add the new orders
+    R_dt_aggregated[, `:=` (paired_coalitions_sub = order(order(mean_abs_R - standard_weight, decreasing = TRUE), decreasing = FALSE),
+                            paired_coalitions_scaled = order(order(mean_abs_R / standard_weight, decreasing = TRUE), decreasing = FALSE),
+                            paired_coalitions_norm = order(order(abs(((mean_abs_R - mean(mean_abs_R))/sd(mean_abs_R)) - ((standard_weight - mean(standard_weight))/sd(standard_weight))), decreasing = TRUE), decreasing = FALSE)
+    )]
+    R_dt_aggregated[, paired_coalitions_avg := order(order(mean_abs_R_ordered + paired_coalitions_scaled))]
+
     # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
     R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
                                       on = "id_combination_diff"]
 
-    # Extract which order we should add the paired coalitions based on the mean_abs_R score
-    paired_coalitions = c(t(as.matrix(data.table::setorder(
-      R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
-      mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+    # {
+    #   require(gridExtra)
+    #   p1 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = mean_abs_R)) +
+    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    #
+    #   p2 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = standard_weight)) +
+    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    #
+    #   p3 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = mean_abs_R - standard_weight)) +
+    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    #
+    #   p4 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = mean_abs_R/standard_weight)) +
+    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    #
+    #   p5 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = abs(((mean_abs_R - mean(mean_abs_R))/sd(mean_abs_R)) - ((standard_weight - mean(standard_weight))/sd(standard_weight))))) +
+    #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    #
+    #   gridExtra::grid.arrange(p1, p2, p3, p4, p5, ncol = 1)
+    # }
 
-    return_list$paired_coalitions = paired_coalitions
+
+    # Add the results to the return list
+    if ("paired_coalitions" %in% strategies) {
+      # Extract which order we should add the paired coalitions based on the mean_abs_R score
+      return_list$paired_coalitions = c(t(as.matrix(data.table::setorder(
+        R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
+        mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+    }
+    if ("paired_coalitions_sub" %in% strategies) {
+      return_list$paired_coalitions_sub = c(t(as.matrix(data.table::setorder(
+        R_dt_aggregated[, c("paired_coalitions_sub", "id_combination_S", "id_combination_Sbar")],
+        paired_coalitions_sub)[,-"paired_coalitions_sub"])))
+    }
+    if ("paired_coalitions_scaled" %in% strategies) {
+      return_list$paired_coalitions_scaled = c(t(as.matrix(data.table::setorder(
+        R_dt_aggregated[, c("paired_coalitions_scaled", "id_combination_S", "id_combination_Sbar")],
+        paired_coalitions_scaled)[,-"paired_coalitions_scaled"])))
+    }
+    if ("paired_coalitions_avg" %in% strategies) {
+      return_list$paired_coalitions_avg = c(t(as.matrix(data.table::setorder(
+        R_dt_aggregated[, c("paired_coalitions_avg", "id_combination_S", "id_combination_Sbar")],
+        paired_coalitions_avg)[,-"paired_coalitions_avg"])))
+    }
+    if ("paired_coalitions_norm" %in% strategies) {
+      return_list$paired_coalitions_norm = c(t(as.matrix(data.table::setorder(
+        R_dt_aggregated[, c("paired_coalitions_norm", "id_combination_S", "id_combination_Sbar")],
+        paired_coalitions_norm)[,-"paired_coalitions_norm"])))
+    }
   }
 
   # Check if doing any of the single methods
@@ -1199,13 +1295,19 @@ pilot_estimates_coal_order = function(explanation,
                                variable.name = "strategy",
                                variable.factor = TRUE)
 
-    ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:20)],
+    ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:50)],
                     aes(x = id, y = ranking, fill = strategy)) +
       ggplot2::geom_bar(position = "dodge", stat = "identity")
 
     GGally::ggpairs(data.table::as.data.table(return_list)) +
       labs(x = "Ordering (lower means more important)",
            y = "Ordering (lower means more important)")
+
+    # See at which location the entries in the vector is in the second vector.
+    # We then see that the entries are more linked. I.e., even though the order is not exact,
+    # the are somewhat in order. Mainly due to the magnitude of the different values for the different
+    # colaition sizes
+    plot(pmatch(return_list[[1]], return_list[[2]]))
   }
 
   # Return the order of paired coalitions should be added
@@ -1368,6 +1470,7 @@ pilot_estimates_coal_order = function(explanation,
 #' @export
 combine_explanation_results = function(M,
                                        rhos,
+                                       rho_equi,
                                        n_train,
                                        n_test,
                                        betas,
@@ -1410,8 +1513,8 @@ combine_explanation_results = function(M,
     repeated_explanations_list[[paste0("rho_", rho)]] = list()
 
     # Make file names
-    file_name = paste("Paper3_Experiment_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "betas",
-                      paste(as.character(betas), collapse = "_"), sep = "_")
+    file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                      "betas", paste(as.character(betas), collapse = "_"), sep = "_")
     if (use_pilot_estimates_regression) {
       file_name_updated = paste(file_name, "pilot", strsplit(pilot_approach_regression, "_")[[1]][2],
                                sub(".*::([^\\(]+)\\(.*", "\\1",  pilot_regression_model), sep = "_")

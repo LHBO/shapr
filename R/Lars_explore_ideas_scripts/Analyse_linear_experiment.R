@@ -17,10 +17,36 @@
 # Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.6 1000 500 NULL MAE TRUE NULL NULL
 
 
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.91 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.91 1000 1000 NULL MAE TRUE regression_surrogate NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.91 1000 1000 NULL MAE TRUE regression_separate NULL
+
+#Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.91 1000 1000 1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_separate NULL
+
+#Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 10 0.91 1,1,1,1,1,1,1,1,1,1,1 regression_separate NULL
+
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_separate NULL
+
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE TRUE regression_surrogate NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
+
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1 MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_surrogate NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_separate NULL
+
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 NULL MAE TRUE regression_surrogate NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
+
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1,1,1 MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_surrogate NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_separate NULL
+
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
-if (length(args) < 8) {
+if (length(args) < 12) {
   stop("Must provide all parameters (do_dt, do_figures, M, rhos, n_train, n_test, beta, eval_crit)!", call.=FALSE)
 }
 
@@ -54,14 +80,17 @@ if (length(rhos) > 1) {
   rhos = as.numeric(rhos)
 }
 
+# If we use quie correlation matrix
+rho_equi = as.logical(args[5])
+
 # Extract the number of training observations
-n_train = as.integer(args[5])
+n_train = as.integer(args[6])
 
 # Extract the number of test observations
-n_test = as.integer(args[6])
+n_test = as.integer(args[7])
 
 # Extract the correlation level
-betas = as.character(args[7])
+betas = as.character(args[8])
 if (betas != "NULL") {
   betas = unlist(strsplit(betas, ","))
   if (length(betas) > 1) {
@@ -78,14 +107,14 @@ if (betas != "NULL") {
 }
 
 # Extract the evaluation criterion
-evaluation_criterion = as.character(args[8])
+evaluation_criterion = as.character(args[9])
 
 # If we are to use pilot estimates or not
-use_pilot_estimates_regression = as.logical(args[9])
+use_pilot_estimates_regression = as.logical(args[10])
 
 # Extract the kind of regression model
-pilot_approach_regression = as.character(args[10])
-pilot_regression_model = as.character(args[11])
+pilot_approach_regression = as.character(args[11])
+pilot_regression_model = as.character(args[12])
 if (pilot_approach_regression %in% c("NULL", "NA", "NaN")) pilot_approach_regression = "regression_surrogate"
 if (pilot_regression_model %in% c("NULL", "NA", "NaN")) pilot_regression_model = "parsnip::linear_reg()"
 
@@ -98,6 +127,7 @@ message(paste0(
   "\ndo_figures = ", do_figures,
   "\nM = ", M,
   "\nrho = [", paste(rhos, collapse = ", "), "]",
+  "\nrho_equi = ", rho_equi,
   "\nn_train = ", n_train,
   "\nn_test = ", n_test,
   "\nbeta = [", paste(betas, collapse = ", "), "]",
@@ -147,6 +177,7 @@ if (do_dt) {
   aggregated_results = combine_explanation_results(
     M = M,
     rhos = rhos,
+    rho_equi = rho_equi,
     n_train = n_train,
     n_test = n_test,
     betas = betas,
@@ -220,6 +251,8 @@ all_setups = t(sapply(relevant_files_in_dir,
 relevant_files = as.list(file.path(folder_save, relevant_files_in_dir))
 relevant_files <- setNames(relevant_files, relevant_files_in_dir)
 
+
+
 # Make the figures
 figures_list = lapply(relevant_files, function(save_file){
   plot_results(file_path = save_file,
@@ -242,6 +275,25 @@ figures_list = lapply(relevant_files, function(save_file){
                n.dodge = 2,
                plot_figures = FALSE)})
 
+figures_list_equi = figures_list[grep("equi_TRUE", names(figures_list))]
+figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0.1_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0.6_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0.9_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0.99_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0.6_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_pilot_separate_linear_reg_dt_MAE.rds$figure_mean
+
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.3_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_dt_MAE.rds`$figure_mean
+
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.1_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.3_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.6_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.9_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.99_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+
+figures_list_equi$M_12_n_train_1000_n_test_1000_rho_0_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+figures_list_equi$`M_12_n_train_1000_n_test_1000_rho_0_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds`$figure_mean
 
 figures_list$`Paper3_Experiment_M_6_n_train_1000_n_test_5000_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds`$figure_CI
 
@@ -277,6 +329,7 @@ stop()
 system.time({
 test1 = combine_explanation_results(M = 6,
                                     rhos = c(0.0, 0.5),
+                                    rho_equi = FALSE,
                                     n_train = 1000,
                                     n_test = 5000,
                                     betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5),
