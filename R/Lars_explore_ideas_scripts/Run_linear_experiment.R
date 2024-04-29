@@ -77,7 +77,6 @@
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 10 0.21 1,1,1,1,1,1,1,1,1,1,1 regression_separate NULL
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 10 0.21 1,1,1,1,1,1,1,1,1,1,1 regression_surrogate NULL
 
-
 # Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE 1,1,1,1,1,1,1,1,1,1,1,1,1 NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE 1,1,1,1,1,1,1,1,1,1,1,1,1 NULL NULL (adroa)
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE TRUE 1:10 6 1000000 1000000 1000 1000 12 0.0,0.3,0.6,0.9 TRUE 1,1,1,1,1,1,1,1,1,1,1,1,1 regression_separate NULL (bastet)
