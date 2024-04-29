@@ -1007,6 +1007,11 @@ pilot_estimates_coal_order = function(explanation,
     # then the second largest and so on.
     alternating_indices = c(rbind(seq(1, 2^(M-1)), seq(2^M, 2^(M-1) + 1)))
 
+    # Compute the mean standard weights for the different coalitions
+    tmp = W[-1, alternating_indices]
+    tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
+    standard_weight = colMeans(abs(tmp2))
+
     # {
     #   tmp = W[4, alternating_indices]
     #   par(mfrow = c(2,2))
