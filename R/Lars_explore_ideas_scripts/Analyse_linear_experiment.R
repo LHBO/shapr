@@ -27,7 +27,7 @@
 
 # Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_separate NULL
 
-# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.02,0.12,0.32,0.62,0.92,0.992 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 # Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE TRUE regression_surrogate NULL
 # Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
 
@@ -276,7 +276,38 @@ figures_list = lapply(relevant_files, function(save_file){
                n.dodge = 2,
                plot_figures = FALSE)})
 
+ff = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.992_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
+                  index_combinations = NULL,
+                  only_these_sampling_methods = c("unique", "unique_SW", "unique_paired", "unique_paired_SW", "paired_coalitions"),
+                  figures_to_make = c("figure_CI",
+                                      "figure_mean",
+                                      "figure_median",
+                                      "figure_lines",
+                                      "figure_boxplot",
+                                      "figure_lines_boxplot",
+                                      "figure_boxplot_lines"),
+                  ggplot_theme = NULL,
+                  brewer_palette = NULL,
+                  brewer_direction = 1,
+                  flip_coordinates = FALSE,
+                  legend_position = NULL,
+                  scale_y_log10 = TRUE,
+                  scale_x_log10 = FALSE,
+                  n.dodge = 2,
+                  plot_figures = FALSE)
+ff$figure_mean
+
 figures_list_equi = figures_list[grep("equi_TRUE", names(figures_list))]
+
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.3_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.3_equi_TRUE_weights_unif_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+
+figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
+
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.6_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_mean
+
+figures_list_equi$`M_10_n_train_1000_n_test_1000_rho_0.3_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds`$figure_CI
+
 figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
 figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0.1_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
 figures_list_equi$M_10_n_train_1000_n_test_1000_rho_0.6_equi_TRUE_betas_1_1_1_1_1_1_1_1_1_1_1_dt_MAE.rds$figure_mean
