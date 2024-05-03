@@ -274,8 +274,6 @@ repeated_explanations = function(model,
     use_precomputed_vS_gaussian_lm = FALSE
   }
 
-  print(use_precomputed_vS_gaussian_lm)
-
   # Extract the seed value
   seed = seed_start_value
 
