@@ -86,6 +86,21 @@ if (FALSE) {
   # order such that the error decreases much faster.
 
 
+  # 2024:
+  # Lars see if we can change the order we add them in.
+  # We now add them in the order that have the largest effect on average over all features (for 1 obs)
+  W_and_vS_element_wise_product_abs_max = W_and_vS_element_wise_product[, order(colMeans(abs(W_and_vS_element_wise_product[-1, ])), decreasing = TRUE)]
+  rowSums(W_and_vS_element_wise_product_abs_max)
+  explanation$shapley_values[test_obs_idx,]
+  W_and_vS_cumsum_v2 = apply(W_and_vS_element_wise_product_abs_max, 1, cumsum)
+  matplot(W_and_vS_cumsum_v2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley values")
+  points(rep(2^M, M+1), explanation$shapley_values[test_obs_idx], col = seq(M))
+  W_and_vS_cumsum_diff_v2 = sweep(x = W_and_vS_cumsum_v2, MARGIN = 2, STATS = as.matrix(explanation$shapley_values[test_obs_idx,]), FUN = "-")
+  matplot(W_and_vS_cumsum_diff_v2, type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Shapley value difference")
+  matplot(abs(W_and_vS_cumsum_diff_v2), type = "l", lty = 1, xlab = "Number of Coalitions", ylab = "Absolute Shapley value difference")
+
+
+
 
   # # MISSING TMP
   #
@@ -350,6 +365,8 @@ if (FALSE) {
       legend("topleft", legend = c("max and min", "0.05 and 0.95 quantile", "0.25 and 0.75 quantile", "median", "mean"),
              col = c(2,3,4,5,1), lty = c(2,3,4,5,1), pch = 1, lwd = 1.5, bty = "n")
     }
+
+    plot(rowMeans(abs(dt_vS)), type = "b")
   }
 
   {
