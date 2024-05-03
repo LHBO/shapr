@@ -342,16 +342,21 @@ sampling_methods = c("unique",
                      "single_median_ranking_over_each_test_obs")
 
 sampling_methods = c("unique",
+                     "unique_unif",
+                     "unique_SW",
                      "unique_paired",
+                     "unique_paired_unif",
+                     "unique_paired_SW",
                      "paired_coalitions",
-                     "paired_coalitions_sub",
-                     "paired_coalitions_scaled",
-                     "paired_coalitions_avg",
-                     "paired_coalitions_norm",
+                     # "paired_coalitions_sub",
+                     # "paired_coalitions_scaled",
+                     # "paired_coalitions_avg",
+                     # "paired_coalitions_norm",
                      "single_mean_coalition_effect",
-                     "single_median_coalition_effect",
-                     "single_mean_ranking_over_each_test_obs",
-                     "single_median_ranking_over_each_test_obs")
+                     # "single_median_coalition_effect",
+                     # "single_mean_ranking_over_each_test_obs",
+                     # "single_median_ranking_over_each_test_obs"
+                     )
 
 
 # First value where the coalition/combination sampling scheme has an effect, (first two are empty and full coalitions)
@@ -472,7 +477,7 @@ for (rho_idx in seq_along(rhos)) {
   }
 
 
-  ## True explanations -----------------------------------------------------------------------------------------------
+  # True explanations -----------------------------------------------------------------------------------------------
   if (compute_true_explanations) {
     message(paste0("Start computing the true explanations (n_workers = ", n_workers, ")."))
 
@@ -523,18 +528,18 @@ for (rho_idx in seq_along(rhos)) {
         )}, enable = TRUE)
 
 
-      progressr::with_progress({
-        true_explanations_tmp_reg <- explain(
-          model = predictive_model,
-          x_explain = data_test,
-          x_train = data_train,
-          approach = "regression_separate",
-          prediction_zero = prediction_zero,
-          keep_samp_for_vS = FALSE,
-          exact = TRUE,
-          n_batches = 2^(M-2),
-          seed = 1
-        )}, enable = TRUE)
+      # progressr::with_progress({
+      #   true_explanations_tmp_reg <- explain(
+      #     model = predictive_model,
+      #     x_explain = data_test,
+      #     x_train = data_train,
+      #     approach = "regression_separate",
+      #     prediction_zero = prediction_zero,
+      #     keep_samp_for_vS = FALSE,
+      #     exact = TRUE,
+      #     n_batches = 2^(M-2),
+      #     seed = 1
+      #   )}, enable = TRUE)
 
       # Compute the true explanations using the LM-Gaussian strategy
       progressr::with_progress({
