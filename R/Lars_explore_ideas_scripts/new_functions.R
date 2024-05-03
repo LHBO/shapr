@@ -441,8 +441,8 @@ repeated_explanations = function(model,
       # TODO: we use the Shapley kernel weights now, but might change that in the future.
       # 2024-29-04 Changed to equal weights (1) and 10^6 for the empty and grand coalitions
       specific_coalition_set_weights = lapply(seq_along(specific_coalition_set), function(x) NULL)
-      specific_coalition_set_weights =
-        lapply(seq_along(specific_coalition_set), function(x) c(10^6, 10^6, rep(1, 2^ncol(x_explain))))
+      # specific_coalition_set_weights =
+      #   lapply(seq_along(specific_coalition_set), function(x) c(10^6, 10^6, rep(1, 2^ncol(x_explain))))
       names(specific_coalition_set_weights) = names(specific_coalition_set)
 
       #specific_coalition_set_weights
