@@ -141,6 +141,22 @@ shapley_setup <- function(internal) {
     internal = internal
   )
 
+  if (!is.null(internal$parameters$sort_combinations) && isTRUE(internal$parameters$sort_combinations)) {
+    # 2024: Sort it as not_exact does not put the features in the same order as the order we get using exact
+    # Sort it first based on length (number of features in coalition S) and then numerically.
+    # Works up to coalitions size of 52 features.
+    lengths = X[,.N, by = n_features]
+    lengths_to_sort = lengths[N > 1, n_features]
+    int_to_letters = c(letters, LETTERS)
+    for (length_to_sort in lengths_to_sort) {
+      lst_tmp = X[n_features == length_to_sort]$features
+      lst_tmp = sapply(seq(length(lst_tmp)), function(i) paste0(int_to_letters[lst_tmp[[i]]], collapse = ""))
+      X[n_features == length_to_sort] = X[n_features == length_to_sort][order(lst_tmp)]
+    }
+    X[, id_combination := seq(.N)]
+  }
+
+
   # Get weighted matrix ----------------
   W <- weight_matrix(
     X = X,
@@ -154,12 +170,31 @@ shapley_setup <- function(internal) {
     m = n_features0
   )
 
+  # Add option to replace the W matrix where we compute the full W matrix and then extract the relevant columns
+  if (!is.null(internal$parameters$replace_W) && isTRUE(internal$parameters$replace_W)) {
+    W_all = weight_matrix(
+      X = feature_exact(m = n_features0, weight_zero_m = 10^6),
+      normalize_W_weights = TRUE,
+      is_groupwise = is_groupwise
+    )
+
+    # Create the S matrix if we had used all combinations
+    S_all = shapr::feature_matrix_cpp(
+      features = unlist(lapply(0:n_features0, utils::combn, x = n_features0, simplify = FALSE), recursive = FALSE),
+      m = n_features0
+    )
+
+    # Get a mapping from the indices of the current set of combinations/coalitions to the indices
+    # in the version where we use all 2^M combinations/coalitions.
+    current_combination_idx_in_all_combinations =
+      sapply(seq(nrow(S)), function(idx) which(apply(S_all, 1, function(x) identical(x, S[idx,]))))
+    W = W_all[,current_combination_idx_in_all_combinations]
+  }
+
   #### Updating parameters ####
 
   # Updating parameters$exact as done in feature_combinations
-  if (!exact && n_combinations >= 2^n_features0) {
-    internal$parameters$exact <- TRUE
-  }
+  if (!exact && n_combinations >= 2^n_features0) internal$parameters$exact <- TRUE
 
   internal$parameters$n_combinations <- nrow(S) # Updating this parameter in the end based on what is actually used.
 
@@ -353,7 +388,9 @@ feature_exact <- function(m, weight_zero_m = 10^6) {
 feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
                               sampling_method = c("unique",
                                                   "unique_SW",
+                                                  "unique_unif",
                                                   "unique_paired",
+                                                  "unique_paired_unif",
                                                   "unique_paired_SW",
                                                   "non_unique",
                                                   "non_unique_SW",
@@ -570,11 +607,39 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
 
     # Overwrite the frequency Shapley kernel weights with the exact ones
     if (sampling_method %in% c("unique_SW", "unique_paired_SW", "non_unique_SW")) {
-      X$shapley_weight
-
       dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
     }
 
+    # s1 = dt$shapley_weight[-c(1,nrow(dt))]
+    # s1 = s1 / sum(s1)
+    # s2 = dt$shapley_weight2[-c(1,nrow(dt))]
+    # s2 = s2 / sum(s2)
+    # plot(s1, ylim = c(0, max(c(s1, s2))))
+    # points(s2, col = 2)
+  } else if (sampling_method  %in% c("unique_unif", "unique_paired_unif")) {
+    # Unif_weights ----------------------------------------------------------------------------------------------------
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+    if (sampling_method == "unique_unif") {
+      # Sample `n_combinations` combination indices. Sort to get in right order.
+      samples = sort(sample(x = 2:(2^m-1), size = n_combinations - 2))
+    } else {
+      # Paired assure that we have an even number. SHOULD NEVER HAPPEN THOUGH
+      n_combinations_now = if (n_combinations %% 2 == 1) n_combinations - 1 else n_combinations
+
+      # Sample from first half and then add the paired/compliments.  Sort to get in right order.
+      samples = sort(sample(x = 2:2^(m-1), size = (n_combinations_now - 2)/2))
+      samples = c(samples, 2^m + 1 - rev(samples))
+    }
+
+    # Add empty and grand
+    samples = c(1, samples, 2^m)
+
+    dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)[samples]]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
 
   } else if (sampling_method == "chronological_order_increasing") {
     # chronological_order_increasing ----------------------------------------------------------------------------------
