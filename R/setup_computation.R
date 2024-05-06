@@ -506,7 +506,9 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
        else specific_coalition_set_weights]
     dt[c(1, .N), shapley_weight := weight_zero_m]
 
-  } else if (sampling_method %in% c("unique", "unique_paired", "non_unique","unique_SW", "unique_paired_SW", "non_unique_SW")) {
+  } else if (sampling_method %in% c("unique", "unique_paired", "non_unique","unique_SW", "unique_paired_SW", "non_unique_SW",
+                                    "unique_equal_weights", "unique_equal_weights_symmetric",
+                                    "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric")) {
     # Check if any of "unique", "unique_paired", "non_unique", "unique_SW", "unique_paired_SW", "non_unique_SW"
     # This is the version that is in the Shapr master branch, except for `unique_paired`.
 
@@ -618,7 +620,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       # The idea is to weight each coalition size the same, as we know that in theory they are equal.
       # Hence, we set the Shapley weight to be the average sampling frequency for the coalition size.
       dt[, shapley_weight := as.numeric(shapley_weight)]
-      dt[,shapley_weight := mean(shapley_weight), by = n_features]
+      dt[, shapley_weight := mean(shapley_weight), by = n_features]
     }
 
     if (sampling_method %in% c("unique_equal_weights_symmetric", "unique_paired_equal_weights_symmetric")) {
