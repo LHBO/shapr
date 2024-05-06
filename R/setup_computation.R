@@ -607,7 +607,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     nms <- c("id_combination", "features", "n_features", "N", "shapley_weight", "p")
     data.table::setcolorder(X, nms)
 
-    dt = copyX
+    dt = X
 
     # Overwrite the frequency Shapley kernel weights with the exact ones
     if (sampling_method %in% c("unique_SW", "unique_paired_SW", "non_unique_SW")) {
