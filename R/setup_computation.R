@@ -389,9 +389,13 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
                               sampling_method = c("unique",
                                                   "unique_SW",
                                                   "unique_unif",
+                                                  "unique_equal_weights",
+                                                  "unique_equal_weights_symmetric",
                                                   "unique_paired",
                                                   "unique_paired_unif",
                                                   "unique_paired_SW",
+                                                  "unique_paired_equal_weights",
+                                                  "unique_paired_equal_weights_symmetric",
                                                   "non_unique",
                                                   "non_unique_SW",
                                                   "chronological_order_increasing",
@@ -509,7 +513,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     feature_sample_all <- list()
     unique_samples <- 0
 
-    if (sampling_method %in% c("unique", "unique_SW")) {
+    if (sampling_method %in% c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric")) {
       # unique ----------------------------------------------------------------------------------------------------------
       while (unique_samples < n_combinations - 2) {
         n_features_sample <- sample(
@@ -524,7 +528,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         feature_sample_all <- c(feature_sample_all, feature_sample)
         unique_samples <- length(unique(feature_sample_all))
       }
-    } else if (sampling_method  %in% c("unique_paired", "unique_paired_SW")) {
+    } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric")) {
       # unique paired ---------------------------------------------------------------------------------------------------
       while (unique_samples < n_combinations - 2) {
 
@@ -603,11 +607,29 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     nms <- c("id_combination", "features", "n_features", "N", "shapley_weight", "p")
     data.table::setcolorder(X, nms)
 
-    dt = X
+    dt = copyX
 
     # Overwrite the frequency Shapley kernel weights with the exact ones
     if (sampling_method %in% c("unique_SW", "unique_paired_SW", "non_unique_SW")) {
       dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+    }
+
+    if (sampling_method %in% c("unique_equal_weights", "unique_paired_equal_weights")) {
+      # The idea is to weight each coalition size the same, as we know that in theory they are equal.
+      # Hence, we set the Shapley weight to be the average sampling frequency for the coalition size.
+      dt[, shapley_weight := as.numeric(shapley_weight)]
+      dt[,shapley_weight := mean(shapley_weight), by = n_features]
+    }
+
+    if (sampling_method %in% c("unique_equal_weights_symmetric", "unique_paired_equal_weights_symmetric")) {
+      # Same as above, but also using that the Shapley weights should be symmetric. I.e., coalitions with
+      # j features and coalitions with m-j features should in theory have the same weight. We set it to be
+      # the mean across both coalition sizes.
+      dt[, shapley_weight := as.numeric(shapley_weight)]
+      coalition_groups = unique(lapply(seq(0, ceiling(m/2)), function(i) sort(c(i, m-i))))
+      for (cg_index in seq(length(coalition_groups))) {
+        dt[n_features %in% coalition_groups[[cg_index]], shapley_weight:=mean(shapley_weight)]
+      }
     }
 
     # s1 = dt$shapley_weight[-c(1,nrow(dt))]

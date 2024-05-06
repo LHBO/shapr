@@ -92,6 +92,13 @@
 #Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:2 6 1000000 1000000 1000 1000 10 0.0,0.1,0.3 TRUE 1,1,1,1,1,1,1,1,1,1,1 NULL NULL (adroa)
 #Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:2 6 1000000 1000000 1000 1000 10 0.6,0.9,0.99 TRUE 1,1,1,1,1,1,1,1,1,1,1 NULL NULL ()
 
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.04 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.14 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.34 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.64 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.84 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.94 TRUE NULL NULL NULL
+
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -259,8 +266,8 @@ if (UiO) {
   # # If they have the old version, then we install the one on GitHub
   # print(any(as.list(args(shapr::explain)) == "x"))
   # if (any(as.list(args(shapr::explain)) == "x")) {
-  #   devtools::clean_dll()
-  #   devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+    # devtools::clean_dll()
+    # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
   # }
 }
 # devtools::load_all(".")
@@ -343,15 +350,19 @@ sampling_methods = c("unique",
 sampling_methods = c("unique",
                      "unique_unif",
                      "unique_SW",
+                     "unique_equal_weights",
+                     "unique_equal_weights_symmetric",
                      "unique_paired",
                      "unique_paired_unif",
                      "unique_paired_SW",
+                     "unique_paired_equal_weights",
+                     "unique_paired_equal_weights_symmetric",
                      "paired_coalitions",
                      # "paired_coalitions_sub",
                      # "paired_coalitions_scaled",
                      # "paired_coalitions_avg",
                      # "paired_coalitions_norm",
-                     "single_mean_coalition_effect"
+                     "single_mean_coalition_effect",
                      # "single_median_coalition_effect",
                      # "single_mean_ranking_over_each_test_obs",
                      # "single_median_ranking_over_each_test_obs"
