@@ -362,7 +362,7 @@ sampling_methods = c("unique",
                      # "paired_coalitions_scaled",
                      # "paired_coalitions_avg",
                      # "paired_coalitions_norm",
-                     "single_mean_coalition_effect",
+                     "single_mean_coalition_effect"
                      # "single_median_coalition_effect",
                      # "single_mean_ranking_over_each_test_obs",
                      # "single_median_ranking_over_each_test_obs"
