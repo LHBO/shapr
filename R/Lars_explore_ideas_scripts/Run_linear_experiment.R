@@ -111,15 +111,17 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.91 TRUE NULL NULL NULL
 
 
-# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 10 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 10 0,0.05,0.1,0.2,0.5,0.7,0.9 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0,0.05,0.1 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.2,0.5,0.7,0.9 TRUE NULL NULL NULL
 
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.05 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.1 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.2 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.5 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.7 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.05 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.1 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.5 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.7 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 10 0.9 FALSE NULL NULL NULL
 
 
 
@@ -415,14 +417,14 @@ n_combinations_array =
                 middle_part, # Then include `n_combinations_increment` new coalitions at the time
                 seq(2^M-M, 2^M)))) # Include the coalitions that are missing 1 feature
 
-n_combinations_array =
-  sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
-                middle_part, # Then include `n_combinations_increment` new coalitions at the time
-                seq(2^M-M, 2^M-M)))) # Include the coalitions that are missing 1 feature
-
-n_combinations_array =
-  sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
-                middle_part))) # Include the coalitions that are missing 1 feature
+# n_combinations_array =
+#   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
+#                 middle_part, # Then include `n_combinations_increment` new coalitions at the time
+#                 seq(2^M-M, 2^M-M)))) # Include the coalitions that are missing 1 feature
+#
+# n_combinations_array =
+#   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
+#                 middle_part))) # Include the coalitions that are missing 1 feature
 
 if (M <= 8) n_combinations_array = seq(2, 2^M)
 
