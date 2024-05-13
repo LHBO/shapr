@@ -372,8 +372,7 @@ sampling_methods = c("unique",
                      "single_mean_ranking_over_each_test_obs",
                      "single_median_ranking_over_each_test_obs")
 
-sampling_methods = c("unique_paired_equal_weights_1000",
-                     "unique",
+sampling_methods = c("unique",
                      "unique_unif",
                      "unique_SW",
                      "unique_equal_weights",
