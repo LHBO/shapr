@@ -541,6 +541,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric") ||
                grepl("unique_paired_equal_weights_", sampling_method)) {
       # unique paired ---------------------------------------------------------------------------------------------------
+      iters = 0
       while (unique_samples < n_combinations - 2) {
 
         n_features_sample <- sample(
@@ -554,12 +555,16 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
         feature_sample_all <- c(feature_sample_all, feature_sample, feature_sample_paired)
         unique_samples <- length(unique(feature_sample_all))
+        iters = iters + 1
+        print(c(iters, unique_samples))
+        message(c(iters, unique_samples))
       }
 
       if (grepl("unique_paired_equal_weights_", sampling_method)) {
         n_extra = as.numeric(gsub(".*_(\\d+)$", "\\1", sampling_method))
 
         message(length(feature_sample_all))
+        print(length(feature_sample_all))
 
         feature_sample_unique = unique(feature_sample_all)
         unique_samples_new_counter = 0

@@ -668,7 +668,7 @@ compute_SV_function = function(n_combinations,
 
   # Call the `shapr::explain` function with the provided parameters
   # print("hei")
-  tmp_res = suppressMessages(suppressWarnings(
+  tmp_res = suppressWarnings(
     shapr::explain(
       model = model,
       x_explain = x_explain,
@@ -686,7 +686,7 @@ compute_SV_function = function(n_combinations,
       specific_coalition_set = specific_coalition_set,
       specific_coalition_set_weights = specific_coalition_set_weights,
       ...
-    )))
+    ))
   # print("hei2")
 
   # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
@@ -772,7 +772,7 @@ future_compute_SV_function = function(compute_SV_function,
   # Call the tmp_function for the different number of coalitions
   future.apply::future_lapply(
     X = as.list(used_sequence_n_combinations),
-    FUN = suppressMessages(suppressWarnings(compute_SV_function)),
+    FUN = suppressWarnings(compute_SV_function),
     used_sequence_n_combinations = used_sequence_n_combinations,
     n_combinations_to = n_combinations_to,
     model = model,
