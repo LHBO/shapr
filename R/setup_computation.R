@@ -395,6 +395,11 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
                                                   "unique_paired_unif",
                                                   "unique_paired_SW",
                                                   "unique_paired_equal_weights",
+                                                  "unique_paired_equal_weights_1000",
+                                                  "unique_paired_equal_weights_5000",
+                                                  "unique_paired_equal_weights_10000",
+                                                  "unique_paired_equal_weights_50000",
+                                                  "unique_paired_equal_weights_100000",
                                                   "unique_paired_equal_weights_symmetric",
                                                   "non_unique",
                                                   "non_unique_SW",
@@ -508,7 +513,9 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
 
   } else if (sampling_method %in% c("unique", "unique_paired", "non_unique","unique_SW", "unique_paired_SW", "non_unique_SW",
                                     "unique_equal_weights", "unique_equal_weights_symmetric",
-                                    "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric")) {
+                                    "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric") ||
+             grepl("unique_paired_equal_weights_", sampling_method)
+             ) {
     # Check if any of "unique", "unique_paired", "non_unique", "unique_SW", "unique_paired_SW", "non_unique_SW"
     # This is the version that is in the Shapr master branch, except for `unique_paired`.
 
@@ -530,7 +537,9 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         feature_sample_all <- c(feature_sample_all, feature_sample)
         unique_samples <- length(unique(feature_sample_all))
       }
-    } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric")) {
+
+    } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric") ||
+               grepl("unique_paired_equal_weights_", sampling_method)) {
       # unique paired ---------------------------------------------------------------------------------------------------
       while (unique_samples < n_combinations - 2) {
 
@@ -545,8 +554,37 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
         feature_sample_all <- c(feature_sample_all, feature_sample, feature_sample_paired)
         unique_samples <- length(unique(feature_sample_all))
+      }
+
+      if (grepl("unique_paired_equal_weights_", sampling_method)) {
+        n_extra = as.numeric(gsub(".*_(\\d+)$", "\\1", sampling_method))
+
+        print(length(feature_sample_all))
+
+        feature_sample_unique = unique(feature_sample_all)
+        unique_samples_new_counter = 0
+
+        while (unique_samples_new_counter < n_extra) {
+          n_features_sample_new <- sample(
+            x = n_features,
+            size = n_extra - unique_samples_new_counter,
+            replace = TRUE,
+            prob = p
+          )
+
+          # Sample specific set of features
+          feature_sample_new <- sample_features_cpp(m, n_features_sample_new)
+
+          # Only keep the combinations that were among the original n_combinations
+          feature_sample_new = feature_sample_new[feature_sample_new %in% feature_sample_unique]
+
+          feature_sample_all <- c(feature_sample_all, feature_sample_new)
+          unique_samples_new_counter <- unique_samples_new_counter + length(feature_sample_new)
+        }
+        print(length(feature_sample_all))
 
       }
+
     } else {
       # non_unique ------------------------------------------------------------------------------------------------------
       n_features_sample <- sample(
@@ -557,14 +595,16 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       )
       feature_sample_all <- sample_features_cpp(m, n_features_sample)
     }
-    feature_sample_all
+    # feature_sample_all
+
+
 
     # Add zero and m features
     feature_sample_all <- c(list(integer(0)), feature_sample_all, list(c(1:m)))
     X <- data.table(n_features = sapply(feature_sample_all, length))
     X[, n_features := as.integer(n_features)]
 
-    # Get number of occurences and duplicated rows
+    # Get number of occurrences and duplicated rows
     is_duplicate <- NULL # due to NSE notes in R CMD check
     r <- helper_feature(m, feature_sample_all)
     X[, is_duplicate := r[["is_duplicate"]]]
@@ -634,12 +674,125 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       }
     }
 
-    # s1 = dt$shapley_weight[-c(1,nrow(dt))]
-    # s1 = s1 / sum(s1)
-    # s2 = dt$shapley_weight2[-c(1,nrow(dt))]
-    # s2 = s2 / sum(s2)
-    # plot(s1, ylim = c(0, max(c(s1, s2))))
-    # points(s2, col = 2)
+    if (FALSE) {
+      # TESTE convergence
+      dt[, shapley_weight_true := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+
+      dt[, shapley_weight := as.numeric(shapley_weight)]
+      dt[, shapley_weight_mean := mean(shapley_weight), by = n_features]
+
+      s1 = dt$shapley_weight[-c(1,nrow(dt))]
+      s1 = s1 / sum(s1)
+      s2 = dt$shapley_weight_mean[-c(1,nrow(dt))]
+      s2 = s2 / sum(s2)
+      s3 = dt$shapley_weight_true[-c(1,nrow(dt))]
+      s3 = s3 / sum(s3)
+      matplot(seq(2, n_combinations-1), cbind(s1, s2, s3), type = "s", lty = 1, lwd = 2)
+      plot(s1, ylim = c(0, max(c(s1, s2))))
+      plot(s2)
+      points(s2, col = 2)
+      points(s3, col = 3)
+
+      # Lets add more repetitions
+      unique_samples_new = 5000
+      length(feature_sample_all)
+
+      feature_sample_unique = unique(feature_sample_all)
+      unique_samples_new_counter = 0
+
+      while (unique_samples_new_counter < unique_samples_new) {
+        n_features_sample_new <- sample(
+          x = n_features,
+          size = unique_samples_new - unique_samples_new_counter,
+          replace = TRUE,
+          prob = p
+        )
+
+        # Sample specific set of features
+        feature_sample_new <- sample_features_cpp(m, n_features_sample_new)
+
+        # Only keep the combinations that were among the original n_combinations
+        feature_sample_new = feature_sample_new[feature_sample_new %in% feature_sample_unique]
+
+        feature_sample_all <- c(feature_sample_all, feature_sample_new)
+        unique_samples_new_counter <- unique_samples_new_counter + length(feature_sample_new)
+      }
+
+      length(feature_sample_all) # added unique_samples_new new samples
+
+      r <- helper_feature(m, feature_sample_all)
+
+      X2 <- data.table(n_features = sapply(feature_sample_all, length))
+      X2[, n_features := as.integer(n_features)]
+
+      # Get number of occurrences and duplicated rows
+      is_duplicate <- NULL # due to NSE notes in R CMD check
+      r <- helper_feature(m, feature_sample_all)
+      X2[, is_duplicate := r[["is_duplicate"]]]
+
+      # When we sample combinations the Shapley weight is equal
+      # to the frequency of the given combination
+      X2[, shapley_weight := r[["sample_frequence"]]]
+
+
+      # Populate table and remove duplicated rows
+      X2[, features := feature_sample_all]
+      if (any(X2[["is_duplicate"]])) {
+        X2 <- X2[is_duplicate == FALSE]
+      }
+      X2[, is_duplicate := NULL]
+      data.table::setkeyv(X2, "n_features")
+
+      # Make feature list into character
+      X2[, features_tmp := sapply(features, paste, collapse = " ")]
+
+      # Aggregate weights by how many samples of a combination we observe
+      X2 <- X2[, .(
+        n_features = data.table::first(n_features),
+        shapley_weight = sum(shapley_weight),
+        features = features[1]
+      ), features_tmp]
+
+      X2[, features_tmp := NULL]
+      data.table::setorder(X2, n_features)
+
+      # Add shapley weight and number of combinations
+      X2[c(1, .N), shapley_weight := weight_zero_m]
+      X2[, N := 1]
+      ind <- X2[, .I[data.table::between(n_features, 1, m - 1)]]
+      X2[ind, p := p[n_features]]
+      X2[ind, N := n[n_features]]
+
+      # Set column order and key table
+      data.table::setkeyv(X2, "n_features")
+      X2[, id_combination := .I]
+      X2[, N := as.integer(N)]
+      nms <- c("id_combination", "features", "n_features", "N", "shapley_weight", "p")
+      data.table::setcolorder(X2, nms)
+
+      dt[, shapley_weight_2 := as.numeric(X2$shapley_weight)]
+      dt[, shapley_weight_2_mean := mean(shapley_weight_2), by = n_features]
+
+
+      s4 = dt$shapley_weight_2[-c(1,nrow(dt))]
+      s4 = s4 / sum(s4)
+      s5 = dt$shapley_weight_2_mean[-c(1,nrow(dt))]
+      s5 = s5 / sum(s5)
+      #matplot(seq(2, n_combinations-1), cbind(s1, s2, s3, s4, s5), type = "s", lty = 1, lwd = 2)
+      par(mfrow = c(2,1))
+      {
+        matplot(seq(2, n_combinations-1), cbind(s1, s3, s2), type = "s", lty = 1, lwd = 2)
+        matplot(seq(2, n_combinations-1), cbind(s4, s3, s5), type = "s", lty = 1, lwd = 2)
+      }
+      {
+        matplot(seq(2, n_combinations-1), cbind(s1 - s3, s2 - s3), type = "s", lty = 1, lwd = 2)
+        matplot(seq(2, n_combinations-1), cbind(s4 - s3, s5 - s3), type = "s", lty = 1, lwd = 2)
+      }
+
+
+    }
+
+
   } else if (sampling_method  %in% c("unique_unif", "unique_paired_unif")) {
     # Unif_weights ----------------------------------------------------------------------------------------------------
     dt <- data.table::data.table(id_combination = seq(n_combinations))
