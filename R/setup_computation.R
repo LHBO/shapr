@@ -557,14 +557,14 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         unique_samples <- length(unique(feature_sample_all))
         iters = iters + 1
         #print(c(iters, unique_samples))
-        if (iters %% 250 == 0) message(c(iters, unique_samples))
+        if (iters %% 250 == 0) message(paste0("Iter: ", iters, "\t Samples: ", length(feature_sample_all) ,"\t Unique samples:", unique_samples))
       }
 
       if (grepl("unique_paired_equal_weights_", sampling_method)) {
         n_extra = as.numeric(gsub(".*_(\\d+)$", "\\1", sampling_method))
 
         message(length(feature_sample_all))
-        print(length(feature_sample_all))
+        #print(length(feature_sample_all))
 
         feature_sample_unique = unique(feature_sample_all)
         unique_samples_new_counter = 0

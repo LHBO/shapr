@@ -133,19 +133,19 @@ if (length(args) < 16) {
        rho, rho_equi, beta, pilot_approach_regression, pilot_regression_model)!", call.=FALSE)
 }
 
-do_setup = TRUE
-compute_true_explanations = TRUE
-compute_repeated_explanations = FALSE
-use_pilot_estimates_regression = TRUE
+do_setup = FALSE
+compute_true_explanations = FALSE
+compute_repeated_explanations = TRUE
+use_pilot_estimates_regression = FALSE
 repetitions = 1
 n_workers = 4
 n_samples_true = 1000000
 n_samples = 1000000
 n_train = 1000
-n_test = 250
+n_test = 1000
 M = 10
-rhos = 0.7
-rho_equi = TRUE
+rhos = 0
+rho_equi = FALSE
 pilot_approach_regression = "regression_separate"
 pilot_regression_model = "parsnip::linear_reg()"
 
@@ -418,7 +418,11 @@ n_combinations_array =
 n_combinations_array =
   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
                 middle_part, # Then include `n_combinations_increment` new coalitions at the time
-                seq(2^M-M, 2^M-4)))) # Include the coalitions that are missing 1 feature
+                seq(2^M-M, 2^M-M)))) # Include the coalitions that are missing 1 feature
+
+n_combinations_array =
+  sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
+                middle_part))) # Include the coalitions that are missing 1 feature
 
 if (M <= 8) n_combinations_array = seq(2, 2^M)
 
@@ -674,7 +678,7 @@ for (rho_idx in seq_along(rhos)) {
       }
 
       # Compute the repeated estimated Shapley values using the different sampling methods
-      repeated_estimated_explanations = suppressWarnings(repeated_explanations(
+      repeated_estimated_explanations = repeated_explanations(
         model = predictive_model,
         x_explain = data_test,
         x_train = data_train,
@@ -696,7 +700,7 @@ for (rho_idx in seq_along(rhos)) {
         pilot_approach_regression = pilot_approach_regression,
         pilot_regression_model = pilot_regression_model,
         sampling_methods = sampling_methods,
-        save_path = save_file_name_rep_tmp))
+        save_path = save_file_name_rep_tmp)
       # model = predictive_model
       # x_explain = data_test
       # x_train = data_train
