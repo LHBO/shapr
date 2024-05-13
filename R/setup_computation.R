@@ -557,13 +557,14 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         unique_samples <- length(unique(feature_sample_all))
         iters = iters + 1
         #print(c(iters, unique_samples))
-        if (iters %% 250 == 0) message(paste0("Iter: ", iters, "\t Samples: ", length(feature_sample_all) ,"\t Unique samples:", unique_samples))
+        #if (iters %% 250 == 0) message(paste0("Iter: ", iters, "\t Samples: ", length(feature_sample_all) ,"\t Unique samples:", unique_samples))
       }
 
-      if (grepl("unique_paired_equal_weights_", sampling_method)) {
-        n_extra = as.numeric(gsub(".*_(\\d+)$", "\\1", sampling_method))
+      # Add extra samples. Cannot due it for two as there are no samples coalitions. Only empty and grand
+      if (grepl("unique_paired_equal_weights_", sampling_method) && n_combinations > 2) {
+        n_extra = as.integer(as.numeric(gsub(".*_(\\d+)$", "\\1", sampling_method)) / 2)
 
-        message(length(feature_sample_all))
+        #message(length(feature_sample_all))
         #print(length(feature_sample_all))
 
         feature_sample_unique = unique(feature_sample_all)
@@ -582,11 +583,12 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
 
           # Only keep the combinations that were among the original n_combinations
           feature_sample_new = feature_sample_new[feature_sample_new %in% feature_sample_unique]
+          feature_sample_new_paired <- lapply(feature_sample_new, function(x, m) {seq(m)[-x]}, m = m)
 
-          feature_sample_all <- c(feature_sample_all, feature_sample_new)
+          feature_sample_all <- c(feature_sample_all, feature_sample_new, feature_sample_new_paired)
           unique_samples_new_counter <- unique_samples_new_counter + length(feature_sample_new)
         }
-        message(length(feature_sample_all))
+        #message(length(feature_sample_all))
 
       }
 
@@ -661,7 +663,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
     }
 
-    if (sampling_method %in% c("unique_equal_weights", "unique_paired_equal_weights")) {
+    if (sampling_method %in% c("unique_equal_weights", "unique_paired_equal_weights") || grepl("unique_paired_equal_weights_", sampling_method)) {
       # The idea is to weight each coalition size the same, as we know that in theory they are equal.
       # Hence, we set the Shapley weight to be the average sampling frequency for the coalition size.
       dt[, shapley_weight := as.numeric(shapley_weight)]
