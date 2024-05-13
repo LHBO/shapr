@@ -415,6 +415,11 @@ n_combinations_array =
                 middle_part, # Then include `n_combinations_increment` new coalitions at the time
                 seq(2^M-M, 2^M)))) # Include the coalitions that are missing 1 feature
 
+n_combinations_array =
+  sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
+                middle_part, # Then include `n_combinations_increment` new coalitions at the time
+                seq(2^M-M, 2^M-4)))) # Include the coalitions that are missing 1 feature
+
 if (M <= 8) n_combinations_array = seq(2, 2^M)
 
 # We start with 2 ad we used 1 for the true Shapley values above.
