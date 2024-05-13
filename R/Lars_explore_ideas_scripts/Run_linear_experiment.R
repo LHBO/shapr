@@ -113,6 +113,15 @@
 
 # Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 10 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE NULL NULL NULL
 
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.05 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.1 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.5 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.7 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.9 FALSE NULL NULL NULL
+
+
 
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 6 0.21,0.51 TRUE NULL NULL NULL
 # Input From Command Line ----------------------------------------------------------------------------------------------
@@ -363,7 +372,8 @@ sampling_methods = c("unique",
                      "single_mean_ranking_over_each_test_obs",
                      "single_median_ranking_over_each_test_obs")
 
-sampling_methods = c("unique",
+sampling_methods = c("unique_paired_equal_weights_1000",
+                     "unique",
                      "unique_unif",
                      "unique_SW",
                      "unique_equal_weights",
@@ -372,6 +382,11 @@ sampling_methods = c("unique",
                      "unique_paired_unif",
                      "unique_paired_SW",
                      "unique_paired_equal_weights",
+                     "unique_paired_equal_weights_1000",
+                     "unique_paired_equal_weights_5000",
+                     "unique_paired_equal_weights_10000",
+                     "unique_paired_equal_weights_50000",
+                     "unique_paired_equal_weights_100000",
                      "unique_paired_equal_weights_symmetric",
                      "paired_coalitions",
                      # "paired_coalitions_sub",
