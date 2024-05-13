@@ -99,6 +99,22 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.84 TRUE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.94 TRUE NULL NULL NULL
 
+
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.01,0.11,0.21,0.31,0.41,0.51,0.61,0.71,0.81,0.91 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.01 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.11 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.31 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.41 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.61 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.71 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.81 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 12 0.91 TRUE NULL NULL NULL
+
+
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 10 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE NULL NULL NULL
+
+
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 6 0.21,0.51 TRUE NULL NULL NULL
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -400,6 +416,7 @@ for (rho_idx in seq_along(rhos)) {
   message(paste0("Working on rho = ", rho, " (", rho_idx, " of ", length(rhos), ")"))
 
   # Create the covariance matrix
+  sigma = matrix(ncol = M, nrow = M) # Old
   if (rho_equi) {
     sigma = matrix(rho, ncol = M, nrow = M) # Old
   } else {
@@ -437,6 +454,9 @@ for (rho_idx in seq_along(rhos)) {
     data_train_with_response = copy(data_train)[,y := response_train]
     data_test_with_response  = copy(data_test)[,y := response_test]
 
+    # X = cbind(1, as.matrix(data_train))
+    # solve(t(X) %*% X) %*% t(X) %*% response_train
+
 
 
     # Predictive model ------------------------------------------------------------------------------------------------
@@ -444,6 +464,7 @@ for (rho_idx in seq_along(rhos)) {
     predictive_model = gam(as.formula(paste0("y ~ ", paste0("ti(X", seq(M), ")", collapse = " + "))),
                            data = data_train_with_response)
     predictive_model = lm(y ~ ., data = data_train_with_response)
+
 
     # Look at the accuracy of the model
     message(sprintf("Training MSE = %g and test MSE = %g.",
