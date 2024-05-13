@@ -325,7 +325,7 @@ repeated_explanations = function(model,
         # Create the shapr object. The Shapley value output will be rubbish,
         # but we only need the object/list structure. Do not want any warnings.
         progressr::with_progress({
-          explanations_tmp =
+          explanations_tmp = suppressMessages(suppressWarnings(
             shapr::explain(
               model = model,
               x_explain = x_explain,
@@ -340,7 +340,7 @@ repeated_explanations = function(model,
               seed = seed,
               precomputed_vS = list(dt_vS = dt_vS),
               ...
-            )}, enable = TRUE)
+            )))}, enable = TRUE)
 
         # Compute the explanation_precompute_vS using the LM-Gaussian strategy
         # Could save a tiny bit of time by setting this to `only_return_dt_vS_list = TRUE`,
@@ -376,7 +376,7 @@ repeated_explanations = function(model,
 
         # Do not want any warnings
         progressr::with_progress({
-          explanation_precomputed_vS =
+          explanation_precomputed_vS = suppressMessages(suppressWarnings(
             shapr::explain(
               model = model,
               x_explain = x_explain,
@@ -389,7 +389,7 @@ repeated_explanations = function(model,
               n_batches = n_batches,
               seed = seed,
               ...
-            )}, enable = TRUE)
+            )))}, enable = TRUE)
 
         # Extract only the precomputed_vS list
         precomputed_vS = explanation_precomputed_vS$internal$output
@@ -668,7 +668,7 @@ compute_SV_function = function(n_combinations,
 
   # Call the `shapr::explain` function with the provided parameters
   # print("hei")
-  tmp_res =
+  tmp_res = suppressMessages(suppressWarnings(
     shapr::explain(
       model = model,
       x_explain = x_explain,
@@ -686,7 +686,7 @@ compute_SV_function = function(n_combinations,
       specific_coalition_set = specific_coalition_set,
       specific_coalition_set_weights = specific_coalition_set_weights,
       ...
-    )
+    )))
   # print("hei2")
 
   # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
@@ -772,7 +772,7 @@ future_compute_SV_function = function(compute_SV_function,
   # Call the tmp_function for the different number of coalitions
   future.apply::future_lapply(
     X = as.list(used_sequence_n_combinations),
-    FUN = compute_SV_function,
+    FUN = suppressMessages(suppressWarnings(compute_SV_function)),
     used_sequence_n_combinations = used_sequence_n_combinations,
     n_combinations_to = n_combinations_to,
     model = model,
@@ -915,7 +915,7 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
 
   # Compute the Shapley values again, but this time with the precomputed contribution functions
   progressr::with_progress({
-    updated_explanation <-
+    updated_explanation <- suppressMessages(suppressWarnings(
       shapr::explain(
         model = linear_model,
         x_explain = explanation$internal$data$x_explain,
@@ -931,7 +931,7 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
         gaussian.cov_mat = explanation$internal$parameters$gaussian.cov_mat,
         seed = explanation$internal$parameters$seed,
         precomputed_vS = list(dt_vS = dt_vS) # We use dt_vS to compute the Shapley values
-      )}, enable = TRUE)
+      )))}, enable = TRUE)
 
   # Set the number of samples to `Inf` and create a new boolean
   updated_explanation$internal$parameters$n_samples = Inf
