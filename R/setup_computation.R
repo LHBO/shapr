@@ -561,7 +561,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       }
 
       # Add extra samples. Cannot due it for two as there are no samples coalitions. Only empty and grand
-      if (grepl("unique_paired_equal_weights_", sampling_method) && n_combinations > 2) {
+      if (sampling_method != "unique_paired_equal_weights_symmetric" && grepl("unique_paired_equal_weights_", sampling_method) && n_combinations > 2) {
         n_extra = as.integer(as.numeric(gsub(".*_(\\d+)$", "\\1", sampling_method)) / 2)
 
         #message(length(feature_sample_all))
@@ -663,7 +663,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
     }
 
-    if (sampling_method %in% c("unique_equal_weights", "unique_paired_equal_weights") || grepl("unique_paired_equal_weights_", sampling_method)) {
+    if (sampling_method %in% c("unique_equal_weights", "unique_paired_equal_weights") || (grepl("unique_paired_equal_weights_", sampling_method) && sampling_method != "unique_paired_equal_weights_symmetric")) {
       # The idea is to weight each coalition size the same, as we know that in theory they are equal.
       # Hence, we set the Shapley weight to be the average sampling frequency for the coalition size.
       dt[, shapley_weight := as.numeric(shapley_weight)]
