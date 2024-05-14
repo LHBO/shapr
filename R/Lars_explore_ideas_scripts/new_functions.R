@@ -226,7 +226,7 @@ repeated_explanations = function(model,
   # print(sampling_methods)
 
   # Check for valid sampling methods
-  #sampling_methods = match.arg(sampling_methods, several.ok = TRUE)
+  # sampling_methods = match.arg(sampling_methods, several.ok = TRUE)
 
   if (!is.character(pilot_approach_regression) || !is.character(pilot_regression_model)) {
     stop("Both `pilot_approach_regression` and `pilot_regression_model` must be strings.")
