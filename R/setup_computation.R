@@ -389,10 +389,12 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
                               sampling_method = c("unique",
                                                   "unique_SW",
                                                   "unique_unif",
+                                                  "unique_unif_V2",
                                                   "unique_equal_weights",
                                                   "unique_equal_weights_symmetric",
                                                   "unique_paired",
                                                   "unique_paired_unif",
+                                                  "unique_paired_unif_V2",
                                                   "unique_paired_SW",
                                                   "unique_paired_equal_weights",
                                                   "unique_paired_equal_weights_1000",
@@ -512,7 +514,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     dt[c(1, .N), shapley_weight := weight_zero_m]
 
   } else if (sampling_method %in% c("unique", "unique_paired", "non_unique","unique_SW", "unique_paired_SW", "non_unique_SW",
-                                    "unique_equal_weights", "unique_equal_weights_symmetric",
+                                    "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2", "unique_paired_unif_V2",
                                     "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric") ||
              grepl("unique_paired_equal_weights_", sampling_method)
              ) {
@@ -522,7 +524,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     feature_sample_all <- list()
     unique_samples <- 0
 
-    if (sampling_method %in% c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric")) {
+    if (sampling_method %in% c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")) {
       # unique ----------------------------------------------------------------------------------------------------------
       while (unique_samples < n_combinations - 2) {
         n_features_sample <- sample(
@@ -538,7 +540,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         unique_samples <- length(unique(feature_sample_all))
       }
 
-    } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric") ||
+    } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric", "unique_paired_unif_V2") ||
                grepl("unique_paired_equal_weights_", sampling_method)) {
       # unique paired ---------------------------------------------------------------------------------------------------
       iters = 0
@@ -668,6 +670,10 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       # Hence, we set the Shapley weight to be the average sampling frequency for the coalition size.
       dt[, shapley_weight := as.numeric(shapley_weight)]
       dt[, shapley_weight := mean(shapley_weight), by = n_features]
+    }
+
+    if (sampling_method %in% c("unique_unif_V2", "unique_paired_unif_V2")) {
+      dt[-c(1, .N), shapley_weight := 1]
     }
 
     if (sampling_method %in% c("unique_equal_weights_symmetric", "unique_paired_equal_weights_symmetric")) {
