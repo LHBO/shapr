@@ -426,7 +426,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
   # Lars test some new ones.
   # The `chronological_order_increasing` version just takes the `n_combinations` first
   # combinations from internal
-  sampling_method <- match.arg(sampling_method)
+  # sampling_method <- match.arg(sampling_method)
 
   # Find weights for given number of features
   n_features <- seq(m - 1)
