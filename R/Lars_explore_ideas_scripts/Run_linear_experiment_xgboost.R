@@ -58,14 +58,24 @@
 # pilot_regression_model (String, e.g., "parsnip::linear_reg()" (default))
 
 
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0,0.05 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0.1,0.2 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0.5,0.7 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0.3,0.9 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0,0.05 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0.1,0.2 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0.5,0.7 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 4 10000 10000 1000 1000 8 0.3,0.9 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0,0.05 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.1,0.2 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.5,0.7 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.3,0.9 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0,0.05 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.1,0.2 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.5,0.7 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.3,0.9 FALSE NULL NULL NULL
+
+
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0,0.05 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.1,0.2 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.5,0.7 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.3,0.9 TRUE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0,0.05 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.1,0.2 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.5,0.7 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.3,0.9 FALSE NULL NULL NULL
 
 
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0,0.05 TRUE NULL NULL NULL
@@ -772,7 +782,7 @@ for (rho_idx in seq_along(rhos)) {
         keep_samp_for_vS = FALSE,
         n_repetitions = 1,
         n_samples = n_samples,
-        n_batches = max(1, floor(2^M/20)),
+        n_batches = 2^M-1,#max(1, floor(2^M/20)),
         seed_start_value = seed_start_value_now,
         n_combinations_from = n_combinations_from,
         n_combinations_increment = n_combinations_increment,
