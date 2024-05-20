@@ -360,21 +360,36 @@ if (FALSE) {
 
 
   {
-    only_these_sampling_methods = c("unique", "unique_unif", "unique_SW", "unique_equal_weights",
-                                    "unique_equal_weights_symmetric", "unique_paired", "unique_paired_unif",
-                                    "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_1000",
-                                    "unique_paired_equal_weights_5000", "unique_paired_equal_weights_10000",
-                                    "unique_paired_equal_weights_50000", "unique_paired_equal_weights_100000",
-                                    "unique_paired_equal_weights_symmetric", "paired_coalitions",
-                                    "single_mean_coalition_effect")
-
-    only_these_sampling_methods = c("unique_paired_SW",
+    only_these_sampling_methods = c("unique",
+                                    "unique_unif",
+                                    "unique_unif_V2",
+                                    "unique_SW",
+                                    "unique_equal_weights",
+                                    "unique_equal_weights_symmetric",
+                                    "unique_paired",
+                                    "unique_paired_unif",
+                                    "unique_paired_unif_V2",
+                                    "unique_paired_SW",
                                     "unique_paired_equal_weights",
+                                    "unique_paired_equal_weights_100",
+                                    "unique_paired_equal_weights_500",
                                     "unique_paired_equal_weights_1000",
                                     "unique_paired_equal_weights_5000",
                                     "unique_paired_equal_weights_10000",
                                     "unique_paired_equal_weights_50000",
-                                    "unique_paired_equal_weights_100000",
+                                    "unique_paired_equal_weights_symmetric",
+                                    "paired_coalitions",
+                                    "single_mean_coalition_effect")
+
+    only_these_sampling_methods = c("unique_paired_SW",
+                                    "unique_paired_unif_V2",
+                                    "unique_paired_equal_weights",
+                                    "unique_paired_equal_weights_100",
+                                    "unique_paired_equal_weights_500",
+                                    "unique_paired_equal_weights_1000",
+                                    "unique_paired_equal_weights_5000",
+                                    "unique_paired_equal_weights_10000",
+                                    "unique_paired_equal_weights_50000",
                                     "paired_coalitions")
     rhos = c(0,0.05,0.1,0.2,0.5,0.7,0.9,0.9)
     rho_equi = FALSE

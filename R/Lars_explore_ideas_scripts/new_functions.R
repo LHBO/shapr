@@ -197,6 +197,10 @@ repeated_explanations = function(model,
                                                       "smallest_weights_constant_SW",
                                                       "smallest_weights_combination_size",
                                                       "paired_coalitions",
+                                                      "paired_coalitions_weights",
+                                                      "paired_coalitions_weights_direct",
+                                                      "paired_coalitions_weights_equal_weights",
+                                                      "paired_coalitions_weights_direct_equal_weights",
                                                       "paired_coalitions_sub",
                                                       "paired_coalitions_scaled",
                                                       "paired_coalitions_avg",
@@ -234,6 +238,10 @@ repeated_explanations = function(model,
 
   # Create a list of the strategies that use pre-computed pilot-estimates
   specific_coalition_set_strategies = c("paired_coalitions",
+                                        "paired_coalitions_weights",
+                                        "paired_coalitions_weights_direct",
+                                        "paired_coalitions_weights_equal_weights",
+                                        "paired_coalitions_weights_direct_equal_weights",
                                         "paired_coalitions_sub",
                                         "paired_coalitions_scaled",
                                         "paired_coalitions_avg",
@@ -437,11 +445,13 @@ repeated_explanations = function(model,
             )}, enable = TRUE)
 
         message(paste0("Done with training the regression model(s)."))
-      }
 
-      # Get the `specific_coalition_set`.
-      #specific_coalition_set = pilot_estimates_paired_order(explanation_precomputed_vS, plot_figures = TRUE)
-      specific_coalition_set = pilot_estimates_coal_order(explanation_precomputed_vS)
+        # Get the `specific_coalition_set`.
+        #specific_coalition_set = pilot_estimates_paired_order(explanation_precomputed_vS, plot_figures = TRUE)
+        specific_coalition_set = pilot_estimates_coal_order(explanation_precomputed_vS)
+      } else {
+        specific_coalition_set = specific_coalition_set_true
+      }
 
       # TODO: REMOVE THIS PRINTOUT Compare the order using the true quantities and the regression method
       # print(Map(rbind, specific_coalition_set_true, specific_coalition_set))
@@ -456,6 +466,16 @@ repeated_explanations = function(model,
       #   lapply(seq_along(specific_coalition_set), function(x) c(10^6, 10^6, rep(1, 2^ncol(x_explain))))
       names(specific_coalition_set_weights) = names(specific_coalition_set)
 
+      # Add the new pilot sampling methods weights
+      specific_coalition_set$paired_coalitions_weights = specific_coalition_set$paired_coalitions_weights
+      specific_coalition_set$paired_coalitions_weights_equal_weights = specific_coalition_set$paired_coalitions_weights
+      specific_coalition_set$paired_coalitions_weights_direct = specific_coalition_set$paired_coalitions_weights
+      specific_coalition_set$paired_coalitions_weights_direct_equal_weights = specific_coalition_set$paired_coalitions_weights
+      specific_coalition_set_weights$paired_coalitions_weights = specific_coalition_set$paired_coalitions_weights
+      specific_coalition_set_weights$paired_coalitions_weights_equal_weights = specific_coalition_set$paired_coalitions_weights
+      specific_coalition_set_weights$paired_coalitions_weights_direct = specific_coalition_set$paired_coalitions_weights
+      specific_coalition_set_weights$paired_coalitions_weights_direct_equal_weights = specific_coalition_set$paired_coalitions_weights
+
       #specific_coalition_set_weights
       #print(specific_coalition_set_weights)
     }
@@ -464,6 +484,7 @@ repeated_explanations = function(model,
     sampling_method_idx = 1
     for (sampling_method_idx in seq(n_sampling_methods)) {
       sampling_method = sampling_methods[sampling_method_idx]
+      sampling_method_updated = gsub("_replace_W", "", sampling_method)
 
       # Small printout to the user
       if (n_repetitions == 1) {
@@ -504,15 +525,16 @@ repeated_explanations = function(model,
           n_samples = n_samples,
           n_batches = n_batches,
           seed = seed,
-          sampling_method = if (sampling_method %in% specific_coalition_set_strategies) "specific_coalition_set" else sampling_method,
+          sampling_method = if (sampling_method_updated %in% specific_coalition_set_strategies) "specific_coalition_set" else sampling_method,
           sampling_method_full_name = sampling_method,
           sampling_method_idx = sampling_method_idx,
           n_sampling_methods = n_sampling_methods,
           precomputed_vS = precomputed_vS,
           specific_coalition_set =
-            if (sampling_method %in% specific_coalition_set_strategies) specific_coalition_set[[sampling_method]] else NULL,
+            if (sampling_method_updated %in% specific_coalition_set_strategies) specific_coalition_set[[sampling_method_updated]] else NULL,
           specific_coalition_set_weights =
-            if (sampling_method %in% specific_coalition_set_strategies) specific_coalition_set_weights[[sampling_method]] else NULL,
+            if (sampling_method_updated %in% specific_coalition_set_strategies) specific_coalition_set_weights[[sampling_method_updated]] else NULL,
+          replace_W = sampling_method != sampling_method_updated,
           n_repetitions = n_repetitions),
         enable = TRUE)
 
@@ -651,6 +673,7 @@ compute_SV_function = function(n_combinations,
                                precomputed_vS,
                                specific_coalition_set,
                                specific_coalition_set_weights,
+                               replace_W,
                                n_repetitions,
                                progress_bar,
                                ...) {
@@ -658,13 +681,22 @@ compute_SV_function = function(n_combinations,
   # print("In compute_SV_function.")
   # print(sampling_method)
 
-  # Extract only the relevant coalitions from `specific_coalition_set`
-  if (!is.null(specific_coalition_set)) {
+  # If the sampling method is one of these, then we do not want to remove some of the coalitions
+  # in the specific_coalition_set, as we need all of them.
+  specific_coalition_set_strategies_sampling = c("paired_coalitions_weights",
+                                                 "paired_coalitions_weights_direct",
+                                                 "paired_coalitions_weights_equal_weights",
+                                                 "paired_coalitions_weights_direct_equal_weights")
+
+  sampling_method_full_name_updated = gsub("_replace_W", "", sampling_method_full_name)
+
+  # Extract only the relevant coalitions from `specific_coalition_set` (not for method in specific_coalition_set_strategies_sampling)
+  if (!is.null(specific_coalition_set) && !sampling_method_full_name_updated %in% specific_coalition_set_strategies_sampling) {
     specific_coalition_set = specific_coalition_set[seq(n_combinations)]
   }
 
-  # Extract only the relevant coalitions from `specific_coalition_set_weights`
-  if (!is.null(specific_coalition_set_weights)) {
+  # Extract only the relevant coalitions from `specific_coalition_set_weights` (not for method in specific_coalition_set_strategies_sampling)
+  if (!is.null(specific_coalition_set_weights) && !sampling_method_full_name_updated %in% specific_coalition_set_strategies_sampling) {
     specific_coalition_set_weights = specific_coalition_set_weights[seq(n_combinations)]
   }
 
@@ -687,6 +719,7 @@ compute_SV_function = function(n_combinations,
       precomputed_vS = precomputed_vS,
       specific_coalition_set = specific_coalition_set,
       specific_coalition_set_weights = specific_coalition_set_weights,
+      replace_W = replace_W,
       ...
     )))
   # print("hei2")
@@ -764,6 +797,7 @@ future_compute_SV_function = function(compute_SV_function,
                                       specific_coalition_set,
                                       specific_coalition_set_weights,
                                       n_repetitions,
+                                      replace_W,
                                       ...) {
 
   # print("In future_compute_SV_function.")
@@ -793,6 +827,7 @@ future_compute_SV_function = function(compute_SV_function,
     precomputed_vS = precomputed_vS,
     specific_coalition_set = specific_coalition_set,
     specific_coalition_set_weights = specific_coalition_set_weights,
+    replace_W = replace_W,
     n_repetitions = n_repetitions,
     progress_bar = progress_bar,
     future.seed = 1,
@@ -977,6 +1012,10 @@ pilot_estimates_coal_order = function(explanation,
                                                      "paired_coalitions_scaled",
                                                      "paired_coalitions_avg",
                                                      "paired_coalitions_norm",
+                                                     "paired_coalitions_weights",
+                                                     "paired_coalitions_weights_direct",
+                                                     "paired_coalitions_weights_equal_weights",
+                                                     "paired_coalitions_weights_direct_equal_weights",
                                                      "single_mean_coalition_effect",
                                                      "single_median_coalition_effect",
                                                      "single_mean_ranking_over_each_test_obs",
@@ -1162,6 +1201,18 @@ pilot_estimates_coal_order = function(explanation,
     #   gridExtra::grid.arrange(p1, p2, p3, p4, p5, ncol = 1)
     # }
 
+    # {
+    #   # Standard weight is the weight before we apply the pilot estimates.
+    #   pilot_weights = R_dt_aggregated$mean_abs_R[-1] / sum(R_dt_aggregated$mean_abs_R[-1])
+    #   true_SKW = explanation$internal$objects$X$shapley_weight[seq(2, length(R_dt_aggregated$mean_abs_R))]
+    #   true_SKW = true_SKW / sum(true_SKW)
+    #   standard_weight_sc = standard_weight[-1] / sum(standard_weight[-1])
+    #   matplot(cbind(true_SKW, standard_weight_sc, pilot_weights),
+    #           pch = 16, ylab = "Weight / probability", xlab = "Coalition index",
+    #           main = "Comapring the weights")
+    #   legend("topright", c("Shapley Kernel", "Standard Weight in W", "Pilot"), title = "Weights", col = 1:3, pch = 16, bty = "n")
+    # }
+
 
     # Add the results to the return list
     if ("paired_coalitions" %in% strategies) {
@@ -1169,11 +1220,13 @@ pilot_estimates_coal_order = function(explanation,
       return_list$paired_coalitions = c(t(as.matrix(data.table::setorder(
         R_dt_aggregated[, c("mean_abs_R_ordered", "id_combination_S", "id_combination_Sbar")],
         mean_abs_R_ordered)[,-"mean_abs_R_ordered"])))
+      return_list$paired_coalitions_weights = R_dt_aggregated$mean_abs_R
     }
     if ("paired_coalitions_sub" %in% strategies) {
       return_list$paired_coalitions_sub = c(t(as.matrix(data.table::setorder(
         R_dt_aggregated[, c("paired_coalitions_sub", "id_combination_S", "id_combination_Sbar")],
         paired_coalitions_sub)[,-"paired_coalitions_sub"])))
+      # return_list$paired_coalitions_sub_weights = R_dt_aggregated$mean_abs_R - standard_weight
     }
     if ("paired_coalitions_scaled" %in% strategies) {
       return_list$paired_coalitions_scaled = c(t(as.matrix(data.table::setorder(
@@ -1304,13 +1357,15 @@ pilot_estimates_coal_order = function(explanation,
   # Reorder the coalition orders such that the empty and grand coalitions are included as the first and second
   # coalitions. I.e., such that 1 and 2^M are the two first entries.
   if (always_empty_and_grand_coalitions_first) {
-    return_list =
-      lapply(return_list, function(coalition_order) c(1, 2^M, coalition_order[!(coalition_order %in% c(1, 2^M))]))
+    return_list[names(return_list) != "paired_coalitions_weights"] =
+      lapply(return_list[names(return_list) != "paired_coalitions_weights"],
+             function(coalition_order) c(1, 2^M, coalition_order[!(coalition_order %in% c(1, 2^M))]))
   }
 
   # Plot some figures if requested by the user
   if (plot_figures) {
-    dt_temp = data.table::melt(cbind(id = factor(seq(2^M)), data.table::as.data.table(return_list)),
+    dt_temp = data.table::melt(cbind(id = factor(seq(2^M)),
+                                     data.table::as.data.table(return_list[names(return_list) != "paired_coalitions_weights"] )),
                                id.vars = "id",
                                value.name = "ranking",
                                variable.name = "strategy",
@@ -1327,7 +1382,7 @@ pilot_estimates_coal_order = function(explanation,
     # See at which location the entries in the vector is in the second vector.
     # We then see that the entries are more linked. I.e., even though the order is not exact,
     # the are somewhat in order. Mainly due to the magnitude of the different values for the different
-    # colaition sizes
+    # coalition sizes
     plot(pmatch(return_list[[1]], return_list[[2]]))
   }
 

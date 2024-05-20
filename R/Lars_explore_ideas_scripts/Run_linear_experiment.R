@@ -133,7 +133,15 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 10 0.9 TRUE NULL NULL NULL
 
 
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 6 0.21,0.51 TRUE NULL NULL NULL
+
+# New sampling frequence pilot methods
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 9 0,0.05,0.1,0.2,0.5,0.7,0.9 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 9 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE NULL NULL NULL
+
+
+#Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
+#Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
+
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -148,13 +156,13 @@ compute_true_explanations = FALSE
 compute_repeated_explanations = TRUE
 use_pilot_estimates_regression = FALSE
 repetitions = 1
-n_workers = 4
+n_workers = 1
 n_samples_true = 1000000
 n_samples = 1000000
 n_train = 1000
 n_test = 1000
-M = 10
-rhos = 0
+M = 9
+rhos = 0.5
 rho_equi = FALSE
 pilot_approach_regression = "regression_separate"
 pilot_regression_model = "parsnip::linear_reg()"
@@ -382,7 +390,12 @@ sampling_methods = c("unique",
                      "single_mean_ranking_over_each_test_obs",
                      "single_median_ranking_over_each_test_obs")
 
-sampling_methods = c("unique",
+sampling_methods = c("paired_coalitions_weights",
+                     "paired_coalitions_weights_direct",
+                     "paired_coalitions_weights_equal_weights",
+                     "paired_coalitions_weights_direct_equal_weights",
+                     "paired_coalitions",
+                     "unique",
                      "unique_unif",
                      "unique_unif_V2",
                      "unique_SW",
@@ -400,7 +413,6 @@ sampling_methods = c("unique",
                      "unique_paired_equal_weights_10000",
                      "unique_paired_equal_weights_50000",
                      "unique_paired_equal_weights_symmetric",
-                     "paired_coalitions",
                      # "paired_coalitions_sub",
                      # "paired_coalitions_scaled",
                      # "paired_coalitions_avg",
@@ -410,6 +422,34 @@ sampling_methods = c("unique",
                      # "single_mean_ranking_over_each_test_obs",
                      # "single_median_ranking_over_each_test_obs"
                      )
+
+
+# sampling_methods = c("paired_coalitions_weights",
+#                      "paired_coalitions_weights_direct",
+#                      "paired_coalitions_weights_equal_weights",
+#                      "paired_coalitions_weights_direct_equal_weights",
+#                      "paired_coalitions",
+#                      "unique_paired_equal_weights",
+#                      "unique_paired_SW")
+#
+# sampling_methods = c(
+#   "paired_coalitions_weights_replace_W",
+#   "paired_coalitions_weights_direct_replace_W",
+#   "paired_coalitions_weights_equal_weights_replace_W",
+#   "paired_coalitions_weights_direct_equal_weights_replace_W",
+#   "paired_coalitions_replace_W",
+#   "unique_paired_equal_weights_replace_W",
+#   "unique_paired_SW_replace_W",
+#   "paired_coalitions_weights",
+#   "paired_coalitions_weights_direct",
+#   "paired_coalitions_weights_equal_weights",
+#   "paired_coalitions_weights_direct_equal_weights",
+#   "paired_coalitions",
+#   "unique_paired_equal_weights",
+#   "unique_paired_SW"
+# )
+
+
 
 
 # First value where the coalition/combination sampling scheme has an effect, (first two are empty and full coalitions)

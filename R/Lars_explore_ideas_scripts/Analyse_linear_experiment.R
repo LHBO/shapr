@@ -28,6 +28,9 @@
 # Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_separate NULL
 
 # Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.02,0.12,0.32,0.62,0.92,0.992 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.03,0.13 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.33,0.63 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.93,0.993 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 # Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE TRUE regression_surrogate NULL
 # Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.0 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
 
@@ -43,6 +46,16 @@
 # Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_surrogate NULL
 # Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.0,0.3,0.6,0.9 TRUE 1000 1000 1,1,1,1,1,1,1,1,1,1,1,1,1 MAE TRUE regression_separate NULL
 
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.04,0.14,0.24,0.34 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0.64,0.74,0.84,0.94 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+
+# Rscript Analyse_linear_experiment.R TRUE FALSE 6 0.01,0.11,0.21,0.31,0.41,0.51,0.61,0.71,0.81,0.91 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 12 0.01,0.11,0.31,0.41,0.71,0.81,0.91 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+
+# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE 1000 1000 NULL MAE FALSE NULL NULL
+#
+# Rscript Analyse_linear_experiment.R TRUE FALSE 9 0.5 FALSE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -276,9 +289,14 @@ figures_list = lapply(relevant_files, function(save_file){
                n.dodge = 2,
                plot_figures = FALSE)})
 
-ff = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.992_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
+"/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.04_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds"
+"/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.91_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds"
+ff = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.5_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                   index_combinations = NULL,
-                  only_these_sampling_methods = c("unique", "unique_SW", "unique_paired", "unique_paired_SW", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique", "unique_unif", "unique_SW", "unique_paired", "unique_paired_unif", "unique_paired_SW", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_paired", "unique_paired_unif", "unique_paired_SW", "unique_paired_equal_weights", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique", "unique_SW", "unique_paired_equal_weights", "unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "paired_coalitions"),
+                  only_these_sampling_methods = c("unique_paired_equal_weights", "unique_paired_equal_weights_1000", "unique_paired_equal_weights_5000", "unique_paired_equal_weights_10000", "unique_paired_equal_weights_50000", "unique_paired_SW", "paired_coalitions"),
                   figures_to_make = c("figure_CI",
                                       "figure_mean",
                                       "figure_median",
@@ -296,6 +314,48 @@ ff = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/
                   n.dodge = 2,
                   plot_figures = FALSE)
 ff$figure_mean
+
+pilot = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_9_n_train_1000_n_test_1000_rho_0.5_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_dt_MAE.rds",
+                  index_combinations = NULL,
+                  #only_these_sampling_methods = c("unique", "unique_unif", "unique_SW", "unique_paired", "unique_paired_unif", "unique_paired_SW", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_paired", "unique_paired_unif", "unique_paired_SW", "unique_paired_equal_weights", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique", "unique_SW", "unique_paired_equal_weights", "unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique_paired_equal_weights", "unique_paired_equal_weights_1000", "unique_paired_equal_weights_5000", "unique_paired_equal_weights_10000", "unique_paired_equal_weights_50000", "unique_paired_SW", "paired_coalitions"),
+                  only_these_sampling_methods = c(
+                    "paired_coalitions_weights",
+                    "paired_coalitions_weights_direct",
+                    "paired_coalitions_weights_equal_weights",
+                    "paired_coalitions_weights_direct_equal_weights",
+                    "paired_coalitions",
+                    "unique_paired_equal_weights",
+                    "unique_paired_SW",
+                    # "paired_coalitions_weights_replace_W",
+                    # "paired_coalitions_weights_direct_replace_W",
+                    # "paired_coalitions_weights_equal_weights_replace_W",
+                    # "paired_coalitions_weights_direct_equal_weights_replace_W",
+                    # "paired_coalitions_replace_W",
+                    # "unique_paired_equal_weights_replace_W",
+                    # "unique_paired_SW_replace_W"
+                  ),
+                  figures_to_make = c("figure_CI",
+                                      "figure_mean",
+                                      "figure_median",
+                                      "figure_lines",
+                                      "figure_boxplot",
+                                      "figure_lines_boxplot",
+                                      "figure_boxplot_lines"),
+                  ggplot_theme = NULL,
+                  brewer_palette = NULL,
+                  brewer_direction = 1,
+                  flip_coordinates = FALSE,
+                  legend_position = NULL,
+                  scale_y_log10 = TRUE,
+                  scale_x_log10 = FALSE,
+                  n.dodge = 2,
+                  plot_figures = FALSE)
+pilot$figure_mean
+
+
 
 figures_list_equi = figures_list[grep("equi_TRUE", names(figures_list))]
 

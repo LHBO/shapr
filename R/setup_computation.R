@@ -163,6 +163,50 @@ shapley_setup <- function(internal) {
     normalize_W_weights = TRUE,
     is_groupwise = is_groupwise
   )
+  # X_true = copy(X)
+  # X_true[, shapley_weight := shapley_weight_2]
+  # W2 <- weight_matrix(
+  #   X = X,
+  #   normalize_W_weights = FALSE,
+  #   is_groupwise = is_groupwise
+  # )
+  # W_true <- weight_matrix(
+  #   X = X_true,
+  #   normalize_W_weights = TRUE,
+  #   is_groupwise = is_groupwise
+  # )
+  # W2_true <- weight_matrix(
+  #   X = X_true,
+  #   normalize_W_weights = FALSE,
+  #   is_groupwise = is_groupwise
+  # )
+  #
+  # W_true[abs(W_true) < 0.00001] = 0
+  # W2_true[abs(W2_true) < 0.00001] = 0
+  #
+  # W[abs(W) < 0.00001] = 0
+  # W2[abs(W2) < 0.00001] = 0
+  #
+  # W[seq(m+1), 1:10]
+  # W2[seq(m+1), 1:10]
+  #
+  # max(abs(W - W2))
+  #
+  # W_true[seq(m+1), 1:10]
+  # W2_true[seq(m+1), 1:10]
+  #
+  # max(abs(W_true - W2_true))
+  #
+  # max(abs(W_true - W))
+  #
+  # W[seq(m+1), 1:10]
+  # W2[seq(m+1), 1:10]
+  # {
+  # par(mfrow = c(3,1))
+  # matplot(t(W), type = "l", lty = 1)
+  # matplot(t(W_true), type = "l", lty = 1)
+  # matplot(t(abs(W_true - W)), type = "l", lty = 1)
+  # }
 
   ## Get feature matrix ---------
   S <- feature_matrix_cpp(
@@ -172,6 +216,8 @@ shapley_setup <- function(internal) {
 
   # Add option to replace the W matrix where we compute the full W matrix and then extract the relevant columns
   if (!is.null(internal$parameters$replace_W) && isTRUE(internal$parameters$replace_W)) {
+    #message("Replace the W matrix")
+    #print("Replace the W matrix")
     W_all = weight_matrix(
       X = feature_exact(m = n_features0, weight_zero_m = 10^6),
       normalize_W_weights = TRUE,
@@ -327,6 +373,7 @@ feature_combinations <- function(m, exact = TRUE, n_combinations = 200, weight_z
                               n_combinations = n_combinations,
                               weight_zero_m = weight_zero_m,
                               sampling_method = internal$parameters$sampling_method,
+                              sampling_method_full_name = internal$parameters$sampling_method_full_name,
                               pilot_estimates_vS = internal$parameters$pilot_estimates_vS,
                               specific_coalition_set = internal$parameters$specific_coalition_set,
                               specific_coalition_set_weights = internal$parameters$specific_coalition_set_weights)
@@ -414,9 +461,14 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
                                                   "smallest_weights_combination_size",
                                                   "specific_coalition_set",
                                                   "pilot_estimates_paired"),
+                              sampling_method_full_name = NULL,
                               pilot_estimates_vS = NULL, #
                               specific_coalition_set = NULL,
                               specific_coalition_set_weights = NULL) {
+
+  # Update the sampling method
+  sampling_method = gsub("_replace_W", "", sampling_method)
+  sampling_method_full_name = gsub("_replace_W", "", sampling_method_full_name)
 
   # print("Inside feature_not_exact")
   # print(sampling_method)
@@ -442,82 +494,174 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     stop(paste0("User must provide `pilot_estimates_vS` as the `sampling_method` (",
                 sampling_method, ") use pilot estimates."))
   }
+  # print(sampling_method)
+  # print(sampling_method_full_name)
+  # #
+  # message(sampling_method)
+  # message(sampling_method_full_name)
+  #
+  # warning(sampling_method)
+  # warning(sampling_method_full_name)
 
   if (sampling_method == "specific_coalition_set") {
     ## specific_coalition_set --------------------------------------------------------------------------------------------------
     # The user has specified a specific order of coalitions to add
     # print("Using the `specific_coalition_set` strategy.")
 
-    # Check that the user has specified `specific_coalition_set`.
-    if (is.null(specific_coalition_set)) {
-      stop(paste("Cannot use sampling method `specific_coalition_set` without also providing",
-                 "the `specific_coalition_set` object to the `explain()` function."))
-    }
 
-    # Sort the coalitions in increasing order. This is okay as we are going to use all of them,
-    # hence the order does not matter for the final Shapley values.
-    specific_coalition_set = sort(specific_coalition_set)
+    # 20TH MAY, we add two new sampling methods that use the pilot estimates, but sample them instead, and use
+    # the sampling frequnce as the weights in stead of the true Shapley kernel weights.
+    if (sampling_method_full_name %in% c("paired_coalitions_weights", "paired_coalitions_weights_equal_weights", "paired_coalitions_weights_direct", "paired_coalitions_weights_direct_equal_weights")) {
+      # freq pilot ------------------------------------------------------------------------------------------------------
 
-    # Check that the coalition order is unique. I.e., that we do not add the same coalition multiple times
-    if (length(unique(specific_coalition_set)) != length(specific_coalition_set)) {
-      stop("There are repeated entries in `specific_coalition_set`.")
-    }
+      # TODO. FIX THIS
+      # explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.9_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_true.rds")
+      # specific_coalition_set = pilot_estimates_coal_order(explanation)$paired_coalitions_weights
+      # m = 10
+      # n_combinations = 200
+      # weight_zero_m = 10^6
 
-    # Check that the number of user specified coalitions corresponds to `n_combinations`
-    if (length(specific_coalition_set) != n_combinations) {
-      stop(paste0("The number of entries in `specific_coalition_set` (", length(specific_coalition_set), ") must be ",
-                  "the same as `n_combinations` (", n_combinations, ")."))
-    }
+      # Get the number of paired combinations we need to sample (n_combinations must be an even number)
+      n_combinations_pair = n_combinations/2
 
-    # The user has also specified corresponding weights
-    if (!is.null(specific_coalition_set_weights)) {
-
-      # Reorder the weights to match the sorted order of `specific_coalition_set`
-      specific_coalition_set_weights = specific_coalition_set_weights[order(specific_coalition_set)]
-
-      # Check that they are of equal length
-      if (length(specific_coalition_set) != length(specific_coalition_set_weights)) {
-        stop(paste0("The length of `specific_coalition_set` (", length(specific_coalition_set_weights), ") and ",
-                    "`specific_coalition_set_weights` (", length(specific_coalition_set_weights) ,") differ."))
+      #iters = 0
+      feature_sample_all <- c()
+      unique_samples <- 0
+      while (unique_samples < n_combinations_pair - 1) {
+        # Recall that n_combinations must be a even number. subtract one which represents the pair of the empty and grand coalitions
+        features_sample = sample(seq(2, length(specific_coalition_set)), size = n_combinations_pair - unique_samples - 1, replace = TRUE,
+                                 prob = specific_coalition_set[-1])
+        feature_sample_all = c( feature_sample_all, features_sample)
+        unique_samples = length(unique(feature_sample_all))
+        #iters = iters + 1
+        #print(c(iters, unique_samples))
       }
 
-      # Will use these weights and not the Shapley kernel weights
-      Shapley_kernel_weights = FALSE
-      message(paste("Use the entries in `specific_coalition_set_weights` instead of the Shapley kernel weights",
-                    "in the computations of the Shapley values."))
+      # Crete the sampling frquences and mirror them
+      sampling_freq = c(weight_zero_m, unname(table(feature_sample_all)))
+      sampling_freq = c(sampling_freq, rev(sampling_freq))
+
+      # sort(feature_sample_all)
+      # table(feature_sample_all)
+
+      # Get the unique combinations and add 1 (the empty comb), and then add the paired versions (complements)
+      feature_sample_all_unique = c(1, sort(unique(feature_sample_all)))
+      feature_sample_all_unique = c(feature_sample_all_unique, 2^m + 1 - rev(feature_sample_all_unique))
+
+      # Create the data table. We create all 2^m combinations and then extract the ones we need.
+      # TODO: this should be improved
+      dt <- data.table::data.table(id_combination_org = seq(2^m))
+      dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)]
+      dt[, n_features := length(features[[1]]), id_combination_org]
+      dt[, N := .N, n_features]
+      dt[, shapley_weight_true := shapr:::shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+      dt = dt[feature_sample_all_unique] # Extract only the relevant rows
+      dt[, shapley_weight := sampling_freq]
+      dt[, id_combination := .I]
+      nms <- c("id_combination", "id_combination_org", "features", "n_features", "N", "shapley_weight", "shapley_weight_true")
+      data.table::setcolorder(dt, nms)
+
+      # # If we want to visualize the Shapley kernel weights
+      # plot_mat = cbind(dt[-c(1, .N), shapley_weight] / sum(dt[-c(1, .N), shapley_weight]),
+      #                  c(specific_coalition_set, rev(specific_coalition_set))[dt[-c(1, .N), id_combination_org]] / sum(c(specific_coalition_set, rev(specific_coalition_set))[dt[-c(1, .N), id_combination_org]]),
+      #                  dt[-c(1, .N), shapley_weight_true] / sum(dt[-c(1, .N), shapley_weight_true]))
+      # matplot(plot_mat, pch = 16)
+      # legend("top", c("Sampling freq", "True prop", "True SKW"), pch = 16, col = 1:3)
+
+      # If we are to use the
+      if (sampling_method_full_name %in% c("paired_coalitions_weights_direct", "paired_coalitions_weights_direct_equal_weights")) {
+        dt[, shapley_weight := c(specific_coalition_set, rev(specific_coalition_set))[dt[,id_combination_org]]]
+      }
+
+      # Update the weights if we are to do the average weights for each coalition size
+      if (sampling_method_full_name %in% c("paired_coalitions_weights_equal_weights", "paired_coalitions_weights_direct_equal_weights")) {
+        dt[, shapley_weight := as.numeric(shapley_weight)]
+        dt[, shapley_weight := mean(shapley_weight), by = n_features]
+
+        # If we want to visualize the Shapley kernel weights
+        # plot_mat = cbind(dt[-c(1, .N), shapley_weight] / sum(dt[-c(1, .N), shapley_weight]),
+        #                  c(specific_coalition_set, rev(specific_coalition_set))[dt[-c(1, .N), id_combination_org]] / sum(c(specific_coalition_set, rev(specific_coalition_set))[dt[-c(1, .N), id_combination_org]]),
+        #                  dt[-c(1, .N), shapley_weight_true] / sum(dt[-c(1, .N), shapley_weight_true]))
+        # matplot(plot_mat, pch = 16)
+        # legend("top", c("Sampling freq", "True prop", "True SKW"), pch = 16, col = 1:3)
+      }
+
+      #print(dt)
+
 
     } else {
-      # We use the Shapley kernel weights
-      Shapley_kernel_weights = TRUE
-    }
 
-    # Check that the first and last elements are 1 and 2^M, respectively.
-    if (any(!(c(1, 2^m) == specific_coalition_set[c(1, n_combinations)]))) {
-      stop(paste("The first and last elements in `specific_coalition_set` must be `c(1, 2^M)`, respectively,",
-                 "where M is the number of features."))
-    }
+      # Check that the user has specified `specific_coalition_set`.
+      if (is.null(specific_coalition_set)) {
+        stop(paste("Cannot use sampling method `specific_coalition_set` without also providing",
+                   "the `specific_coalition_set` object to the `explain()` function."))
+      }
 
-    # TODO: we can be more clever here. Do not need to make all combinations and then extract only the relevant.
-    # Based on the value of `n_combinations`, we do not need to use `0:m`, but look at `n` and then choose the
-    # smallest `m'` such that we only need to use `0:m'`. Note that we need need to add the last one manually.
-    # Mostly useful if `m` is large, i.e., 20+.
-    dt <- data.table::data.table(id_combination = seq(n_combinations))
-    dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE),
-                            recursive = FALSE)[specific_coalition_set]]
-    dt[, n_features := length(features[[1]]), id_combination]
-    dt[, N := 1]
-    dt[-c(1, .N), N := n[n_features]]
-    dt[, N := as.integer(N)]
-    dt[, shapley_weight :=
-         if (Shapley_kernel_weights) shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)
-       else specific_coalition_set_weights]
-    dt[c(1, .N), shapley_weight := weight_zero_m]
+      # Sort the coalitions in increasing order. This is okay as we are going to use all of them,
+      # hence the order does not matter for the final Shapley values.
+      specific_coalition_set = sort(specific_coalition_set)
+
+      # Check that the coalition order is unique. I.e., that we do not add the same coalition multiple times
+      if (length(unique(specific_coalition_set)) != length(specific_coalition_set)) {
+        stop("There are repeated entries in `specific_coalition_set`.")
+      }
+
+      # Check that the number of user specified coalitions corresponds to `n_combinations`
+      if (length(specific_coalition_set) != n_combinations) {
+        stop(paste0("The number of entries in `specific_coalition_set` (", length(specific_coalition_set), ") must be ",
+                    "the same as `n_combinations` (", n_combinations, ")."))
+      }
+
+      # The user has also specified corresponding weights
+      if (!is.null(specific_coalition_set_weights)) {
+
+        # Reorder the weights to match the sorted order of `specific_coalition_set`
+        specific_coalition_set_weights = specific_coalition_set_weights[order(specific_coalition_set)]
+
+        # Check that they are of equal length
+        if (length(specific_coalition_set) != length(specific_coalition_set_weights)) {
+          stop(paste0("The length of `specific_coalition_set` (", length(specific_coalition_set_weights), ") and ",
+                      "`specific_coalition_set_weights` (", length(specific_coalition_set_weights) ,") differ."))
+        }
+
+        # Will use these weights and not the Shapley kernel weights
+        Shapley_kernel_weights = FALSE
+        message(paste("Use the entries in `specific_coalition_set_weights` instead of the Shapley kernel weights",
+                      "in the computations of the Shapley values."))
+
+      } else {
+        # We use the Shapley kernel weights
+        Shapley_kernel_weights = TRUE
+      }
+
+      # Check that the first and last elements are 1 and 2^M, respectively.
+      if (any(!(c(1, 2^m) == specific_coalition_set[c(1, n_combinations)]))) {
+        stop(paste("The first and last elements in `specific_coalition_set` must be `c(1, 2^M)`, respectively,",
+                   "where M is the number of features."))
+      }
+
+      # TODO: we can be more clever here. Do not need to make all combinations and then extract only the relevant.
+      # Based on the value of `n_combinations`, we do not need to use `0:m`, but look at `n` and then choose the
+      # smallest `m'` such that we only need to use `0:m'`. Note that we need need to add the last one manually.
+      # Mostly useful if `m` is large, i.e., 20+.
+      dt <- data.table::data.table(id_combination = seq(n_combinations))
+      dt[, features := unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE),
+                              recursive = FALSE)[specific_coalition_set]]
+      dt[, n_features := length(features[[1]]), id_combination]
+      dt[, N := 1]
+      dt[-c(1, .N), N := n[n_features]]
+      dt[, N := as.integer(N)]
+      dt[, shapley_weight :=
+           if (Shapley_kernel_weights) shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)
+         else specific_coalition_set_weights]
+      dt[c(1, .N), shapley_weight := weight_zero_m]
+    }
 
   } else if (sampling_method %in% c("unique", "unique_paired", "non_unique","unique_SW", "unique_paired_SW", "non_unique_SW",
                                     "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2", "unique_paired_unif_V2",
                                     "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric") ||
              grepl("unique_paired_equal_weights_", sampling_method)
-             ) {
+  ) {
     # Check if any of "unique", "unique_paired", "non_unique", "unique_SW", "unique_paired_SW", "non_unique_SW"
     # This is the version that is in the Shapr master branch, except for `unique_paired`.
 
