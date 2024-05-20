@@ -38,8 +38,8 @@
 
 # 2024 runnings ---------------------------------------------------------------------------------------------------
 
-# Rscript Run_linear_experiment.R TRUE TRUE FALSE 1:10 4 1000000 1000000 1000 250 5 0.7 NULL
-# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:10 4 1000000 1000000 1000 250 5 0.7 NULL
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE 1:10 4 5000 5000 1000 250 5 0.7 NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE 1:10 4 5000 5000 1000 250 5 0.7 NULL
 
 # Rscript Run_linear_experiment.R
 # do_setup (Boolean)
@@ -58,19 +58,28 @@
 # pilot_regression_model (String, e.g., "parsnip::linear_reg()" (default))
 
 
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0,0.05 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0.1,0.2 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0.5,0.7 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0.3,0.9 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0,0.05 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0.1,0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0.5,0.7 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 6 5000 5000 1000 500 8 0.3,0.9 FALSE NULL NULL NULL
 
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0,0.05 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0.1,0.2 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0.5,0.7 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0.3,0.9 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0,0.05 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0.1,0.2 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0.5,0.7 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 9 0.3,0.9 FALSE NULL NULL NULL
+
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0,0.05 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0.1,0.2 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0.5,0.7 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0.3,0.9 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0,0.05 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0.1,0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0.5,0.7 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 5000 5000 1000 500 8 0.3,0.9 FALSE NULL NULL NULL
 
 
-#Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
-#Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
+#Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 5000 5000 1000 1000 8 0.5 FALSE NULL NULL NULL
+#Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 5000 5000 1000 1000 8 0.5 FALSE NULL NULL NULL
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -689,7 +698,7 @@ for (rho_idx in seq_along(rhos)) {
           x_train = data_train,
           approach = approach,
           prediction_zero = prediction_zero,
-          keep_samp_for_vS = TRUE,
+          keep_samp_for_vS = FALSE,
           exact = TRUE,
           n_samples = n_samples_true,
           n_batches = 2^(M-1),
