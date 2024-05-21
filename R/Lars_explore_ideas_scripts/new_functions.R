@@ -1554,6 +1554,7 @@ combine_explanation_results = function(M,
                                        use_pilot_estimates_regression,
                                        pilot_approach_regression,
                                        pilot_regression_model,
+                                       name_prefix = "",
                                        max_repetitions = NULL,
                                        memory_efficient = TRUE,
                                        save_results = TRUE,
@@ -1589,7 +1590,7 @@ combine_explanation_results = function(M,
     repeated_explanations_list[[paste0("rho_", rho)]] = list()
 
     # Make file names
-    file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+    file_name = paste(name_prefix, "M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
                       "betas", paste(as.character(betas), collapse = "_"), sep = "_")
     if (use_pilot_estimates_regression) {
       file_name_updated = paste(file_name, "pilot", strsplit(pilot_approach_regression, "_")[[1]][2],
