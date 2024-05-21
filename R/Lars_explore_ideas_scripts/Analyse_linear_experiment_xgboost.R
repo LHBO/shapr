@@ -8,7 +8,11 @@
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 
 
-# Rscript Analyse_linear_experiment.R TRUE FALSE 10 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE 1000 1000 NULL MAE FALSE NULL NULL
+
+
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 8 0,0.05,0.1,0.2,0.5,0.7,0.9 FALSE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 8 0,0.05,0.1,0.2,0.5,0.7,0.9 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

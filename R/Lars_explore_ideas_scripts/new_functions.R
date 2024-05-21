@@ -221,6 +221,7 @@ repeated_explanations = function(model,
                                  n_combinations_increment = 1,
                                  n_combinations_array = NULL,
                                  save_path = NULL,
+                                 true_shapley_values_path = NULL,
                                  ...) {
 
   # Set the design of the progress bar
@@ -313,7 +314,11 @@ repeated_explanations = function(model,
     if (use_precomputed_vS) {
 
       # Check what kind of precomputed_vS we are going to use
-      if (use_precomputed_vS_gaussian_lm) {
+      if (!is.null(true_shapley_values_path)) {
+
+        precomputed_vS = readRDS(true_shapley_values_path)
+
+      } else if (use_precomputed_vS_gaussian_lm) {
         # We are using the Gaussian approach and the predictive model is a linear model
 
         # Small message to user

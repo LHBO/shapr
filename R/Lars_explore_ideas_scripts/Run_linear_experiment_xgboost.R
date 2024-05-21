@@ -106,11 +106,11 @@ compute_repeated_explanations = TRUE
 use_pilot_estimates_regression = FALSE
 repetitions = 5
 n_workers = 6
-n_samples_true = 5000
-n_samples = 1000
+n_samples_true = 10000
+n_samples = 10000
 n_train = 1000
 n_test = 1000
-M = 8
+M = 10
 rhos = 0.5
 rho_equi = FALSE
 pilot_approach_regression = "regression_separate"
@@ -461,21 +461,30 @@ for (rho_idx in seq_along(rhos)) {
   if (do_setup) {
     message("Create the data and predictive model.")
 
-    if (M != 8) stop("M must be 8")
-    gamma_coefficients = c(2, -3, 3) # Pair-wise interactions between [X1, X2], [X3,X5], [X4,X8]
-    gamma_terms = list(c("X1", "X2"), c("X3", "X5"), c("X4", "X8"))
-    eta_coefficients = c(5, -7) # [X1, X3, X7] and [X2, X6, X8]
-    eta_terms = list(c("X1", "X3", "X7"), c("X2", "X6", "X8"))
-    alpha_coefficients = c(8) # [X1, X4, X7, X8]
-    alpha_terms = list(c("X1", "X4", "X7", "X8"))
+    if (!M %in% c(8, 10)) stop("M must be 8 or 10")
+    if (M == 8) {
+      gamma_coefficients = c(2, -3, 3) # Pair-wise interactions between [X1, X2], [X3,X5], [X4,X8]
+      gamma_terms = list(c("X1", "X2"), c("X3", "X5"), c("X4", "X8"))
+      eta_coefficients = c(5, -7) # [X1, X3, X7] and [X2, X6, X8]
+      eta_terms = list(c("X1", "X3", "X7"), c("X2", "X6", "X8"))
+      alpha_coefficients = c(8) # [X1, X4, X7, X8]
+      alpha_terms = list(c("X1", "X4", "X7", "X8"))
+    } else if (M == 10) {
+      gamma_coefficients = c(1, -2, 2, -3) # Pair-wise interactions between [X1, X2], [X3,X5], [X4,X8]
+      gamma_terms = list(c("X1", "X2"), c("X3", "X5"), c("X4", "X8"), c("X9", "X10"))
+      eta_coefficients = c(3, -1, -2) # [X1, X3, X7] and [X2, X6, X8] and [X3, X8, X10]
+      eta_terms = list(c("X1", "X3", "X7"), c("X2", "X6", "X8"), c("X3", "X8", "X10"))
+      alpha_coefficients = c(4) # [X1, X4, X7, X9]
+      alpha_terms = list(c("X1", "X4", "X7", "X9"))
+    }
 
     # Set seed for reproducibility
     seed_setup = 2000
     set.seed(seed_setup)
 
     # Make Gaussian data
-    data_train = data.table(rmvnorm(n = n_train, mean = mu, sigma = sigma))
-    data_test  = data.table(rmvnorm(n = n_test,  mean = mu, sigma = sigma))
+    data_train = data.table(rmvnorm(n = n_train + 10, mean = mu, sigma = sigma))
+    data_test  = data.table(rmvnorm(n = n_test + 10,  mean = mu, sigma = sigma))
     colnames(data_train) = paste("X", seq(M), sep = "")
     colnames(data_test) = paste("X", seq(M), sep = "")
 
@@ -500,15 +509,26 @@ for (rho_idx in seq_along(rhos)) {
       tmp_add_interaction_values(gamma_terms, gamma_coefficients, data_test) +
       tmp_add_interaction_values(eta_terms, eta_coefficients, data_test) +
       tmp_add_interaction_values(alpha_terms, alpha_coefficients, data_test)
-    # c(min(response_train), max(response_train))
-    # c(min(response_test), max(response_test))
 
-    # plot_data = data.table(values = c(response_train_org, response_train), type = rep(c("without interactions", "with interactions"), times = c(n_train, n_train)))
-    # ggplot(plot_data, aes(values, fill = type)) + geom_density(alpha = 0.5)
+    # Remove the ten largest absolute values
+    train_indices = order(abs(response_train), decreasing = TRUE)[-c(1:10)]
+    test_indices = order(abs(response_test), decreasing = TRUE)[-c(1:10)]
+    response_train = response_train[train_indices]
+    response_train_org = response_train_org[train_indices]
+    response_test = response_test[test_indices]
+    response_test_org = response_test_org[test_indices]
+    data_test = data_test[test_indices]
+    data_train = data_train[train_indices]
+
+    c(min(response_train), max(response_train))
+    c(min(response_test), max(response_test))
+
+    plot_data = data.table(values = c(response_train_org, response_train), type = rep(c("without interactions", "with interactions"), times = c(n_train, n_train)))
+    ggplot(plot_data, aes(values, fill = type)) + geom_density(alpha = 0.5)
     # ggplot(plot_data, aes(values, fill = type)) + geom_histogram(alpha = 0.5, aes(y = after_stat(density)), position = 'identity')
-    #
-    # plot_data = data.table(values = c(response_test_org, response_test), type = rep(c("without interactions", "with interactions"), times = c(n_test, n_test)))
-    # ggplot(plot_data, aes(values, fill = type)) + geom_density(alpha = 0.5)
+
+    plot_data = data.table(values = c(response_test_org, response_test), type = rep(c("without interactions", "with interactions"), times = c(n_test, n_test)))
+    ggplot(plot_data, aes(values, fill = type)) + geom_density(alpha = 0.5)
     # ggplot(plot_data, aes(values, fill = type)) + geom_histogram(alpha = 0.5, aes(y = after_stat(density)), position = 'identity')
 
 
@@ -516,23 +536,54 @@ for (rho_idx in seq_along(rhos)) {
     data_train_with_response = copy(data_train)[,y := response_train]
     data_test_with_response  = copy(data_test)[,y := response_test]
 
-    # X = cbind(1, as.matrix(data_train))
-    # solve(t(X) %*% X) %*% t(X) %*% response_train
-
-
 
     # Predictive model ------------------------------------------------------------------------------------------------
-    # Fit a GAM model.
-    predictive_model = gam(as.formula(paste0("y ~ ", paste0("ti(X", seq(M), ")", collapse = " + "))),
-                           data = data_train_with_response)
-    predictive_model = lm(y ~ ., data = data_train_with_response)
     # Look at the accuracy of the model
+    predictive_model = lm(y ~ ., data = data_train_with_response)
     message(sprintf("Training MSE = %g and test MSE = %g.",
                     mean((predict(predictive_model, data_train_with_response) - data_train_with_response$y)^2),
                     mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)))
 
+    # Fit a GAM model.
+    predictive_model = gam(as.formula(paste0("y ~ ", paste0("ti(X", seq(M), ")", collapse = " + "))),
+                           data = data_train_with_response)
+    message(sprintf("Training MSE = %g and test MSE = %g.",
+                    mean((predict(predictive_model, data_train_with_response) - data_train_with_response$y)^2),
+                    mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)))
+
+    # Fit the xgboost model
     library(xgboost)
-    predictive_model = xgboost(data = as.matrix(data_train), label = response_train, nrounds = 250, verbose = FALSE)
+
+    # USE tidymodels to do CV to find best hyperparameters
+    # library(tidymodels)
+    regression.workflow = workflows::add_recipe(
+      workflows::add_model(
+        workflows::workflow(),
+        parsnip::boost_tree(trees = hardhat:::tune(),
+                            tree_depth = hardhat:::tune(),
+                            learn_rate = hardhat:::tune(),
+                            engine = "xgboost",
+                            mode = "regression")),
+      recipes::recipe(as.formula("y ~ ."),
+                      data = data_train_with_response))
+    regression.results <- tune::tune_grid(
+      object = regression.workflow,
+      resamples = rsample::vfold_cv(data = data_train_with_response, v = 5),
+      grid = expand.grid(tree_depth = c(2, 4, 6, 8),
+                         trees = c(5, 10, 25, 50, 100, 200, 250, 500, 1000, 1500, 2000),
+                         learn_rate = c(0.05, 0.1, 0.2)),
+      # grid = dials::grid_regular(dials::trees(), dials::tree_depth(), dials::learn_rate(), dials::mtry(c(1, 10)), levels = 5),
+      metrics = yardstick::metric_set(yardstick::rmse),
+      control = tune::control_grid(verbose = TRUE)
+    )
+    print(tune::show_best(regression.results, metric = "rmse", n = 10))
+
+    # Train an xgboost model with the best hyperparameters
+    best_results = tune::select_best(regression.results, metric = "rmse")
+    predictive_model = xgboost(data = as.matrix(data_train), label = response_train,
+                               nrounds = best_results$trees,
+                               params = list("eta" = best_results$learn_rate, "max_depth" = best_results$tree_depth),
+                               verbose = FALSE)
 
     message(sprintf("Training MSE = %g and test MSE = %g.",
                     mean((predict(predictive_model, as.matrix(data_train)) - data_train_with_response$y)^2),
@@ -541,40 +592,12 @@ for (rho_idx in seq_along(rhos)) {
     # plot(predict(predictive_model, as.matrix(data_train)), data_train_with_response$y)
     # plot(predict(predictive_model, as.matrix(data_test)), data_test_with_response$y)
 
-    # regression.workflow = workflows::add_recipe(
-    #   workflows::add_model(
-    #     workflows::workflow(),
-    #     parsnip::boost_tree(trees = hardhat:::tune(),
-    #                         tree_depth = hardhat:::tune(),
-    #                         engine = "xgboost",
-    #                         mode = "regression")),
-    #   recipes::recipe(as.formula("y ~ ."),
-    #                   data = data_train_with_response))
-    #
-    # regression.results <- tune::tune_grid(
-    #   object = regression.workflow,
-    #   resamples = rsample::vfold_cv(data = data_train_with_response, v = 10),
-    #   grid = expand.grid(tree_depth = c(1, 2, 4, 6, 7, 8, 9, 10), trees = c(5, 10, 25, 50, 100, 200, 250, 300, 400, 500, 600, 700, 800, 1000)),
-    #   # grid = dials::grid_regular(dials::trees(), dials::tree_depth(), levels = 5),
-    #   metrics = yardstick::metric_set(yardstick::rmse),
-    #   control = control_grid(verbose = TRUE)
-    # )
-    #
-    # show_best(regression.results, metric = "rmse", n = 100)
+
+    # print(tune::show_best(regression.results, metric = "rmse", n = 10))
     #
     # # Update the workflow by finalizing it using the hyperparameters that attained the best rmse
     # regression.workflow <-
     #   tune::finalize_workflow(regression.workflow, tune::select_best(regression.results, metric = "rmse"))
-
-    # regression.workflow = workflows::add_recipe(
-    #   workflows::add_model(
-    #     workflows::workflow(),
-    #     parsnip::boost_tree(trees = 250,
-    #                         tree_depth = 6,
-    #                         engine = "xgboost",
-    #                         mode = "regression")),
-    #   recipes::recipe(as.formula("y ~ ."),
-    #                   data = data_train_with_response))
     #
     # # Fit the model to the augmented training data and return the trained model
     # predictive_model = parsnip::fit(regression.workflow, data = data_train_with_response)
@@ -584,6 +607,21 @@ for (rho_idx in seq_along(rhos)) {
     #                 mean((predict(predictive_model, data_train)$.pred - data_train_with_response$y)^2),
     #                 mean((predict(predictive_model, data_test)$.pred - data_test_with_response$y)^2)))
 
+    # regression.workflow2 = workflows::add_recipe(
+    #   workflows::add_model(
+    #     workflows::workflow(),
+    #     parsnip::boost_tree(trees = 500,
+    #                         tree_depth = 6,
+    #                         learn_rate = 0.05,
+    #                         engine = "xgboost",
+    #                         mode = "regression")),
+    #   recipes::recipe(as.formula("y ~ ."),
+    #                   data = data_train_with_response))
+    # predictive_model2 = parsnip::fit(regression.workflow2, data = data_train_with_response)
+    # message(sprintf("Training MSE = %g and test MSE = %g.",
+    #                 mean((predict(predictive_model2, data_train)$.pred - data_train_with_response$y)^2),
+    #                 mean((predict(predictive_model2, data_test)$.pred - data_test_with_response$y)^2)))
+    #
     # plot(predict(predictive_model, data_train)$.pred, data_train_with_response$y)
     # plot(predict(predictive_model, data_test)$.pred, data_test_with_response$y)
 
@@ -793,7 +831,8 @@ for (rho_idx in seq_along(rhos)) {
         pilot_approach_regression = pilot_approach_regression,
         pilot_regression_model = pilot_regression_model,
         sampling_methods = sampling_methods,
-        save_path = save_file_name_rep_tmp))
+        save_path = save_file_name_rep_tmp,
+        true_shapley_values_path = save_file_name_true))
       # model = predictive_model
       # x_explain = data_test
       # x_train = data_train
