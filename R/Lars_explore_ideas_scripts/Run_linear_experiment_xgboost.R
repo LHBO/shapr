@@ -58,14 +58,14 @@
 # pilot_regression_model (String, e.g., "parsnip::linear_reg()" (default))
 
 
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0,0.05 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.1,0.2 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.5,0.7 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.3,0.9 TRUE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0,0.05 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.1,0.2 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.5,0.7 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 8 0.3,0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0,0.05 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0.1,0.2 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0.5,0.7 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0.3,0.9 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0,0.05 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0.1,0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0.5,0.7 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0.3,0.9 FALSE NULL NULL NULL
 #
 #
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0,0.05 TRUE NULL NULL NULL
@@ -740,7 +740,7 @@ for (rho_idx in seq_along(rhos)) {
       # We are either using a non-Gaussian approach or a non-linear predictive model
       # Compute the true explanations
       progressr::with_progress({
-        true_explanations <- explain(
+        true_explanations <- shapr::explain(
           model = predictive_model,
           x_explain = data_test,
           x_train = data_train,
