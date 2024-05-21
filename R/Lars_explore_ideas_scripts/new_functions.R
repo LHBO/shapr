@@ -315,8 +315,8 @@ repeated_explanations = function(model,
 
       # Check what kind of precomputed_vS we are going to use
       if (!is.null(true_shapley_values_path)) {
-
-        precomputed_vS = readRDS(true_shapley_values_path)
+        explanation_precomputed_vS = readRDS(true_shapley_values_path)
+        precomputed_vS = explanation_precomputed_vS$internal$output # Extract only the precomputed_vS list
 
       } else if (use_precomputed_vS_gaussian_lm) {
         # We are using the Gaussian approach and the predictive model is a linear model
