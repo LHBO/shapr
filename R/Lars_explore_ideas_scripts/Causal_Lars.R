@@ -409,7 +409,7 @@ m = 5
 causal_ordering <- list(1:2, 3:4, 5)
 S <- feature_matrix_cpp(get_legit_causal_coalitions(causal_ordering = causal_ordering), m = m)
 S
-confounding <- c(TRUE, TRUE, FALSE)
+confounding <- c(TRUE, FALSE, FALSE)
 get_S_list_causal(S, causal_ordering, confounding, as_string = TRUE)
 
 sort(unique(unlist(get_S_list_causal(S, causal_ordering, confounding, as_string = TRUE))))
@@ -440,18 +440,222 @@ SS3[[6]]
 
 
 
+m = 11
+causal_ordering = list(3:1, c(8,4), c(7,5), 6, 9:10, 11) # All m features must be in this list
+all.equal(get_legit_causal_coalitions(causal_ordering, sort_features_in_coalitions = TRUE),
+ dt[check_coalitions_respect_order(features, causal_ordering)]$features)
 
-m = 7
-causal_ordering <- list(1:4, 5:6, 7)
+
+causal_ordering = list(c(1:11))
+dt <- data.table::data.table(features = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE))
+dt = dt[check_coalitions_respect_order(features, causal_ordering)]
+dt[, id_combination := .I]
+dt[, n_features := length(features[[1]]), id_combination]
+dt[, N := .N, n_features]
+dt[, shapley_weight := shapr:::shapley_weights(m = m, N = N, n_components = n_features, 10^6)]
+
+
+
+m = 4
+causal_ordering <- list(1:2, 3, 4)
+confounding <- c(TRUE, TRUE, TRUE)
+causal_ordering <- list(1:4)
+confounding = FALSE
 S <- feature_matrix_cpp(get_legit_causal_coalitions(causal_ordering = causal_ordering), m = m)
 S
-confounding <- c(TRUE, TRUE, FALSE)
 get_S_list_causal(S, causal_ordering, confounding, as_string = TRUE)
 
 
+data("airquality")
+data <- data.table::as.data.table(airquality)
+data <- data[complete.cases(data), ]
+
+x_var <- c("Solar.R", "Wind", "Temp", "Month")
+y_var <- "Ozone"
+
+ind_x_explain <- 1:6
+x_train <- data[-ind_x_explain, ..x_var]
+x_train
+x_explain <- data[ind_x_explain, ..x_var]
+x_explain
+create_marginal_data(x_train = x_train, Sbar_features = c(1, 4), n_samples = 10)
+
+setup_causal = function(internal) {
+
+}
+
+
+id_comb_now = 2
+
+chain_components_all = get_S_list_causal(S, causal_ordering, confounding, as_string = TRUE)
+chain_components = get_S_list_causal(S, causal_ordering, confounding, as_string = FALSE)
+chain_components_batch = chain_components[[id_comb_now]]
+
+n_samples = 5
+n_explain = nrow(x_explain)
+n_features = ncol(x_explain)
+
+# Create the empty data table which we are to fill up with the Monte Carlo samples
+# dt = x_explain[rep(seq(n_explain), each = n_samples)]
+dt = data.table(matrix(nrow = n_explain * n_samples, ncol = n_features))
+colnames(dt) = colnames(x_explain)
+
+# Add the samples we condition on
+S_names = names(dt)[as.logical(S[id_comb_now, ])]
+dt[, (S_names) := x_explain[rep(seq(n_explain), each = n_samples), .SD, .SDcols = S_names]]
+
+# Create a duplicate internal list.
+# This is needed as prepare_data extracts, e.g., x_explain from the internal list,
+# but in this iterative causal chain component structure, we have to manipulate the
+# internal list to compute what we are interested in.
+# That is, we change x_explain to dt (and update it for each chain component), such that we can re-use
+# the prepare_data function to generate MC samples from P(Sbar_i | S_i), where i represents that the S and
+# Sbar changes for each chain component.
+internal_tmp = copy(internal)
+internal_tmp$data$x_explain = dt
+internal_tmp$parameters$n_explain = nrow(dt)
+
+# Generate one MC sample for each observation, as each observation is part of a chain of sampling steps to
+# create the full MC sample. Otherwise, we get n_samples^(n_components) MC samples in the end.
+internal_tmp$parameters$n_samples = 1
+
+# Then sample the remaining features based on the chain of components
+chain_components_batch_idx = 1
+for (chain_components_batch_idx in seq_along(chain_components_batch)) {
+
+  # Get the S and Sbar in the current chain component
+  S_now = chain_components_batch[[chain_components_batch_idx]]$S # The features to condition on
+  Sbar_now = chain_components_batch[[chain_components_batch_idx]]$Sbar # The features to sample
+  Sbar_now_names = names(x_explain)[Sbar_now]
+
+  # Check if we are to sample from the marginal or conditional distribution
+  if (is.null(S_now)) {
+    # Marginal distribution as there are NO variables to condition on
+    # TODO: Add option for not use training data but rather some distribution
+    dt[, (Sbar_now_names) := create_marginal_data(x_train, n_explain = n_explain, Sbar_features = Sbar_now, n_samples = n_samples)]
+
+  } else {
+    # Conditional distribution as there are variables to condition on
+
+    # TODO: is this necessary? Is not S_row_now the same as the S that is given to us?
+    # Find which row in S the current set of conditional features corresponds to. This will be the index_features.
+    S_now_binary = rep(0, n_features)
+    S_now_binary[S_now] = 1
+    S_row_now = which(apply(internal_tmp$objects$S, 1, function(x) identical(x, S_now_binary)))
+
+    # Generate the MC samples conditioning on S_now, but only keeping the features in Sbar_now.
+    dt[, (Sbar_now_names) := prepare_data(internal_tmp, index_features = S_row_now)[,.SD, .SDcols = Sbar_now_names]]
+    internal_tmp$data$x_explain = dt
+  }
+}
+dt
 
 
 
+
+#' @keywords internal
+batch_prepare_vS_MC_causal <- function(S, internal) {
+  max_id_combination <- internal$parameters$n_combinations
+  x_explain <- internal$data$x_explain
+  n_explain <- internal$parameters$n_explain
+
+  if (max_id_combination %in% S) {
+    dt <- if (length(S) == 1) NULL else prepare_data_causal(internal, index_features = S[S != max_id_combination])
+    dt <- rbind(dt, data.table(id_combination = max_id_combination, x_explain, w = 1, id = seq_len(n_explain)))
+    setkey(dt, id, id_combination)
+  } else {
+    dt <- prepare_data_causal(internal, index_features = S)
+  }
+  return(dt)
+}
+
+
+prepare_data_causal <- function(internal, index_features) {
+  # Recall that here, S is a vector of id_combinations, i.e., indicating which rows in S to use.
+  # Also note that we are guaranteed that S is not the empty or grand coalition
+
+  # We need to return a data.table with columns id_combination, id, features, w
+
+  # Extract the causal related variables
+  S_matrix <- internal$objects$S
+  chain_components = internal$objects$chain_components
+  chain_components_batch = chain_components[S]
+
+  n_samples = internal$parameters$n_samples
+  n_explain = internal$parameters$n_explain
+  n_features = internal$parameters$n_features
+
+  # Create the empty data table which we are to fill up with the Monte Carlo samples
+  dt = data.table(matrix(nrow = n_explain * n_samples, ncol = n_features))
+  colnames(dt) = colnames(x_explain)
+
+
+  # lapply over the coalitions in the batch
+
+  for (index_feature_idx in seq_along(index_features)) {
+    index_feature = index_features[index_feature_idx]
+
+
+
+
+
+
+  }
+
+
+
+
+
+}
+
+
+
+
+#' @keywords internal
+#' @author Martin Jullum, Lars Henry Berge Olsen
+batch_prepare_vS_MC <- function(S, internal, model, predict_model) {
+  output_size <- internal$parameters$output_size
+  feature_names <- internal$parameters$feature_names
+  type <- internal$parameters$type
+  horizon <- internal$parameters$horizon
+  n_endo <- internal$data$n_endo
+  explain_idx <- internal$parameters$explain_idx
+  explain_lags <- internal$parameters$explain_lags
+  y <- internal$data$y
+  xreg <- internal$data$xreg
+  keep_samp_for_vS <- internal$parameters$keep_samp_for_vS
+  causal_Shapley = internal$parameters$causal_Shapley
+
+  # Split in whether the MC samples are generated based on causal Shapley (i.e., more than one component)
+  # TODO: discuss with Martin, as regular Shapley is a special case of causal Shapley with only one component.
+  # Thus, we could have a single function where we just do one iteration of the sampling loop for regular Shapley.
+  if (causal_Shapley) {
+    dt <- batch_prepare_vS_MC_causal(S = S, internal = internal)
+  } else {
+    dt <- batch_prepare_vS_MC_auxiliary(S = S, internal = internal) # Make it optional to store and return the dt_list
+  }
+
+  pred_cols <- paste0("p_hat", seq_len(output_size))
+
+  compute_preds(
+    dt, # Updating dt by reference
+    feature_names = feature_names,
+    predict_model = predict_model,
+    model = model,
+    pred_cols = pred_cols,
+    type = type,
+    horizon = horizon,
+    n_endo = n_endo,
+    explain_idx = explain_idx,
+    explain_lags = explain_lags,
+    y = y,
+    xreg = xreg
+  )
+  dt_vS <- compute_MCint(dt, pred_cols)
+
+  # Also return the dt object if keep_samp_for_vS is TRUE
+  return(if (keep_samp_for_vS) list(dt_vS = dt_vS, dt_samp_for_vS = dt) else dt_vS)
+}
 
 
 
@@ -570,6 +774,47 @@ check_n_combinations_causal = function(n_combinations, causal_ordering) {
 #'
 #' @author Lars Henry Berge Olsen
 check_coalitions_respect_order <- function(coalitions, causal_ordering) {
+  sapply(coalitions, function(coalition) {
+    for (feature in coalition) { # Iterate over the features in the coalition
+      # Get which component in the causal ordering the feature is part of
+      id_component <- Position(function(component) feature %in% component, causal_ordering, nomatch = 0)
+      if (id_component != 1) { # If not the root component
+        ancestors <- unlist(causal_ordering[1:(id_component-1)]) # Get ancestors of the component
+        #if (!setequal(ancestors, intersect(ancestors, coalition))) return(FALSE) # Check all ancestors in coalition
+        if (!all(ancestors %in% coalition)) return(FALSE)
+      }
+    }
+    return(TRUE)
+  })
+}
+
+#' Auxiliary function that verifies that the coalitions respect the causal order
+#'
+#' @param coalitions List of integer vectors containing the coalitions indicating which
+#' features to conditioning on that we are to check against the causal ordering.
+#'
+#' @param causal_ordering List of vectors containing the partial causal ordering.
+#' The elements in the list represents the components in the causal ordering and can either
+#' be a single feature index or several, that is, a vector. For example, we can have
+#' `list(c(1,2), c(3, 4))`, which means that `1,2 -> 3` and `1,2 -> 4`, i.e., one and
+#' two are the ancestors of three and four, but three and four are not related.
+#'
+#' @return Logical array indicating whether the coalitions respect the causal order or not.
+#'
+#' @keywords internal
+#'
+#' @examples
+#' coalitions = list(c(1,2,3,5), c(1,2,4), c(1,4))
+#' causal_ordering = list(1:3, 4:7, 8:10)
+#' check_coalitions_respect_order_slow(coalitions, causal_ordering) # c(TRUE, FALSE, FALSE)
+#' check_coalitions_respect_order_slow(c(1,2,3,5), causal_ordering) # TRUE
+#' check_coalitions_respect_order_slow(list(c(1,2,3,5)), causal_ordering) # TRUE
+#' check_coalitions_respect_order_slow(list(c(1,2,5)), causal_ordering) # FALSE
+#' check_coalitions_respect_order_slow(list(c(1:7,10)), causal_ordering) # TRUE
+#' check_coalitions_respect_order_slow(list(c(1:3,5:6,10)), causal_ordering) # FALSE
+#'
+#' @author Lars Henry Berge Olsen
+check_coalitions_respect_order_slow <- function(coalitions, causal_ordering) {
   if (!is.list(coalitions)) coalitions = list(coalitions) # Ensure that we are given a list and not a vector
   n_causal_ordering = length(causal_ordering) # Get the number of causal orderings
 
@@ -871,6 +1116,7 @@ feature_not_exact_causal <- function(m, causal_ordering, n_combinations = 200, w
 #' Sample observations from the empirical distribution P(X) using the training dataset.
 #'
 #' @param x_train Data table
+#' @param n_explain Integer. The number of observations to explain
 #' @param Sbar_features Vector of integers containing the features indices to generate marginal observations for.
 #' That is, if `Sbar_features` is `c(1,4)`, then we sample `n_samples` observations from \eqn{P(X_1, X_4)} using the
 #' empirical training observations (with replacements). That is, we sample the first and fourth feature values from
@@ -896,18 +1142,19 @@ feature_not_exact_causal <- function(m, causal_ordering, n_combinations = 200, w
 #'
 #' @keywords internal
 #' @author Lars Henry Berge Olsen
-create_marginal_data <- function(x_train, Sbar_features = NULL, n_samples = 10e3, ...) {
+create_marginal_data <- function(x_train, n_explain, Sbar_features = NULL, n_samples = 10e3, ...) {
   # TODO: Kanskje man skal ha med x_explain her eller den data tablen som man skal fylle opp med data
 
   # Get the number of training observations
   n_train = nrow(x_train)
 
   # TODO: decide which method to use
-  # If n_samples > n_train, then we do include each training observations n_samples %/% n_train times and
+  # If n_samples > n_train, then we include each training observations n_samples %/% n_train times and
   # then sample the remaining n_samples %% n_train samples. Only the latter is done when n_samples < n_train.
-  sampled_indices = c(rep(seq(n_train), each = n_samples %/% n_train), sample(n_train, n_samples %% n_train))
+  # This is done separately for each
+  sampled_indices = as.vector(sapply(seq(n_explain), function(x) c(rep(seq(n_train), each = n_samples %/% n_train), sample(n_train, n_samples %% n_train))))
   # Or sample everything and not guarantee that we use all training observations
-  # sampled_indices = sample(n_train, n_samples, replace = TRUE)
+  # sampled_indices = sample(n_train, n_samples * n_explain, replace = TRUE)
 
   # Sample the marginal data and return them
   return(x_train[sampled_indices, ..Sbar_features])
