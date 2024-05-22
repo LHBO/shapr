@@ -68,6 +68,17 @@
 # Rscript Run_linear_experiment_xgboost.R TRUE TRUE FALSE FALSE 1:10 2 10000 10000 1000 1000 10 0.3,0.9 FALSE NULL NULL NULL
 #
 #
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0,0.05 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0.1,0.2 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0.5,0.7 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0.3,0.9 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0,0.05 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0.1,0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0.5,0.7 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:10 6 10000 10000 1000 1000 10 0.3,0.9 FALSE NULL NULL NULL
+
+#
+#
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0,0.05 TRUE NULL NULL NULL
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.1,0.2 TRUE NULL NULL NULL
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:5 2 10000 10000 1000 1000 8 0.5,0.7 TRUE NULL NULL NULL
@@ -538,19 +549,6 @@ for (rho_idx in seq_along(rhos)) {
 
 
     # Predictive model ------------------------------------------------------------------------------------------------
-    # Look at the accuracy of the model
-    predictive_model = lm(y ~ ., data = data_train_with_response)
-    message(sprintf("Training MSE = %g and test MSE = %g.",
-                    mean((predict(predictive_model, data_train_with_response) - data_train_with_response$y)^2),
-                    mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)))
-
-    # Fit a GAM model.
-    predictive_model = gam(as.formula(paste0("y ~ ", paste0("ti(X", seq(M), ")", collapse = " + "))),
-                           data = data_train_with_response)
-    message(sprintf("Training MSE = %g and test MSE = %g.",
-                    mean((predict(predictive_model, data_train_with_response) - data_train_with_response$y)^2),
-                    mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)))
-
     # Fit the xgboost model
     library(xgboost)
 
@@ -577,6 +575,19 @@ for (rho_idx in seq_along(rhos)) {
       control = tune::control_grid(verbose = TRUE)
     )
     print(tune::show_best(regression.results, metric = "rmse", n = 10))
+
+    # Look at the accuracy of the model
+    predictive_model = lm(y ~ ., data = data_train_with_response)
+    message(sprintf("Training MSE = %g and test MSE = %g.",
+                    mean((predict(predictive_model, data_train_with_response) - data_train_with_response$y)^2),
+                    mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)))
+
+    # Fit a GAM model.
+    predictive_model = gam(as.formula(paste0("y ~ ", paste0("ti(X", seq(M), ")", collapse = " + "))),
+                           data = data_train_with_response)
+    message(sprintf("Training MSE = %g and test MSE = %g.",
+                    mean((predict(predictive_model, data_train_with_response) - data_train_with_response$y)^2),
+                    mean((predict(predictive_model, data_test_with_response) - data_test_with_response$y)^2)))
 
     # Train an xgboost model with the best hyperparameters
     best_results = tune::select_best(regression.results, metric = "rmse")
