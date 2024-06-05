@@ -703,5 +703,101 @@ if (FALSE) {
   #Xgboost_M_8_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25
 
 
+
+  # M = 10 ----------------------------------------------------------------------------------------------------------
+
+
+  {
+    # Parameters
+    rhos = c(0,0.05,0.1,0.2,0.3,0.5,0.7,0.9,0.9)
+    rho_equi = TRUE # Can change this
+
+    only_these_sampling_methods = c(
+      "paired_coalitions_weights",
+      "paired_coalitions_weights_direct",
+      "paired_coalitions_weights_equal_weights",
+      "paired_coalitions_weights_direct_equal_weights",
+      "paired_coalitions",
+      "unique",
+      "unique_unif",
+      "unique_unif_V2",
+      "unique_SW",
+      "unique_equal_weights",
+      "unique_equal_weights_symmetric",
+      "unique_paired",
+      "unique_paired_unif",
+      "unique_paired_unif_V2",
+      "unique_paired_SW",
+      "unique_paired_equal_weights",
+      "unique_paired_equal_weights_100",
+      "unique_paired_equal_weights_500",
+      "unique_paired_equal_weights_1000",
+      "unique_paired_equal_weights_5000",
+      "unique_paired_equal_weights_10000",
+      "unique_paired_equal_weights_50000",
+      "unique_paired_equal_weights_symmetric",
+      "single_mean_coalition_effect"
+    )
+
+    only_these_sampling_methods = c(
+      #"paired_coalitions_weights",
+      #"paired_coalitions_weights_direct",
+      "paired_coalitions_weights_equal_weights",
+      "paired_coalitions_weights_direct_equal_weights",
+      "paired_coalitions",
+      "unique",
+      #"unique_unif",
+      #"unique_unif_V2",
+      #"unique_SW",
+      #"unique_equal_weights",
+      #"unique_equal_weights_symmetric",
+      "unique_paired",
+      #"unique_paired_unif",
+      #"unique_paired_unif_V2",
+      "unique_paired_SW",
+      "unique_paired_equal_weights"
+      #"unique_paired_equal_weights_100",
+      #"unique_paired_equal_weights_500",
+      #"unique_paired_equal_weights_1000",
+      #"unique_paired_equal_weights_5000",
+      #"unique_paired_equal_weights_10000",
+      #"unique_paired_equal_weights_50000",
+      #"unique_paired_equal_weights_symmetric"
+      #"single_mean_coalition_effect"
+    )
+
+    # Load the results and make the figures
+    figs = list()
+    for (rho_idx in seq_along(rhos)) {
+      rho = rhos[rho_idx]
+      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds"),
+                                     index_combinations = NULL,
+                                     only_these_sampling_methods = only_these_sampling_methods,
+                                     figures_to_make = c("figure_CI",
+                                                         "figure_mean",
+                                                         "figure_median",
+                                                         "figure_lines",
+                                                         "figure_boxplot",
+                                                         "figure_lines_boxplot",
+                                                         "figure_boxplot_lines"),
+                                     ggplot_theme = NULL,
+                                     brewer_palette = NULL,
+                                     brewer_direction = 1,
+                                     flip_coordinates = FALSE,
+                                     legend_position = NULL,
+                                     scale_y_log10 = TRUE,
+                                     scale_x_log10 = FALSE,
+                                     n.dodge = 2,
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+      if (rho_idx != length(rhos)) {
+        figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
+      }
+
+    }
+    gridExtra::grid.arrange(grobs = figs, nrow = 2)
+  }
+  #Xgboost_M_8_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25
+
+
 }
 
