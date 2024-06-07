@@ -21,7 +21,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.01") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.01") + guides(color = "none")
 
     p2 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.11_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds",
                       index_combinations = NULL,
@@ -42,7 +42,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.11") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.11") + guides(color = "none")
 
     p3 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.31_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds",
                       index_combinations = NULL,
@@ -63,7 +63,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.31") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.31") + guides(color = "none")
 
     p4 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.41_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds",
                       index_combinations = NULL,
@@ -84,7 +84,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.41") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.41") + guides(color = "none")
 
     p5 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.61_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds",
                       index_combinations = NULL,
@@ -105,7 +105,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.61") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.61") + guides(color = "none")
 
     p6 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.71_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds",
                       index_combinations = NULL,
@@ -126,7 +126,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.71") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.71") + guides(color = "none")
 
     p7 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.81_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds",
                       index_combinations = NULL,
@@ -147,7 +147,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.81") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.81") + guides(color = "none")
 
     p8 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_6_n_train_1000_n_test_1000_rho_0.91_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_dt_MAE.rds",
                       index_combinations = NULL,
@@ -202,7 +202,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.04") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.04") + guides(color = "none")
 
     p2 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.14_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                       index_combinations = NULL,
@@ -223,7 +223,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.14") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.14") + guides(color = "none")
 
     p3 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.24_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                       index_combinations = NULL,
@@ -244,7 +244,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.24") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.24") + guides(color = "none")
 
     p4 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.34_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                       index_combinations = NULL,
@@ -265,7 +265,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.34") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.34") + guides(color = "none")
 
     p5 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.64_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                       index_combinations = NULL,
@@ -286,7 +286,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.64") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.64") + guides(color = "none")
 
     p6 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.74_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                       index_combinations = NULL,
@@ -307,7 +307,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.74") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.74") + guides(color = "none")
 
     p7 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.84_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                       index_combinations = NULL,
@@ -328,7 +328,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.84") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.84") + guides(color = "none")
 
     p8 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.94_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds",
                       index_combinations = NULL,
@@ -447,7 +447,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.01") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.01") + guides(color = "none")
 
     p2 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_12_n_train_1000_n_test_1000_rho_0.11_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds",
                       index_combinations = NULL,
@@ -468,7 +468,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.11") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.11") + guides(color = "none")
 
     p3 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_12_n_train_1000_n_test_1000_rho_0.31_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds",
                       index_combinations = NULL,
@@ -489,7 +489,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.31") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.31") + guides(color = "none")
 
     p4 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_12_n_train_1000_n_test_1000_rho_0.41_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds",
                       index_combinations = NULL,
@@ -510,7 +510,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.41") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.41") + guides(color = "none")
 
     p5 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_12_n_train_1000_n_test_1000_rho_0.61_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds",
                       index_combinations = NULL,
@@ -531,7 +531,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.61") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.61") + guides(color = "none")
 
     p6 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_12_n_train_1000_n_test_1000_rho_0.71_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds",
                       index_combinations = NULL,
@@ -552,7 +552,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.71") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.71") + guides(color = "none")
 
     p7 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_12_n_train_1000_n_test_1000_rho_0.81_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds",
                       index_combinations = NULL,
@@ -573,7 +573,7 @@ if (FALSE) {
                       scale_y_log10 = TRUE,
                       scale_x_log10 = FALSE,
                       n.dodge = 2,
-                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.81") + guides(color = FALSE)
+                      plot_figures = FALSE)$figure_mean + ggplot2::ggtitle("rho = 0.81") + guides(color = "none")
 
     p8 = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_12_n_train_1000_n_test_1000_rho_0.91_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_dt_MAE.rds",
                       index_combinations = NULL,
@@ -797,6 +797,18 @@ if (FALSE) {
     gridExtra::grid.arrange(grobs = figs, nrow = 2)
   }
   #Xgboost_M_8_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25
+
+
+
+
+
+
+
+
+# New -------------------------------------------------------------------------------------------------------------
+
+ll = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1.rds")
+ll$
 
 
 }
