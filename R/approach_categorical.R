@@ -36,17 +36,20 @@ setup_approach.categorical <- function(internal,
 
   # estimate joint_prob_dt if it is not passed to the function
   if (is.null(joint_probability_dt)) {
+    # Get the frequency of the unique feature value combinations in the training data
     joint_prob_dt0 <- x_train[, .N, eval(feature_names)]
 
+    # Get the feature value combinations in the explicands that are NOT in the training data and their frequency
     explain_not_in_train <- data.table::setkeyv(data.table::setDT(x_explain), feature_names)[!x_train]
     N_explain_not_in_train <- nrow(unique(explain_not_in_train))
 
+    # Add these feature value combinations, and their corresponding frequency, to joint_prob_dt0
     if (N_explain_not_in_train > 0) {
       joint_prob_dt0 <- rbind(joint_prob_dt0, cbind(explain_not_in_train, N = categorical.epsilon))
     }
 
-    joint_prob_dt0[, joint_prob := N / .N]
-    joint_prob_dt0[, joint_prob := joint_prob / sum(joint_prob)]
+    # Compute the joint probability for each feature value combination
+    joint_prob_dt0[, joint_prob := N / sum(N)]
     data.table::setkeyv(joint_prob_dt0, feature_names)
 
     joint_probability_dt <- joint_prob_dt0[, N := NULL][, id_all := .I]
