@@ -102,6 +102,23 @@
 #Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 5000 5000 1000 1000 8 0.5 FALSE NULL NULL NULL
 #Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 5000 5000 1000 1000 8 0.5 FALSE NULL NULL NULL
 
+
+
+# NSM2024
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.0 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.2 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.5 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.9 FALSE NULL NULL NULL
+
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.0 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.2 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.5 FALSE NULL NULL NULL
+Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.9 FALSE NULL NULL NULL
+
+
+
+
+
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -383,6 +400,14 @@ sampling_methods = c("paired_coalitions_weights",
                      # "single_median_ranking_over_each_test_obs"
 )
 
+sampling_methods = c("unique_paired_unif_V2",
+                     "unique",
+                     "unique_paired",
+                     "unique_paired_equal_weights",
+                     "unique_paired_SW",
+                     "paired_coalitions",
+                     "paired_coalitions_weights_direct_equal_weights")
+
 
 # sampling_methods = c("paired_coalitions_weights",
 #                      "paired_coalitions_weights_direct",
@@ -464,7 +489,8 @@ for (rho_idx in seq_along(rhos)) {
   diag(sigma) = 1
 
   # Make some of the save file names
-  file_name = paste("Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+  # TODO: REMOVE NSM2024 in the future
+  file_name = paste("NSM2024_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
                     "betas", paste(as.character(betas), collapse = "_"), sep = "_")
   save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
   save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
