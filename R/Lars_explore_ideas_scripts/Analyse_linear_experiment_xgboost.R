@@ -24,10 +24,10 @@ if (length(args) < 12) {
 
 do_dt = TRUE
 do_figures = FALSE
-M = 5
-rhos = c(0.7)
+M = 10
+rhos = c(0.2)
 n_train = 1000
-n_test = 500
+n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5)[seq(M+1)]
 evaluation_criterion = "MAE"
 use_pilot_estimates_regression = TRUE
@@ -163,7 +163,7 @@ if (do_dt) {
     level = 0.95,
     n_workers = 1,
     objects_to_return = "aggregated_results",
-    name_prefix = "Xgboost")
+    name_prefix = "NSM2024_Xgboost")
 }
 
 
