@@ -912,19 +912,20 @@ if (FALSE) {
                         levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions"),
                         labels = c("Uniform", "Unique", "Paired", "Paired avg.", "Paired kernel", "Pilot", "Pilot kernel"))]
 
+    library(latex2exp)
     fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling)) +
       #geom_smooth(method = "loess", se = FALSE) +
       #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
-      geom_line(size = 1) +
+      geom_line(linewidth = 1) +
       #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
-      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="fixed") +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
       scale_y_log10(
         breaks = scales::trans_breaks("log10", function(x) 10^x),
         labels = scales::trans_format("log10", scales::math_format(10^.x))
       ) +
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 1)) +
-      labs(color = "Strategy:", x = expression(N[combinations]), y = "Mean absolute error") +
+      labs(color = "Strategy:", x = expression(N[combinations]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
       theme(strip.text = element_text(size = rel(1.5)),
             legend.title = element_text(size = rel(1.5)),
             legend.text = element_text(size = rel(1.5)),
@@ -932,7 +933,7 @@ if (FALSE) {
             axis.text = element_text(size = rel(1.4))) + scale_color_manual(values = gg_color_hue(7))
 
     fig2
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_plot_f.png",
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_plot.png",
            plot = fig2,
            scale = 0.8,
            dpi = 400)
@@ -972,11 +973,6 @@ if (FALSE) {
     }
     gridExtra::grid.arrange(grobs = figs, nrow = 2)
 
-    gg_color_hue <- function(n) {
-      hues = seq(15, 375, length = n + 1)
-      hcl(h = hues, l = 65, c = 100)[1:n]
-    }
-
     dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
 
     dt_all[, sampling := factor(sampling,
@@ -986,24 +982,24 @@ if (FALSE) {
     fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling)) +
       #geom_smooth(method = "loess", se = FALSE) +
       #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
-      geom_line(size = 1) +
+      geom_line(linewidth = 1) +
       #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
-      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="fixed") +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
       scale_y_log10(
         breaks = scales::trans_breaks("log10", function(x) 10^x),
         labels = scales::trans_format("log10", scales::math_format(10^.x))
       ) +
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 1)) +
-      labs(color = "Strategy:", x = expression(N[combinations]), y = "Mean absolute error") +
-      theme(strip.text = element_text(size = rel(1.5)),
-            legend.title = element_text(size = rel(1.5)),
-            legend.text = element_text(size = rel(1.5)),
-            axis.title = element_text(size = rel(1.5)),
-            axis.text = element_text(size = rel(1.4))) + scale_color_manual(values = gg_color_hue(7))
+      labs(color = "Strategy:", x = expression(N[combinations]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.6)),
+            legend.text = element_text(size = rel(1.6)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5))) + scale_color_manual(values = gg_color_hue(7))
 
     fig2
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_plot_f.png",
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_plot_8.png",
            plot = fig2,
            scale = 0.8,
            dpi = 400)
@@ -1082,15 +1078,16 @@ fig = ggplot(dt, aes(x = id, y = weight, col = type)) +
              ncol = 2) +
   theme(legend.position = 'bottom') +
   guides(col = guide_legend(nrow = 1)) +
-  labs(color = "Strategy:", x = "Coalition index", y = "Normalized weight") +
-  theme(strip.text = element_text(size = rel(1.5)),
-        legend.title = element_text(size = rel(1.5)),
-        legend.text = element_text(size = rel(1.5)),
-        axis.title = element_text(size = rel(1.5)),
-        axis.text = element_text(size = rel(1.4))) + scale_color_manual(values = gg_color_hue(7)[-7])
+  labs(color = "Strategy:", x = "Coalition index", y = "Normalized Shapley kernel weight/sampling frequence") +
+  theme(strip.text = element_text(size = rel(1.6)),
+        legend.title = element_text(size = rel(1.6)),
+        legend.text = element_text(size = rel(1.6)),
+        axis.title = element_text(size = rel(1.6)),
+        axis.title.y = element_text(size = rel(1.1)),
+        axis.text = element_text(size = rel(1.5))) + scale_color_manual(values = gg_color_hue(7)[-7])
 
 fig
-ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/N_combinations_weights7.png",
+ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/N_combinations_weights97.png",
        plot = fig,
        scale = 0.8,
        dpi = 400)
