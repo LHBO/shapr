@@ -105,15 +105,32 @@
 
 
 # NSM2024
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.0 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.2 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.5 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.0 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.2 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.5 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:20 6 10000 10000 1000 1000 10 0.9 TRUE NULL NULL NULL
 #
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.0 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.2 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.5 FALSE NULL NULL NULL
-# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.0 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.2 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.5 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 21:40 6 10000 10000 1000 1000 10 0.9 TRUE NULL NULL NULL
+#
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 41:50 6 10000 10000 1000 1000 10 0.0,0.2 TRUE NULL NULL NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 41:50 6 10000 10000 1000 1000 10 0.5,0.9 TRUE NULL NULL NULL
+
+# Linear reg pilots
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:20 6 10000 10000 1000 1000 10 0.0 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:20 6 10000 10000 1000 1000 10 0.2 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:20 6 10000 10000 1000 1000 10 0.5 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:20 6 10000 10000 1000 1000 10 0.9 TRUE NULL regression_separate NULL
+#
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 21:40 6 10000 10000 1000 1000 10 0.0 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 21:40 6 10000 10000 1000 1000 10 0.2 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 21:40 6 10000 10000 1000 1000 10 0.5 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 21:40 6 10000 10000 1000 1000 10 0.9 TRUE NULL regression_separate NULL
+#
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 41:50 6 10000 10000 1000 1000 10 0.0,0.2 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 41:50 6 10000 10000 1000 1000 10 0.5,0.9 TRUE NULL regression_separate NULL
 
 
 

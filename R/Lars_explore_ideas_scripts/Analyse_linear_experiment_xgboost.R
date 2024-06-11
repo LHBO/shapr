@@ -15,6 +15,17 @@
 # Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 8 0,0.05,0.1,0.2,0.5,0.7,0.9 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 
 
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.2 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.5 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.9 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.2 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.5 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.9 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
+
+
+
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -28,10 +39,10 @@ M = 10
 rhos = c(0.2)
 n_train = 1000
 n_test = 1000
-betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5)[seq(M+1)]
+betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)[seq(M+1)]
 evaluation_criterion = "MAE"
 use_pilot_estimates_regression = TRUE
-pilot_approach_regression = "regression_surrogate"
+pilot_approach_regression = "regression_separate"
 pilot_regression_model = "parsnip::linear_reg()"
 
 
@@ -153,7 +164,7 @@ if (do_dt) {
     n_train = n_train,
     n_test = n_test,
     betas = betas,
-    folder_save = folder_save,
+    folder_save = folder_save, #file.path(folder_save, "TMP"),
     evaluation_criterion = evaluation_criterion,
     use_pilot_estimates_regression = use_pilot_estimates_regression,
     pilot_approach_regression = pilot_approach_regression,
@@ -163,7 +174,8 @@ if (do_dt) {
     level = 0.95,
     n_workers = 1,
     objects_to_return = "aggregated_results",
-    name_prefix = "NSM2024_Xgboost")
+    name_prefix = "Xgboost" # "NSM2024_Xgboost"
+    )
 }
 
 
@@ -199,7 +211,7 @@ if (do_figures) {
                  brewer_direction = 1,
                  flip_coordinates = FALSE,
                  legend_position = NULL,
-                 scale_y_log10 = FALSE,
+                 scale_y_log10 = TRUE,
                  scale_x_log10 = FALSE,
                  n.dodge = 2,
                  plot_figures = FALSE)})

@@ -875,7 +875,7 @@ if (FALSE) {
     figs = list()
     for (rho_idx in seq_along(rhos)) {
       rho = rhos[rho_idx]
-      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds"),
+      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds"),
                                      index_combinations = NULL,
                                      only_these_sampling_methods = only_these_sampling_methods,
                                      figures_to_make = c("figure_CI",
@@ -910,7 +910,7 @@ if (FALSE) {
 
     dt_all[, sampling := factor(sampling,
                         levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions"),
-                        labels = c("Uniform", "Unique", "Paired", "Paired avg.", "Paired kernel", "Pilot", "Pilot Kernel"))]
+                        labels = c("Uniform", "Unique", "Paired", "Paired avg.", "Paired kernel", "Pilot", "Pilot kernel"))]
 
     fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling)) +
       #geom_smooth(method = "loess", se = FALSE) +
@@ -924,7 +924,7 @@ if (FALSE) {
       ) +
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 1)) +
-      labs(color = "Strategy:", x = "Coalition index", y = "Mean absolute error") +
+      labs(color = "Strategy:", x = expression(N[combinations]), y = "Mean absolute error") +
       theme(strip.text = element_text(size = rel(1.5)),
             legend.title = element_text(size = rel(1.5)),
             legend.text = element_text(size = rel(1.5)),
@@ -932,11 +932,81 @@ if (FALSE) {
             axis.text = element_text(size = rel(1.4))) + scale_color_manual(values = gg_color_hue(7))
 
     fig2
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Results2.png",
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_plot_f.png",
            plot = fig2,
            scale = 0.8,
            dpi = 400)
 
+
+
+
+
+    # Pilot linear regression
+    # Load the results and make the figures
+    figs = list()
+    for (rho_idx in seq_along(rhos)) {
+      rho = rhos[rho_idx]
+      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_dt_MAE.rds"),
+                                     index_combinations = NULL,
+                                     only_these_sampling_methods = only_these_sampling_methods,
+                                     figures_to_make = c("figure_CI",
+                                                         "figure_mean",
+                                                         "figure_median",
+                                                         "figure_lines",
+                                                         "figure_boxplot",
+                                                         "figure_lines_boxplot",
+                                                         "figure_boxplot_lines"),
+                                     ggplot_theme = NULL,
+                                     brewer_palette = NULL,
+                                     brewer_direction = 1,
+                                     flip_coordinates = FALSE,
+                                     legend_position = NULL,
+                                     scale_y_log10 = TRUE,
+                                     scale_x_log10 = FALSE,
+                                     n.dodge = 2,
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+      if (rho_idx != length(rhos)) {
+        figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
+      }
+
+    }
+    gridExtra::grid.arrange(grobs = figs, nrow = 2)
+
+    gg_color_hue <- function(n) {
+      hues = seq(15, 375, length = n + 1)
+      hcl(h = hues, l = 65, c = 100)[1:n]
+    }
+
+    dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
+
+    dt_all[, sampling := factor(sampling,
+                                levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions"),
+                                labels = c("Uniform", "Unique", "Paired", "Paired avg.", "Paired kernel", "Pilot", "Pilot kernel"))]
+
+    fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling)) +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      geom_line(size = 1) +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="fixed") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 1)) +
+      labs(color = "Strategy:", x = expression(N[combinations]), y = "Mean absolute error") +
+      theme(strip.text = element_text(size = rel(1.5)),
+            legend.title = element_text(size = rel(1.5)),
+            legend.text = element_text(size = rel(1.5)),
+            axis.title = element_text(size = rel(1.5)),
+            axis.text = element_text(size = rel(1.4))) + scale_color_manual(values = gg_color_hue(7))
+
+    fig2
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_plot_f.png",
+           plot = fig2,
+           scale = 0.8,
+           dpi = 400)
 
   }
 
