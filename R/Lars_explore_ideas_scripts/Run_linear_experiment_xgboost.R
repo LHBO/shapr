@@ -425,7 +425,8 @@ sampling_methods = c("unique_paired_unif_V2",
                      "paired_coalitions",
                      "paired_coalitions_weights_direct_equal_weights")
 
-sampling_methods = c("unique_paired_unif_V2",
+sampling_methods = c("largest_weights",
+                     "unique_paired_unif_V2",
                      "unique_paired_SW",
                      "unique_paired_equal_weights",
                      "unique_paired_equal_weights_100",
