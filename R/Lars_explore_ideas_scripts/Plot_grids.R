@@ -877,7 +877,7 @@ if (FALSE) {
       rho = rhos[rho_idx]
       figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_dt_MAE.rds"),
                                      index_combinations = NULL,
-                                     only_these_sampling_methods = only_these_sampling_methods,
+                                     #only_these_sampling_methods = only_these_sampling_methods,
                                      figures_to_make = c("figure_CI",
                                                          "figure_mean",
                                                          "figure_median",
@@ -890,10 +890,11 @@ if (FALSE) {
                                      brewer_direction = 1,
                                      flip_coordinates = FALSE,
                                      legend_position = NULL,
-                                     scale_y_log10 = TRUE,
+                                     scale_y_log10 = FALSE, #TRUE,
                                      scale_x_log10 = FALSE,
                                      n.dodge = 2,
-                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")")) +
+        xlim(0, 200)
       if (rho_idx != length(rhos)) {
         figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
       }
@@ -919,10 +920,10 @@ if (FALSE) {
       geom_line(linewidth = 1) +
       #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
       facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
-      scale_y_log10(
-        breaks = scales::trans_breaks("log10", function(x) 10^x),
-        labels = scales::trans_format("log10", scales::math_format(10^.x))
-      ) +
+      # scale_y_log10(
+      #   breaks = scales::trans_breaks("log10", function(x) 10^x),
+      #   labels = scales::trans_format("log10", scales::math_format(10^.x))
+      # ) +
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 1)) +
       labs(color = "Strategy:", x = expression(N[combinations]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
@@ -933,6 +934,8 @@ if (FALSE) {
             axis.text = element_text(size = rel(1.4))) + scale_color_manual(values = gg_color_hue(7))
 
     fig2
+    fig2 + xlim(0, 200)
+
     ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_MANY_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_plot.png",
            plot = fig2,
            scale = 0.8,
@@ -1026,7 +1029,14 @@ ll = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_tr
 X_tmp = ll$unique$repetition_1$n_combinations_75$only_save$X
 S_tmp = ll$unique$repetition_1$n_combinations_1020$only_save$S
 
-sampling_methods = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights", "paired_coalitions_weights_direct_equal_weights")
+version = "Paper3"
+if (version == "NSM") {
+  sampling_methods = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights", "paired_coalitions_weights_direct_equal_weights")
+} else if (version == "Paper3") {
+  sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights")
+} else {
+  stop("Unknown version.")
+}
 
 
 n_combinations_vec = c(104, 254, 754, 1004)
@@ -1063,39 +1073,77 @@ dt = dt[!id %in% c(1, 1024)]
 # Make
 dt[, weight := weight / sum(weight), by = list(type, n_combinations)]
 
-dt[, type := factor(type,
-                    levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights", "kernel", "paired_coalitions_weights_direct_equal_weights"),
-                    labels = c("Uniform", "Unique", "Paired", "Paired Avg.", "Kernel", "Pilot"))]
+if (version == "NSM") {
+  dt[, type := factor(type,
+                      levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights", "kernel", "paired_coalitions_weights_direct_equal_weights"),
+                      labels = c("Uniform", "Unique", "Paired", "Paired Avg.", "Kernel", "Pilot"))]
 
 
-fig = ggplot(dt, aes(x = id, y = weight, col = type)) +
-  geom_point(alpha = 0.75) +
-  scale_y_log10(
-    breaks = scales::trans_breaks("log10", function(x) 10^x),
-    labels = scales::trans_format("log10", scales::math_format(10^.x))
-  ) +
-  facet_wrap(. ~ n_combinations, labeller = label_bquote(cols = N[combinations] ==.(n_combinations)),
-             ncol = 2) +
-  theme(legend.position = 'bottom') +
-  guides(col = guide_legend(nrow = 1)) +
-  labs(color = "Strategy:", x = "Coalition index", y = "Normalized Shapley kernel weight/sampling frequence") +
-  theme(strip.text = element_text(size = rel(1.6)),
-        legend.title = element_text(size = rel(1.6)),
-        legend.text = element_text(size = rel(1.6)),
-        axis.title = element_text(size = rel(1.6)),
-        axis.title.y = element_text(size = rel(1.1)),
-        axis.text = element_text(size = rel(1.5))) + scale_color_manual(values = gg_color_hue(7)[-7])
+  fig = ggplot(dt, aes(x = id, y = weight, col = type)) +
+    geom_point(alpha = 0.75) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    facet_wrap(. ~ n_combinations, labeller = label_bquote(cols = N[combinations] ==.(n_combinations)),
+               ncol = 2) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 1)) +
+    labs(color = "Strategy:", x = "Coalition index", y = "Normalized Shapley kernel weight/sampling frequency") +
+    theme(strip.text = element_text(size = rel(1.6)),
+          legend.title = element_text(size = rel(1.6)),
+          legend.text = element_text(size = rel(1.6)),
+          axis.title = element_text(size = rel(1.6)),
+          axis.title.y = element_text(size = rel(1.1)),
+          axis.text = element_text(size = rel(1.5))) + scale_color_manual(values = gg_color_hue(7)[-7])
 
-fig
-ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/N_combinations_weights97.png",
-       plot = fig,
-       scale = 0.8,
-       dpi = 400)
+  fig
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/N_combinations_weights97.png",
+         plot = fig,
+         scale = 0.8,
+         dpi = 400)
+
+} else if (version == "paper3") {
+  dt[, type := factor(type,
+                      levels = c("unique", "unique_paired", "unique_paired_equal_weights", "kernel"),
+                      labels = c("Unique", "Paired", "Paired Avg.", "Kernel"))]
+
+
+  fig = ggplot(dt, aes(x = id, y = weight, col = type)) +
+    geom_vline(xintercept = 512.5, color = "darkgrey", linetype = "dashed", linewidth = 0.9) +
+    geom_point(alpha = 0.6) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    facet_wrap(. ~ n_combinations, labeller = label_bquote(cols = N[combinations] ==.(n_combinations)),
+               ncol = 2) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 1)) +
+    labs(color = "Strategy:", x = "Coalition index", y = "Normalized Shapley kernel weight/sampling frequency") +
+    theme(strip.text = element_text(size = rel(1.6)),
+          legend.title = element_text(size = rel(1.6)),
+          legend.text = element_text(size = rel(1.6)),
+          axis.title = element_text(size = rel(1.6)),
+          axis.title.y = element_text(size = rel(1.1)),
+          axis.text = element_text(size = rel(1.5))) +
+    scale_color_manual(values = c(gg_color_hue(3), "#000000"))
+
+  fig
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights.png", # Saving 14.2 x 9.98 in image
+         plot = fig,
+         scale = 0.85,
+         dpi = 300)
+} else {
+  stop("Unknown version.")
+}
+
+
 
 
 colors_str = c('#e6194b', '#f58231', '#ffe119', '#3cb44b', '#4363d8', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff', '#000000')
 
-
+"#F8766D" "#C49A00" "#53B400" "#00C094" "#00B6EB" "#A58AFF"
 
 
 

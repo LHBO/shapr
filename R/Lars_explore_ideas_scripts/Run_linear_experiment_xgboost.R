@@ -425,6 +425,18 @@ sampling_methods = c("unique_paired_unif_V2",
                      "paired_coalitions",
                      "paired_coalitions_weights_direct_equal_weights")
 
+sampling_methods = c("unique_paired_unif_V2",
+                     "unique_paired_SW",
+                     "unique_paired_equal_weights",
+                     "unique_paired_equal_weights_100",
+                     "unique_paired_equal_weights_500",
+                     "unique_paired_equal_weights_1000",
+                     "unique_paired_equal_weights_2500",
+                     "unique_paired_equal_weights_5000",
+                     "unique_paired_equal_weights_10000",
+                     "unique_paired_equal_weights_50000",
+                     "unique_paired_equal_weights_symmetric",
+                     "paired_coalitions")
 
 # sampling_methods = c("paired_coalitions_weights",
 #                      "paired_coalitions_weights_direct",
@@ -507,7 +519,7 @@ for (rho_idx in seq_along(rhos)) {
 
   # Make some of the save file names
   # TODO: REMOVE NSM2024 in the future
-  file_name = paste("NSM2024_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+  file_name = paste("Samp_VS_kernel_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
                     "betas", paste(as.character(betas), collapse = "_"), sep = "_")
   save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
   save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
