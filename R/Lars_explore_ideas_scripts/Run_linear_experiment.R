@@ -515,6 +515,7 @@ for (rho_idx in seq_along(rhos)) {
         sigma[i,j] = sigma[j,i] = rho^abs(i-j)
     }
     sigma = as.matrix(do.call(Matrix::bdiag, lapply(c(3,4,3,5,2,2,1), function(dim_now) matrix(rho, ncol = dim_now, nrow = dim_now))))
+    sigma = sigma[1:M, 1:M]
   }
   diag(sigma) = 1
 
