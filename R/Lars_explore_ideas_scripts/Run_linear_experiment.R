@@ -151,6 +151,12 @@
 #Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
 #Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
 
+
+# High-dim --------------------------------------------------------------------------------------------------------
+
+
+
+
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -245,7 +251,7 @@ if (betas != "NULL") {
   # Create the beta vector
   betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
   betas = c(0, rep(1, M))
-  betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)
+  betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)
   betas = betas[seq(M+1)]
 }
 
@@ -509,6 +515,7 @@ for (rho_idx in seq_along(rhos)) {
       for (j in seq(i+1, M))
         sigma[i,j] = sigma[j,i] = rho^abs(i-j)
     }
+    sigma = as.matrix(do.call(Matrix::bdiag, lapply(c(3,4,3,5,2,2,1), function(dim_now) matrix(rho, ncol = dim_now, nrow = dim_now))))
   }
   diag(sigma) = 1
 
