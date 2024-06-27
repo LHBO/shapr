@@ -329,9 +329,10 @@ if (UiO) {
 }
 # devtools::load_all(".")
 if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
-  # devtools::clean_dll()
+  devtools::clean_dll()
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
   devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  devtools::load_all(".")
   library(shapr)
 } else {
   devtools::load_all(".")
@@ -476,6 +477,8 @@ n_combinations_from = 2
 # We increase by one each time
 n_combinations_increment = 10
 
+if (M > 12) n_combinations_increment = 500
+
 # Or we can define it to do more coalitions in the beginning as it seems to be then that we get the largest
 # changes in the MAE, i.e, it is better to use some extra time to do the computations there and be more coarse
 # for the coalition sizes in the middle.
@@ -485,6 +488,7 @@ n_combinations_array =
   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
                 middle_part, # Then include `n_combinations_increment` new coalitions at the time
                 seq(2^M-M, 2^M)))) # Include the coalitions that are missing 1 feature
+length(n_combinations_array)
 
 # n_combinations_array =
 #   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
