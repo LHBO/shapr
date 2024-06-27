@@ -153,7 +153,8 @@
 
 
 # High-dim --------------------------------------------------------------------------------------------------------
-# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:10 6 1000000 1000000 1000 1000 20 0,0.2,0.5,0.9 FALSE NULL regression_separate NULL
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:10 6 1000000 1000000 1000 1000 20 0,0.2,0.5,0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 14 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 
 
 # Input From Command Line ----------------------------------------------------------------------------------------------

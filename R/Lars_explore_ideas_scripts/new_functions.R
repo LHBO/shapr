@@ -316,6 +316,7 @@ repeated_explanations = function(model,
 
       # Check what kind of precomputed_vS we are going to use
       if (!is.null(true_shapley_values_path)) {
+        message("Loadining the `precomputed_vS` from the true Shapley values.")
         explanation_precomputed_vS = readRDS(true_shapley_values_path)
         precomputed_vS = explanation_precomputed_vS$internal$output # Extract only the precomputed_vS list
 
@@ -421,6 +422,7 @@ repeated_explanations = function(model,
 
     # Check if we need to compute the `specific_coalition_set`.
     if (using_specific_coalition_set) {
+      message("Creating the pilot orders")
 
       specific_coalition_set_true = pilot_estimates_coal_order(explanation_precomputed_vS)
 
