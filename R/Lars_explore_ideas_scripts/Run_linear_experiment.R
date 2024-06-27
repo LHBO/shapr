@@ -153,8 +153,7 @@
 
 
 # High-dim --------------------------------------------------------------------------------------------------------
-
-
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:10 6 1000000 1000000 1000 1000 20 0,0.2,0.5,0.9 FALSE NULL regression_separate NULL
 
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
@@ -643,7 +642,7 @@ for (rho_idx in seq_along(rhos)) {
           exact = TRUE,
           n_samples = 1,
           n_batches = 2^(M-2),
-          # n_combinations = 2^M, # Do not need it as we specify `exact = TRUE`.
+          n_combinations = 2^M, # Do not need it as we specify `exact = TRUE`.
           gaussian.mu = mu,
           gaussian.cov_mat = sigma,
           seed = 1,
