@@ -443,6 +443,15 @@ sampling_methods = c("paired_coalitions_weights",
                      # "single_median_ranking_over_each_test_obs"
                      )
 
+sampling_methods = c("unique_paired_unif_V2",
+                     "unique",
+                     "unique_paired",
+                     "unique_paired_equal_weights",
+                     "unique_paired_SW",
+                     "largest_weights")
+                     #"paired_coalitions",
+                     #"paired_coalitions_weights_direct_equal_weights")
+
 
 # sampling_methods = c("paired_coalitions_weights",
 #                      "paired_coalitions_weights_direct",
