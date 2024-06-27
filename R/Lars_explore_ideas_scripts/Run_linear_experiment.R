@@ -331,10 +331,14 @@ if (UiO) {
 if (Sys.info()[[4]] == "nam-shub-02.uio.no") {
   # devtools::clean_dll()
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  library(shapr)
+} else {
+  devtools::load_all(".")
 }
 #devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
 # library(shapr)
-devtools::load_all(".")
+# devtools::load_all(".")
 
 
 # Libraries -------------------------------------------------------------------------------------------------------
