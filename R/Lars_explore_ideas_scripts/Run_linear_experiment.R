@@ -647,7 +647,8 @@ for (rho_idx in seq_along(rhos)) {
           gaussian.mu = mu,
           gaussian.cov_mat = sigma,
           seed = 1,
-          precomputed_vS = list(dt_vS = dt_vS)
+          precomputed_vS = list(dt_vS = dt_vS),
+          only_return_internal = TRUE
         )}, enable = TRUE)
 
 

@@ -307,6 +307,7 @@ explain <- function(model,
                     specific_coalition_set = NULL,
                     specific_coalition_set_weights = NULL,
                     verbose = 0,
+                    only_return_internal = FALSE,
                     ...) { # ... is further arguments passed to specific approaches
 
   timing_list <- list(init_time = Sys.time())
@@ -390,6 +391,12 @@ explain <- function(model,
 
   timing_list$compute_vS <- Sys.time()
 
+  print("Starting to finalize the explanations")
+  if (only_return_internal) {
+    return_list = list(internal = internal)
+    attr(return_list, "class") <- c("shapr", "list")
+    return(return_list)
+  }
   # Compute Shapley values based on conditional expectations (v(S))
   # Organize function output
   output <- finalize_explanation(vS_list = vS_list, internal = internal)
