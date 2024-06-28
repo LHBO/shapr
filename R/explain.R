@@ -391,7 +391,6 @@ explain <- function(model,
 
   timing_list$compute_vS <- Sys.time()
 
-  print("Starting to finalize the explanations")
   if (only_return_internal) {
     return_list = list(internal = internal)
     attr(return_list, "class") <- c("shapr", "list")
