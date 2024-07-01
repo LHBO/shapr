@@ -2,7 +2,8 @@ library(data.table)
 library(ggplot2)
 library(shapr)
 
-saveRDS(c(1,2,3), file.path("mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_test_res.rds")))
+saveRDS(c(1,2,3), file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_test_res.rds")))
+
 
 
 # Sort functions --------------------------------------------------------------------------------------------------
@@ -320,7 +321,7 @@ for (m in M_vec) {
   res_list[[m]][, n_combinations := as.numeric(n_combinations)]
   res_list[[m]][, n_features := as.numeric(n_features)]
   res_list[[m]][, n_features := as.factor(n_features)]
-  saveRDS(res_list[[m]], file.path("mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res.rds")))
+  saveRDS(res_list[[m]], file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res.rds")))
 
   dt_avg = res_list[[m]]
   tmp = shapr:::shapley_weights(m = m,
@@ -339,7 +340,7 @@ for (m in M_vec) {
     expand_limits(y = 0)
   #plot(fig)
 
-  ggsave(file.path("mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_fig.png")),
+  ggsave(file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_fig.png")),
          plot = fig,
          width = 14.2,
          height = 10,
