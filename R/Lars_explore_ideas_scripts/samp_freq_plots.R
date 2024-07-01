@@ -295,7 +295,7 @@ kk = function(m, n_combinations, B = 10, weight_zero_m = 10^6, seed = 123) {
 
 m = 8
 kk(m, 2, B = 10)
-M_vec = seq(12,20)
+M_vec = seq(13,20)
 B = 250
 dt_avg_list = list()
 res_list = list()
@@ -303,6 +303,7 @@ res_list = list()
 library(future.apply)
 
 for (m in M_vec) {
+  print(m)
   if (m <= 8) {
     n_combinations_vec = seq(4, 2^m, 2)
   } else if (m <= 12) {
