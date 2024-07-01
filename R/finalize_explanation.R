@@ -42,6 +42,8 @@ finalize_explanation <- function(vS_list, internal) {
     # Extract only the relevant rows (combinations) from the
     processed_vS_list$dt_vS = processed_vS_list$dt_vS[current_combination_idx_in_all_combinations,]
 
+    #processed_vS_list$dt_vS[, id_combination_orginal := id_combination]
+    processed_vS_list$dt_vS[, id_combination := .I]
     # print(processed_vS_list)
 
     # message("Loaded the precomputed v(S) from the user provided `precomputed_vS`.\n")
