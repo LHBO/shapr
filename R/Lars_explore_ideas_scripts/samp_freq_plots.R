@@ -300,6 +300,8 @@ B = 250
 dt_avg_list = list()
 res_list = list()
 
+library(future.apply)
+
 for (m in M_vec) {
   if (m <= 8) {
     n_combinations_vec = seq(4, 2^m, 2)
@@ -315,7 +317,11 @@ for (m in M_vec) {
   n_combinations_vec = unique(sort(c(seq(4, 250, 2), n_combinations_vec)))
   n_combinations_vec = n_combinations_vec[n_combinations_vec < 2^m]
 
-  tmp = lapply(n_combinations_vec, function(n_combinations) kk(m, n_combinations, B = B))
+  # Set up the parallel plan
+  plan(multisession, workers = 4)
+  tmp = future.apply::future_lapply(n_combinations_vec, function(n_combinations) kk(m, n_combinations, B = B))
+  plan(sequential)   # Clean up the future plan
+
   names(tmp) = n_combinations_vec
   res_list[[m]] = rbindlist(tmp, idcol = "n_combinations")
   res_list[[m]][, n_combinations := as.numeric(n_combinations)]
