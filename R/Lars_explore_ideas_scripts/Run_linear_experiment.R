@@ -450,9 +450,10 @@ sampling_methods = c("paired_coalitions_weights",
 sampling_methods = c("unique",
                      "unique_paired",
                      "unique_paired_equal_weights",
-                     "unique_paired_SW",
-                     "paired_coalitions",
-                     "paired_coalitions_weights_direct_equal_weights")
+                     "unique_paired_SW"
+                     #"paired_coalitions",
+                     #"paired_coalitions_weights_direct_equal_weights"
+                     )
 
 
 # sampling_methods = c("paired_coalitions_weights",
