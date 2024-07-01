@@ -301,6 +301,8 @@ dt_avg_list = list()
 res_list = list()
 
 library(future.apply)
+library(progressr)
+progressr::handlers('cli')
 
 for (m in M_vec) {
   print(m)
@@ -320,7 +322,13 @@ for (m in M_vec) {
 
   # Set up the parallel plan
   plan(multisession, workers = 4)
-  tmp = future.apply::future_lapply(n_combinations_vec, function(n_combinations) kk(m, n_combinations, B = B))
+  with_progress({
+    p <- progressor(along = n_combinations_vec)
+    tmp = future.apply::future_lapply(n_combinations_vec, function(n_combinations) {
+      p()
+      kk(m, n_combinations, B = B)
+    })
+  })
   plan(sequential)   # Clean up the future plan
 
   names(tmp) = n_combinations_vec
