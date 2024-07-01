@@ -288,7 +288,7 @@ kk = function(m, n_combinations, B = 10, weight_zero_m = 10^6, seed = 123) {
 
 m = 8
 kk(m, 2, B = 10)
-M_vec = seq(3,20)
+M_vec = seq(12,20)
 B = 250
 dt_avg_list = list()
 res_list = list()
