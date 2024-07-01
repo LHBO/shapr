@@ -1,3 +1,7 @@
+library(data.table)
+library(ggplot2)
+library(shapr)
+
 
 # Sort functions --------------------------------------------------------------------------------------------------
 # Copied from `gtools` package
