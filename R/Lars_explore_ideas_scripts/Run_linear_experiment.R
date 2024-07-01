@@ -157,6 +157,8 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 14 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 
 
+
+
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 9:10 4 1000000 1000000 1000 500 15 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
@@ -445,14 +447,12 @@ sampling_methods = c("paired_coalitions_weights",
                      # "single_median_ranking_over_each_test_obs"
                      )
 
-sampling_methods = c("unique_paired_unif_V2",
-                     "unique",
+sampling_methods = c("unique",
                      "unique_paired",
                      "unique_paired_equal_weights",
                      "unique_paired_SW",
-                     "largest_weights")
-                     #"paired_coalitions",
-                     #"paired_coalitions_weights_direct_equal_weights")
+                     "paired_coalitions",
+                     "paired_coalitions_weights_direct_equal_weights")
 
 
 # sampling_methods = c("paired_coalitions_weights",
@@ -500,7 +500,6 @@ n_combinations_array =
   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
                 middle_part, # Then include `n_combinations_increment` new coalitions at the time
                 seq(2^M-M, 2^M)))) # Include the coalitions that are missing 1 feature
-length(n_combinations_array)
 
 # n_combinations_array =
 #   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
@@ -516,6 +515,7 @@ if (M <= 8) n_combinations_array = seq(2, 2^M)
 if (M == 17) {
   n_combinations_array = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 25000, 50000, 75000, 100000, 110000, 120000, 130000, 131000)
 }
+length(n_combinations_array)
 
 
 # We start with 2 ad we used 1 for the true Shapley values above.
