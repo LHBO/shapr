@@ -1124,6 +1124,8 @@ pilot_estimates_coal_order = function(explanation,
                  R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M, 2), ]
              })
 
+    # R_matrix_paired_order_diff_list[[1]][1:5, 1:5]
+
     # Convert it to a data.table of dimension `(M * N_explain) x (2^(M-1) + 2)`.
     # The plus two is because of two id_cols (`id_feature` and `id`), while the remaining `2^(M-1)` columns
     # are the differences
@@ -1191,11 +1193,14 @@ pilot_estimates_coal_order = function(explanation,
 
     # {
     #   require(gridExtra)
-    #   p1 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = mean_abs_R)) +
+    #   p1 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = mean_abs_R / sum(mean_abs_R))) +
     #     ggplot2::geom_bar(position = "dodge", stat = "identity")
     #
     #   p2 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = standard_weight)) +
     #     ggplot2::geom_bar(position = "dodge", stat = "identity")
+    #
+    #   gridExtra::grid.arrange(p2, p1, ncol = 1)
+    #
     #
     #   p3 = ggplot2::ggplot(data = R_dt_aggregated, ggplot2::aes(x = id_combination_diff, y = mean_abs_R - standard_weight)) +
     #     ggplot2::geom_bar(position = "dodge", stat = "identity")
@@ -1342,7 +1347,7 @@ pilot_estimates_coal_order = function(explanation,
     # points(single_mean_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 3)
     # points(single_median_coalition_effect, seq(128), pch = 17, cex = 1.5, col = 4)
 
-    # dt_temp = melt(data.table::data.table(id = factor(seq(2^M)),
+    # dt_temp = data.table::melt(data.table::data.table(id = factor(seq(2^M)),
     #                             single_mean_coalition_effect = single_mean_coalition_effect,
     #                             single_median_coalition_effect = single_median_coalition_effect,
     #                             single_mean_ranking_over_each_test_obs = single_mean_ranking_over_each_test_obs,
@@ -1358,7 +1363,7 @@ pilot_estimates_coal_order = function(explanation,
     #      variable.factor = TRUE)
     #
     #   ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:100)],
-    #                   aes(x = id, y = ranking, fill = strategy)) +
+    #                   ggplot2::aes(x = id, y = ranking, fill = strategy)) +
     #     ggplot2::geom_bar(position = "dodge", stat = "identity")
   }
 
@@ -1379,8 +1384,8 @@ pilot_estimates_coal_order = function(explanation,
                                variable.name = "strategy",
                                variable.factor = TRUE)
 
-    ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:50)],
-                    aes(x = id, y = ranking, fill = strategy)) +
+    ggplot2::ggplot(dt_temp[as.integer(dt_temp$id) %in% c(1:20)],
+                    ggplot2::aes(x = id, y = ranking, fill = strategy)) +
       ggplot2::geom_bar(position = "dodge", stat = "identity")
 
     GGally::ggpairs(data.table::as.data.table(return_list)) +
