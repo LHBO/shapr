@@ -2,6 +2,8 @@ library(data.table)
 library(ggplot2)
 library(shapr)
 
+saveRDS(c(1,2,3), file.path("mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_test_res.rds")))
+
 
 # Sort functions --------------------------------------------------------------------------------------------------
 # Copied from `gtools` package
