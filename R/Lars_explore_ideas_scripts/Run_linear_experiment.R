@@ -157,6 +157,8 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 14 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 
 
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 9:10 4 1000000 1000000 1000 500 15 0,0.2,0.5,0.9 FALSE NULL NULL NULL
+
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -510,6 +512,11 @@ length(n_combinations_array)
 #                 middle_part))) # Include the coalitions that are missing 1 feature
 
 if (M <= 8) n_combinations_array = seq(2, 2^M)
+
+if (M == 17) {
+  n_combinations_array = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 25000, 50000, 75000, 100000, 110000, 120000, 130000, 131000)
+}
+
 
 # We start with 2 ad we used 1 for the true Shapley values above.
 seed_start_value = 2
