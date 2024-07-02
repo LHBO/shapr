@@ -16,7 +16,6 @@
 # # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.6 NULL
 # # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.9 NULL
 
-
 # To do the setup, i.e., create the data and predictive model
 # Rscript Run_linear_experiment.R TRUE TRUE TRUE 1:100 3 5000 500 1000 250 10 0.5 NULL
 # Then, we create the true Shapley values
@@ -514,7 +513,8 @@ n_combinations_array =
 if (M <= 8) n_combinations_array = seq(2, 2^M)
 
 if (M == 17) {
-  n_combinations_array = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 25000, 50000, 75000, 100000, 110000, 120000, 130000, 131000)
+  n_combinations_array = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
+                           80000, 90000, 100000, 110000, 120000)
 }
 length(n_combinations_array)
 

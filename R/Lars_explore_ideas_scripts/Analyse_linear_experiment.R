@@ -57,6 +57,10 @@
 # Rscript Analyse_linear_experiment.R TRUE FALSE 9 0.5 FALSE 1000 1000 NULL MAE FALSE NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:5 6 1000000 1000000 1000 1000 9 0.5 FALSE NULL NULL NULL
 
+
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 14 0,0.2,0.5,0.9 FALSE NULL NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 14 0,0.2,0.5,0.9 FALSE 1000 1000 NULL MAE FALSE NULL NULL
+
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
