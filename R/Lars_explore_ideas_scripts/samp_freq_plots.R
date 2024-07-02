@@ -325,7 +325,7 @@ for (m in M_vec) {
     tmp = future.apply::future_lapply(n_combinations_vec, function(n_combinations) {
       p()
       kk(m, n_combinations, B = B)
-    })
+    }, future.seed = TRUE)
   })
   plan(sequential)   # Clean up the future plan
 
