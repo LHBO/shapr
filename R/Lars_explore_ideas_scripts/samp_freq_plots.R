@@ -293,16 +293,23 @@ kk = function(m, n_combinations, B = 10, weight_zero_m = 10^6, seed = 123) {
 
 }
 
-m = 8
-kk(m, 2, B = 10)
-M_vec = seq(16,20)
+
+args = commandArgs(trailingOnly = TRUE)
+M_vec = unlist(strsplit(args[1], ","))
+if (length(M_vec) > 1) {
+  M_vec = unname(sapply(M_vec, function(i) as.numeric(i)))
+} else {
+  M_vec = as.numeric(M_vec)
+}
+
+# M_vec = seq(16,20)
 B = 250
 dt_avg_list = list()
 res_list = list()
 
-library(future.apply)
-library(progressr)
-progressr::handlers('cli')
+# library(future.apply)
+# library(progressr)
+# progressr::handlers('cli')
 
 for (m in M_vec) {
   print(m)
@@ -318,17 +325,18 @@ for (m in M_vec) {
   n_combinations_vec = unique(sort(c(seq(4, 250, 2), n_combinations_vec)))
   n_combinations_vec = n_combinations_vec[n_combinations_vec < 2^m]
 
-  # Set up the parallel plan
-  plan(multisession, workers = 4)
-  with_progress({
-    p <- progressor(along = n_combinations_vec)
-    tmp = future.apply::future_lapply(n_combinations_vec, function(n_combinations) {
-      p()
-      kk(m, n_combinations, B = B)
-    }, future.seed = TRUE)
-  })
-  plan(sequential)   # Clean up the future plan
+  # # Set up the parallel plan
+  # plan(multisession, workers = 4)
+  # with_progress({
+  #   p <- progressor(along = n_combinations_vec)
+  #   tmp = future.apply::future_lapply(n_combinations_vec, function(n_combinations) {
+  #     p()
+  #     kk(m, n_combinations, B = B)
+  #   }, future.seed = TRUE)
+  # })
+  # plan(sequential)   # Clean up the future plan
 
+  tmp = lapply(n_combinations_vec, function(n_combinations) kk(m, n_combinations, B = B))
   names(tmp) = n_combinations_vec
   res_list[[m]] = rbindlist(tmp, idcol = "n_combinations")
   res_list[[m]][, n_combinations := as.numeric(n_combinations)]
