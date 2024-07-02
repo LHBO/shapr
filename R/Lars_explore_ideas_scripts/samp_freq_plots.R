@@ -310,12 +310,10 @@ for (m in M_vec) {
     n_combinations_vec = seq(4, 2^m, 2)
   } else if (m <= 12) {
     n_combinations_vec = seq(4, 2^m, 8)
-  } else if (m <= 15) {
-    n_combinations_vec = seq(4, 2^m, 32)
-  } else if (m <= 20) {
-    n_combinations_vec = seq(4, 2^m, 128)
   } else {
-    n_combinations_vec = seq(4, 2^m, 512)
+    increase = 10*(((floor(0.9*2^m) - 10) / 1000) %/% 10)
+    if (increase == 0) increase = 10
+    n_combinations_vec = seq(10, floor(0.9*2^m), increase)
   }
   n_combinations_vec = unique(sort(c(seq(4, 250, 2), n_combinations_vec)))
   n_combinations_vec = n_combinations_vec[n_combinations_vec < 2^m]
