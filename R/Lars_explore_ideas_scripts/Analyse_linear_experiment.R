@@ -60,6 +60,7 @@
 
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1:10 6 1000000 1000000 1000 1000 14 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 # Rscript Analyse_linear_experiment.R TRUE FALSE 14 0,0.2,0.5,0.9 FALSE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment.R TRUE FALSE 17 0,0.2,0.5,0.9 FALSE 1000 500 NULL MAE FALSE NULL NULL
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -121,6 +122,7 @@ if (betas != "NULL") {
   betas = c(2, 1, 0.25, -3, -1, 1.5, -0.5, 0.75, 1.25, 1.5, -2, 3, -1)
   betas = c(0, rep(1, M))
   betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)
+  betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)
   betas = betas[seq(M+1)]
 }
 
