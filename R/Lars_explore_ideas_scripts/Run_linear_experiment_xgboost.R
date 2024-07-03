@@ -133,6 +133,7 @@
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 41:50 6 10000 10000 1000 1000 10 0.5,0.9 TRUE NULL regression_separate NULL
 
 
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1 6 10000 10000 1000 1000 10 0,0.2,0.5,0.9 TRUE NULL regression_separate NULL
 
 
 
@@ -148,7 +149,7 @@ if (length(args) < 16) {
 do_setup = FALSE
 compute_true_explanations = FALSE
 compute_repeated_explanations = TRUE
-use_pilot_estimates_regression = FALSE
+use_pilot_estimates_regression = TRUE
 repetitions = 5
 n_workers = 6
 n_samples_true = 10000
@@ -156,8 +157,8 @@ n_samples = 10000
 n_train = 1000
 n_test = 1000
 M = 10
-rhos = 0.5
-rho_equi = FALSE
+rhos = c(0.0, 0.2, 0.5, 0.9)
+rho_equi = TRUE
 pilot_approach_regression = "regression_separate"
 pilot_regression_model = "parsnip::linear_reg()"
 
@@ -465,6 +466,18 @@ sampling_methods = c("largest_weights",
 # )
 
 
+sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                     "unique_paired_new_weights_gompertz",
+                     "paired_coalitions_new_weights_gompertz",
+                     "unique_paired_new_weights_empirical",
+                     "paired_coalitions_new_weights_empirical",
+                     "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                     "unique",
+                     "unique_paired",
+                     "unique_paired_equal_weights",
+                     "unique_paired_SW",
+                     "paired_coalitions",
+                     "paired_coalitions_weights_direct_equal_weights")
 
 
 # First value where the coalition/combination sampling scheme has an effect, (first two are empty and full coalitions)
@@ -491,6 +504,8 @@ n_combinations_array =
 # n_combinations_array =
 #   sort(unique(c(seq(2, M + choose(M, 2) - 1), # Include all with 1 or 2 features # They can contain other combinations with many features
 #                 middle_part))) # Include the coalitions that are missing 1 feature
+
+if (M == 10) n_combinations_vec = unique(sort(c(seq(4, 250, 2), seq(4, 2^M, 8))))
 
 if (M <= 7) n_combinations_array = seq(2, 2^M)
 
@@ -520,7 +535,7 @@ for (rho_idx in seq_along(rhos)) {
 
   # Make some of the save file names
   # TODO: REMOVE NSM2024 in the future
-  file_name = paste("Samp_VS_kernel_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+  file_name = paste("Gompertz_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
                     "betas", paste(as.character(betas), collapse = "_"), sep = "_")
   save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
   save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
@@ -691,6 +706,10 @@ for (rho_idx in seq_along(rhos)) {
     #
     # plot(predict(predictive_model, data_train)$.pred, data_train_with_response$y)
     # plot(predict(predictive_model, data_test)$.pred, data_test_with_response$y)
+
+    xgboost::xgb.save(predictive_model, file.path(folder_save, "xgboost_models",  paste0(file_name, "_model.rds")))
+
+
 
     # Get the prediction zero, i.e., the phi0 Shapley value.
     prediction_zero = mean(response_train)
@@ -876,7 +895,7 @@ for (rho_idx in seq_along(rhos)) {
       }
 
       # Compute the repeated estimated Shapley values using the different sampling methods
-      repeated_estimated_explanations = suppressWarnings(repeated_explanations(
+      repeated_estimated_explanations = repeated_explanations(
         model = predictive_model,
         x_explain = data_test,
         x_train = data_train,
@@ -899,7 +918,7 @@ for (rho_idx in seq_along(rhos)) {
         pilot_regression_model = pilot_regression_model,
         sampling_methods = sampling_methods,
         save_path = save_file_name_rep_tmp,
-        true_shapley_values_path = save_file_name_true))
+        true_shapley_values_path = save_file_name_true)
       # model = predictive_model
       # x_explain = data_test
       # x_train = data_train

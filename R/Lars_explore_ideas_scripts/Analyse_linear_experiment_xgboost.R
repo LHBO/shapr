@@ -26,6 +26,8 @@
 
 
 
+
+
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -41,7 +43,7 @@ n_train = 1000
 n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)[seq(M+1)]
 evaluation_criterion = "MAE"
-use_pilot_estimates_regression = TRUE
+use_pilot_estimates_regression = FALSE
 pilot_approach_regression = "regression_separate"
 pilot_regression_model = "parsnip::linear_reg()"
 
@@ -174,7 +176,7 @@ if (do_dt) {
     level = 0.95,
     n_workers = 1,
     objects_to_return = "aggregated_results",
-    name_prefix = "Samp_VS_kernel_Xgboost" # "NSM2024_Xgboost"
+    name_prefix = "Gompertz",# "Samp_VS_kernel_Xgboost" # "NSM2024_Xgboost"
     )
 }
 
