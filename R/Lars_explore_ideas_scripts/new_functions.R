@@ -1159,7 +1159,7 @@ pilot_estimates_coal_order = function(explanation,
                  R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M, 2), ]
              })
     R_matrix_paired_order_list = NULL
-    print(R_matrix_paired_order_diff_list)
+    print("R_matrix_paired_order_diff_list")
 
     # R_matrix_paired_order_diff_list[[1]][1:5, 1:5]
 
