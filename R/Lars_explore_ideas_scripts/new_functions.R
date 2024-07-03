@@ -492,7 +492,22 @@ repeated_explanations = function(model,
     sampling_method_idx = 1
     for (sampling_method_idx in seq(n_sampling_methods)) {
       sampling_method = sampling_methods[sampling_method_idx]
+      replace_W = grepl("_replace_W", sampling_method, fixed = TRUE)
       sampling_method_updated = gsub("_replace_W", "", sampling_method)
+      new_weights = grepl("_new_weights", sampling_method, fixed = TRUE)
+      if (new_weights) {
+        new_weights_string = tail(strsplit(sampling_method, "_")[[1]], 1)
+        sampling_method_updated = gsub(paste0("_new_weights_", new_weights_string), "", sampling_method)
+
+        file_name = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_", ncol(x_explain), ".rds")
+        if (!file.exists(file_name)) stop("There are no Samp_prop_and_gompertz file for this dimension.")
+        dt_new_weights = readRDS(file_name)
+      } else {
+        new_weights_string = NULL
+        dt_new_weights = NULL
+        sampling_method_updated = gsub("_new_weights", "", sampling_method)
+      }
+
 
       # Small printout to the user
       if (n_repetitions == 1) {
@@ -542,7 +557,9 @@ repeated_explanations = function(model,
             if (sampling_method_updated %in% specific_coalition_set_strategies) specific_coalition_set[[sampling_method_updated]] else NULL,
           specific_coalition_set_weights =
             if (sampling_method_updated %in% specific_coalition_set_strategies) specific_coalition_set_weights[[sampling_method_updated]] else NULL,
-          replace_W = sampling_method != sampling_method_updated,
+          replace_W = replace_W,
+          new_weights_string = new_weights_string,
+          dt_new_weights = dt_new_weights,
           n_repetitions = n_repetitions),
         enable = TRUE)
 
@@ -682,6 +699,8 @@ compute_SV_function = function(n_combinations,
                                specific_coalition_set,
                                specific_coalition_set_weights,
                                replace_W,
+                               new_weights_string,
+                               dt_new_weights,
                                n_repetitions,
                                progress_bar,
                                ...) {
@@ -697,6 +716,9 @@ compute_SV_function = function(n_combinations,
                                                  "paired_coalitions_weights_direct_equal_weights")
 
   sampling_method_full_name_updated = gsub("_replace_W", "", sampling_method_full_name)
+  if (!is.null(new_weights_string)) {
+    sampling_method_full_name_updated = gsub(paste0("_new_weights_", new_weights_string), "", sampling_method)
+  }
 
   # Extract only the relevant coalitions from `specific_coalition_set` (not for method in specific_coalition_set_strategies_sampling)
   if (!is.null(specific_coalition_set) && !sampling_method_full_name_updated %in% specific_coalition_set_strategies_sampling) {
@@ -727,6 +749,8 @@ compute_SV_function = function(n_combinations,
       precomputed_vS = precomputed_vS,
       specific_coalition_set = specific_coalition_set,
       specific_coalition_set_weights = specific_coalition_set_weights,
+      new_weights_string = new_weights_string,
+      dt_new_weights = dt_new_weights,
       replace_W = replace_W,
       ...
     )))
@@ -806,6 +830,8 @@ future_compute_SV_function = function(compute_SV_function,
                                       specific_coalition_set_weights,
                                       n_repetitions,
                                       replace_W,
+                                      new_weights_string,
+                                      dt_new_weights,
                                       ...) {
 
   # print("In future_compute_SV_function.")
@@ -836,6 +862,8 @@ future_compute_SV_function = function(compute_SV_function,
     specific_coalition_set = specific_coalition_set,
     specific_coalition_set_weights = specific_coalition_set_weights,
     replace_W = replace_W,
+    new_weights_string = new_weights_string,
+    dt_new_weights = dt_new_weights,
     n_repetitions = n_repetitions,
     progress_bar = progress_bar,
     future.seed = 1,
@@ -1603,8 +1631,14 @@ combine_explanation_results = function(M,
     repeated_explanations_list[[paste0("rho_", rho)]] = list()
 
     # Make file names
-    file_name = paste(name_prefix, "M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
-                      "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+    if (name_prefix == "") {
+      file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                        "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+    } else {
+      file_name = paste(name_prefix, "M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                        "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+    }
+
     if (use_pilot_estimates_regression) {
       file_name_updated = paste(file_name, "pilot", strsplit(pilot_approach_regression, "_")[[1]][2],
                                sub(".*::([^\\(]+)\\(.*", "\\1",  pilot_regression_model), sep = "_")

@@ -210,7 +210,9 @@ if (do_dt) {
     save_results = TRUE,
     level = 0.95,
     n_workers = 1,
-    objects_to_return = "aggregated_results")
+    objects_to_return = "aggregated_results",
+    name_prefix = ""
+    )
 }
 
 
