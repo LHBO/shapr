@@ -254,6 +254,8 @@ repeated_explanations = function(model,
                                         "single_median_ranking_over_each_test_obs")
 
   # Check if we are using the `specific_coalition_set` parameter in the `explain` function.
+  # TODO. Here I should check that these are substrings of the sampling_methods, as the sampling
+  # methods can have extended names with extra information so the name does not match.
   using_specific_coalition_set = any(sampling_methods %in% specific_coalition_set_strategies)
 
   # Create a list to store the results
@@ -357,7 +359,9 @@ repeated_explanations = function(model,
               seed = seed,
               precomputed_vS = list(dt_vS = dt_vS),
               ...
-            )))}, enable = TRUE)
+            ))
+        )},
+          enable = TRUE)
 
         # Compute the explanation_precompute_vS using the LM-Gaussian strategy
         # Could save a tiny bit of time by setting this to `only_return_dt_vS_list = TRUE`,
@@ -406,7 +410,8 @@ repeated_explanations = function(model,
               n_batches = n_batches,
               seed = seed,
               ...
-            )))}, enable = TRUE)
+            ))
+            )}, enable = TRUE)
 
         # Extract only the precomputed_vS list
         precomputed_vS = explanation_precomputed_vS$internal$output
@@ -732,8 +737,8 @@ compute_SV_function = function(n_combinations,
 
   # Call the `shapr::explain` function with the provided parameters
   # print("hei")
-  tmp_res = suppressMessages(suppressWarnings(
-    shapr::explain(
+  tmp_res = #suppressMessages(suppressWarnings(
+    explain(
       model = model,
       x_explain = x_explain,
       x_train = x_train,
@@ -751,9 +756,9 @@ compute_SV_function = function(n_combinations,
       specific_coalition_set_weights = specific_coalition_set_weights,
       new_weights_string = new_weights_string,
       dt_new_weights = dt_new_weights,
-      replace_W = replace_W,
-      ...
-    )))
+      replace_W = replace_W
+    )
+  #))
   # print("hei2")
 
   # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
@@ -842,7 +847,7 @@ future_compute_SV_function = function(compute_SV_function,
   # Call the tmp_function for the different number of coalitions
   future.apply::future_lapply(
     X = as.list(used_sequence_n_combinations),
-    FUN = suppressMessages(suppressWarnings(compute_SV_function)),
+    FUN = compute_SV_function, # suppressMessages(suppressWarnings(compute_SV_function)),
     used_sequence_n_combinations = used_sequence_n_combinations,
     n_combinations_to = n_combinations_to,
     model = model,
@@ -1087,6 +1092,7 @@ pilot_estimates_coal_order = function(explanation,
   R_matrix_list_all_individuals =
     lapply(seq(ncol(dt_vS[, -"id_combination"])),
            function (test_obs_idx) t(t(W)*dt_vS[, -"id_combination"][[test_obs_idx]]))
+  print(object.size(R_matrix_list_all_individuals), units = "GB")
 
   # List to store the results to be returned
   return_list = list()
@@ -1142,6 +1148,7 @@ pilot_estimates_coal_order = function(explanation,
                "[",
                investigate_feature_number + 1, )[alternating_indices,]
       })
+    print("R_matrix_paired_order_list")
 
     # We compute the difference between the S and S_bar entries. Odd minus even indices.
     # The list contains `M` matrices of dimension `2^(M-1) x N_explain`
@@ -1151,6 +1158,8 @@ pilot_estimates_coal_order = function(explanation,
                R_matrix_paired_order_list[[feature_idx]][seq(1, 2^M - 1, 2), ] -
                  R_matrix_paired_order_list[[feature_idx]][seq(2, 2^M, 2), ]
              })
+    R_matrix_paired_order_list = NULL
+    print(R_matrix_paired_order_diff_list)
 
     # R_matrix_paired_order_diff_list[[1]][1:5, 1:5]
 
@@ -1167,6 +1176,8 @@ pilot_estimates_coal_order = function(explanation,
         idcol = "id_feature",
         use.names = TRUE
       )
+    R_matrix_paired_order_diff_list = NULL
+    print("R_dt_paired_order_diff")
 
     # Change the column names
     data.table::setnames(R_dt_paired_order_diff, c("id_feature", "id", paste0("D", seq(2^(M-1)))))
@@ -1177,6 +1188,8 @@ pilot_estimates_coal_order = function(explanation,
                                                    value.name = "Rij",
                                                    variable.name = "id_combination_diff",
                                                    variable.factor = TRUE)
+    R_dt_paired_order_diff = NULL
+    print("R_dt_paired_order_diff_long")
 
     # Compute the mean of the Rij's summed over all test observations, and the same when also using the absolute value
     # So, $\frac{1}{N_test}\sum_{j = 1}^N_test Rij$ and $\frac{1}{N_test}\sum_{j = 1}^N_test |Rij|$.
@@ -1305,6 +1318,7 @@ pilot_estimates_coal_order = function(explanation,
       idcol = "id_feature",
       use.names = TRUE
     )
+    R_matrix_list = NULL
 
     # Change the column names
     data.table::setnames(R_dt_tmp, c("id_feature", "id", seq(2^M)))
@@ -1315,6 +1329,7 @@ pilot_estimates_coal_order = function(explanation,
                                  value.name = "Rij",
                                  variable.name = "id_combination",
                                  variable.factor = TRUE)
+    R_dt_tmp = NULL
 
     # Reorder the columns and set the keys
     data.table::setcolorder(R_dt_long, c("id", "id_combination", "id_feature", "Rij"))
