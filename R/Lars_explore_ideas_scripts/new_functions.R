@@ -484,6 +484,7 @@ repeated_explanations = function(model,
       specific_coalition_set$paired_coalitions_weights_equal_weights = specific_coalition_set$paired_coalitions_weights
       specific_coalition_set$paired_coalitions_weights_direct = specific_coalition_set$paired_coalitions_weights
       specific_coalition_set$paired_coalitions_weights_direct_equal_weights = specific_coalition_set$paired_coalitions_weights
+
       specific_coalition_set_weights$paired_coalitions_weights = specific_coalition_set$paired_coalitions_weights
       specific_coalition_set_weights$paired_coalitions_weights_equal_weights = specific_coalition_set$paired_coalitions_weights
       specific_coalition_set_weights$paired_coalitions_weights_direct = specific_coalition_set$paired_coalitions_weights
@@ -722,7 +723,7 @@ compute_SV_function = function(n_combinations,
 
   sampling_method_full_name_updated = gsub("_replace_W", "", sampling_method_full_name)
   if (!is.null(new_weights_string)) {
-    sampling_method_full_name_updated = gsub(paste0("_new_weights_", new_weights_string), "", sampling_method)
+    sampling_method_full_name_updated = gsub(paste0("_new_weights_", new_weights_string), "", sampling_method_full_name)
   }
 
   # Extract only the relevant coalitions from `specific_coalition_set` (not for method in specific_coalition_set_strategies_sampling)
@@ -756,7 +757,7 @@ compute_SV_function = function(n_combinations,
       specific_coalition_set_weights = specific_coalition_set_weights,
       new_weights_string = new_weights_string,
       dt_new_weights = dt_new_weights,
-      replace_W = replace_W
+      replace_W = replace_W #, ...
     )
   #))
   # print("hei2")

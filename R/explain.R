@@ -308,6 +308,9 @@ explain <- function(model,
                     specific_coalition_set_weights = NULL,
                     verbose = 0,
                     only_return_internal = FALSE,
+                    new_weights_string = NULL,
+                    dt_new_weights = NULL,
+                    replace_W = FALSE,
                     ...) { # ... is further arguments passed to specific approaches
 
   timing_list <- list(init_time = Sys.time())
@@ -340,6 +343,9 @@ explain <- function(model,
     specific_coalition_set = specific_coalition_set,
     specific_coalition_set_weights = specific_coalition_set_weights,
     verbose = verbose,
+    new_weights_string = new_weights_string,
+    dt_new_weights = dt_new_weights,
+    replace_W = replace_W,
     ...
   )
 

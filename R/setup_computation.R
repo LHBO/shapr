@@ -140,6 +140,7 @@ shapley_setup <- function(internal) {
     group_num = group_num,
     internal = internal
   )
+  #print(copy(X))
 
   if (!is.null(internal$parameters$sort_combinations) && isTRUE(internal$parameters$sort_combinations)) {
     # 2024: Sort it as not_exact does not put the features in the same order as the order we get using exact
@@ -156,6 +157,34 @@ shapley_setup <- function(internal) {
     X[, id_combination := seq(.N)]
   }
 
+  # User has provided a data table containing the new weights for each coalition size
+  dt_new_weights <- internal$parameters$dt_new_weights
+  new_weights_string <- internal$parameters$new_weights_string
+  if (!is.null(dt_new_weights)) {
+    if (is.null(new_weights_string)) stop("`new_weights_string` most be provided.")
+    # new_weights_string = "empirical"
+    # new_weights_string = "gompertz"
+    print("hei")
+
+    # Find the weights of the combination closest to n_combinations
+    n_comb_use = dt_new_weights$n_combinations[which.min(abs(dt_new_weights$n_combinations - n_combinations))]
+    dt_new_weights_now = dt_new_weights[n_combinations == n_comb_use]
+
+    X[, shapley_weight := as.numeric(shapley_weight)]
+
+    # Update the weights with the provided weights for each coalition size
+    X[dt_new_weights_now, on = "n_features", shapley_weight := get(new_weights_string)]
+    # X[dt_new_weights_now, on = "n_features", shapley_weight := 1]
+    #
+    # XX = merge(X,
+    #       dt_new_weights_now,
+    #       by = "n_features",
+    #       all.x = TRUE)
+    # XX[-c(1,.N), shapley_weight := empirical]
+    #
+    # dt_new_weights_now[, get(new_weights_string)]
+  }
+  #print(X)
 
   # Get weighted matrix ----------------
   W <- weight_matrix(
@@ -470,6 +499,9 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
   sampling_method = gsub("_replace_W", "", sampling_method)
   sampling_method_full_name = gsub("_replace_W", "", sampling_method_full_name)
 
+  sampling_method = strsplit(x = sampling_method, split = "_new_weights", fixed = TRUE)[[1]][1]
+  sampling_method_full_name = strsplit(x = sampling_method_full_name, split = "_new_weights", fixed = TRUE)[[1]][1]
+
   # print("Inside feature_not_exact")
   # print(sampling_method)
 
@@ -571,6 +603,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       # If we are to use the
       if (sampling_method_full_name %in% c("paired_coalitions_weights_direct", "paired_coalitions_weights_direct_equal_weights")) {
         dt[, shapley_weight := c(specific_coalition_set, rev(specific_coalition_set))[dt[,id_combination_org]]]
+        dt[c(1, .N), shapley_weight := weight_zero_m]
       }
 
       # Update the weights if we are to do the average weights for each coalition size
