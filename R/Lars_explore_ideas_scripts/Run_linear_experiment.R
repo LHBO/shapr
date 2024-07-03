@@ -159,6 +159,7 @@
 
 
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 9:10 4 1000000 1000000 1000 500 15 0,0.2,0.5,0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 2:3 4 1000000 1000000 1000 500 17 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
@@ -446,13 +447,14 @@ sampling_methods = c("paired_coalitions_weights",
                      # "single_median_ranking_over_each_test_obs"
                      )
 
-sampling_methods = c("unique",
-                     "unique_paired",
-                     "unique_paired_equal_weights",
-                     "unique_paired_SW"
-                     #"paired_coalitions",
-                     #"paired_coalitions_weights_direct_equal_weights"
-                     )
+sampling_methods = c(
+  "paired_coalitions",
+  "paired_coalitions_weights_direct_equal_weights",
+  "unique",
+  "unique_paired",
+  "unique_paired_equal_weights",
+  "unique_paired_SW"
+)
 
 
 # sampling_methods = c("paired_coalitions_weights",
