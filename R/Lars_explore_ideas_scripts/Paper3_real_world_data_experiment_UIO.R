@@ -171,7 +171,9 @@ sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights
                      "paired_coalitions",
                      "paired_coalitions_weights_direct_equal_weights",
                      "largest_weights",
-                     "largest_weights_combination_size")
+                     "largest_weights_combination_size",
+                     "largest_weights_new_weights_empirical",
+                     "largest_weights_combination_size_new_weights_empirical")
 if (!is.null(samp_app)) sampling_methods = sampling_methods[samp_app]
 
 
@@ -254,6 +256,12 @@ for (sampling_method in sampling_methods) {
                                 repetition = seed,
                                 MAE = compute_MAE_MSE_fast(as.matrix(sep_rf$shapley_values),
                                                            as.matrix(explanation_now$shapley_values))))
+
+      # DELTE THE BIGGEST UNNECESSARY OBJECTS
+      explanation_now$internal$data$x_train = NULL
+      explanation_now$internal$data$x_explain = NULL
+      explanation_now$internal$parameters$precomputed_vS = NULL
+      explanation_now$internal$parameters$dt_new_weights = NULL
 
       res[[sampling_method_full_name]][[paste0("n_combinations_", n_combinations)]][[paste0("repetition_", seed)]] =
         explanation_now
