@@ -135,6 +135,16 @@
 
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1 6 10000 10000 1000 1000 10 0,0.2,0.5,0.9 TRUE NULL regression_separate NULL
 
+# THE FINAL ONES
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:25 6 10000 10000 1000 1000 10 0 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:25 6 10000 10000 1000 1000 10 0.5 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:25 6 10000 10000 1000 1000 10 0.2 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:25 6 10000 10000 1000 1000 10 0.9 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 26:50 6 10000 10000 1000 1000 10 0 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 26:50 6 10000 10000 1000 1000 10 0.5 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 26:50 6 10000 10000 1000 1000 10 0.2 TRUE NULL regression_separate NULL
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 26:50 6 10000 10000 1000 1000 10 0.9 TRUE NULL regression_separate NULL
+
 
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
@@ -464,6 +474,7 @@ sampling_methods = c("largest_weights",
 #   "unique_paired_equal_weights",
 #   "unique_paired_SW"
 # )
+
 
 
 sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",

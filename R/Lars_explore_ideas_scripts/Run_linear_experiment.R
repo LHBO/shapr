@@ -161,6 +161,34 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 9:10 4 1000000 1000000 1000 500 15 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 2:3 4 1000000 1000000 1000 500 17 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 
+
+
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 500 17 0 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 2 4 1000000 1000000 1000 500 17 0 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 3 4 1000000 1000000 1000 500 17 0 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 4 4 1000000 1000000 1000 500 17 0 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0 FALSE NULL NULL NULL
+#
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 2 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 3 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 4 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
+#
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 2 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 3 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 4 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
+#
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 500 17 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 2 4 1000000 1000000 1000 500 17 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 3 4 1000000 1000000 1000 500 17 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 4 4 1000000 1000000 1000 500 17 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.9 FALSE NULL NULL NULL
+
+
+
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -456,6 +484,21 @@ sampling_methods = c(
   "unique_paired_SW"
 )
 
+sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                     "unique_paired_new_weights_gompertz",
+                     "paired_coalitions_new_weights_gompertz",
+                     "unique_paired_new_weights_empirical",
+                     "paired_coalitions_new_weights_empirical",
+                     "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                     "unique",
+                     "unique_paired",
+                     "unique_paired_equal_weights",
+                     "unique_paired_SW",
+                     "paired_coalitions",
+                     "paired_coalitions_weights_direct_equal_weights",
+                     "largest_weights",
+                     "largest_weights_combination_size")
+
 
 # sampling_methods = c("paired_coalitions_weights",
 #                      "paired_coalitions_weights_direct",
@@ -516,7 +559,7 @@ if (M <= 8) n_combinations_array = seq(2, 2^M)
 
 if (M == 17) {
   n_combinations_array = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
-                           80000, 90000, 100000, 110000, 120000)
+                           80000, 90000, 100000)
 }
 length(n_combinations_array)
 
