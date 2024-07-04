@@ -481,23 +481,25 @@ sampling_methods = c(
   "unique",
   "unique_paired",
   "unique_paired_equal_weights",
-  "unique_paired_SW"
+  "unique_paired_SW",
+  "largest_weights",
+  "largest_weights_combination_size"
 )
 
-sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
-                     "unique_paired_new_weights_gompertz",
-                     "paired_coalitions_new_weights_gompertz",
-                     "unique_paired_new_weights_empirical",
-                     "paired_coalitions_new_weights_empirical",
-                     "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
-                     "unique",
-                     "unique_paired",
-                     "unique_paired_equal_weights",
-                     "unique_paired_SW",
-                     "paired_coalitions",
-                     "paired_coalitions_weights_direct_equal_weights",
-                     "largest_weights",
-                     "largest_weights_combination_size")
+# sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+#                      "unique_paired_new_weights_gompertz",
+#                      "paired_coalitions_new_weights_gompertz",
+#                      "unique_paired_new_weights_empirical",
+#                      "paired_coalitions_new_weights_empirical",
+#                      "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+#                      "unique",
+#                      "unique_paired",
+#                      "unique_paired_equal_weights",
+#                      "unique_paired_SW",
+#                      "paired_coalitions",
+#                      "paired_coalitions_weights_direct_equal_weights",
+#                      "largest_weights",
+#                      "largest_weights_combination_size")
 
 
 # sampling_methods = c("paired_coalitions_weights",
