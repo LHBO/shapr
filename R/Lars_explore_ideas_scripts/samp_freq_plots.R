@@ -133,7 +133,9 @@ order_feature_list = function(features_list, sort_features = TRUE, sort_size = T
 }
 
 
-kk = function(m, n_combinations, B = 10, weight_zero_m = 10^6, seed = 123) {
+
+
+Repeated_sampling_coalitions = function(m, n_combinations, B = 10, weight_zero_m = 10^6, seed = 123) {
   set.seed(seed)
 
   # Find weights for given number of features
@@ -293,7 +295,12 @@ kk = function(m, n_combinations, B = 10, weight_zero_m = 10^6, seed = 123) {
 
 }
 
+# module load R/4.2.1-foss-2022a
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+# Rscript samp_freq_plots.R 15
 
+
+# Code starts here ------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 M_vec = unlist(strsplit(args[1], ","))
 if (length(M_vec) > 1) {
@@ -325,24 +332,37 @@ for (m in M_vec) {
   n_combinations_vec = unique(sort(c(seq(4, 250, 2), n_combinations_vec)))
   n_combinations_vec = n_combinations_vec[n_combinations_vec < 2^m]
 
+  if (m == 17) {
+    n_combinations_vec = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
+                             80000, 90000, 100000, 11000, 12000, 13000)
+  }
+
   # # Set up the parallel plan
   # plan(multisession, workers = 4)
   # with_progress({
   #   p <- progressor(along = n_combinations_vec)
   #   tmp = future.apply::future_lapply(n_combinations_vec, function(n_combinations) {
   #     p()
-  #     kk(m, n_combinations, B = B)
+  #     Repeated_sampling_coalitions(m, n_combinations, B = B)
   #   }, future.seed = TRUE)
   # })
   # plan(sequential)   # Clean up the future plan
-
-  tmp = lapply(n_combinations_vec, function(n_combinations) kk(m, n_combinations, B = B))
+  tmp = list()
+  for (n_combinations_idx in seq(length(n_combinations_vec))) {
+    n_combinations = n_combinations_vec[n_combinations_idx]
+    tmp[[n_combinations_idx]] = Repeated_sampling_coalitions(m, n_combinations, B = B)
+    saveRDS(list(n_combinations = n_combinations, tmp = tmp),
+            file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res_tmp.rds")))
+  }
+  # tmp = lapply(n_combinations_vec, function(n_combinations) {
+  #   Repeated_sampling_coalitions(m, n_combinations, B = B)
+  # })
   names(tmp) = n_combinations_vec
   res_list[[m]] = rbindlist(tmp, idcol = "n_combinations")
   res_list[[m]][, n_combinations := as.numeric(n_combinations)]
   res_list[[m]][, n_features := as.numeric(n_features)]
   res_list[[m]][, n_features := as.factor(n_features)]
-  saveRDS(res_list[[m]], file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res.rds")))
+  saveRDS(res_list[[m]], file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res_2.rds")))
 
   dt_avg = res_list[[m]]
   tmp = shapr:::shapley_weights(m = m,
@@ -367,4 +387,109 @@ for (m in M_vec) {
          height = 10,
          scale = 0.85,
          dpi = 350)
+}
+
+
+
+# Plot the graphs together
+if (FALSE) {
+
+  # Load the data
+  {
+    M_seq = seq(6,13)
+
+    dt_res_list = lapply(M_seq, function (m) {
+      dt_full = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res.rds"))
+      dt_full = dt_full[n_features %in% seq(1, ceiling((m-1)/2))]
+      return(dt_full)
+    })
+    names(dt_res_list) = M_seq
+
+    dt_res = data.table::rbindlist(dt_res_list, idcol = "M")
+    dt_res[, M := as.integer(M)]
+    dt_res[, M := factor(M, levels = M_seq, labels = paste0("M = ", M_seq))]
+
+
+    tmp_list = lapply(M_seq, function(m) {
+      tmp = shapr:::shapley_weights(m = m,
+                                    N = sapply(seq(m - 1), choose, n = m),
+                                    n_components = seq(m - 1))
+      tmp = tmp/sum(tmp)
+      data.table(n_combinations = 2^m,
+                 col = factor(seq(ceiling((m-1)/2))),
+                 weight = tmp[seq(1, ceiling((m-1)/2))])
+    })
+    names(tmp_list) = M_seq
+    tmp_list = data.table::rbindlist(tmp_list, idcol = "M")
+    tmp_list[, M := factor(M, levels = M_seq, labels = paste0("M = ", M_seq))]
+
+  }
+
+
+  ## MAKE THE PLOT (change if we want ribbons and log-scale)
+  fig_samp = ggplot(data = dt_res, aes(x = n_combinations, y = mean)) +
+    geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features),
+                alpha = 0.4, linewidth = 0.1) + ylim(c(0, 0.5)) +
+    geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 1) +
+    facet_wrap("M ~ .", ncol = 2, scales = "free_x") +
+    #facet_wrap("M ~ .", ncol = 2) +
+    geom_point(tmp_list,
+               mapping = aes(x = n_combinations, y = weight, colour = col),
+               size = 2) +
+    expand_limits(y = 0) +
+    #     scale_y_log10(
+    #   breaks = scales::trans_breaks("log10", function(x) 10^x),
+    #   labels = scales::trans_format("log10", scales::math_format(10^.x))
+    # )
+    guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
+    labs(x = expression(N[S]), y = "Normalized Shapley kernel weight/sampling frequency") +
+    theme(legend.position="bottom", legend.box = "horizontal") +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4)))
+  fig_samp
+
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_freq_development_V2.png",
+         plot = fig_samp,
+         width = 14.2,
+         height = 18,
+         scale = 0.85,
+         dpi = 350)
+
+
+
+
+  # Look at the true shapley kernel weights
+  {
+    # Compute the Shapley kernel weights
+    M_seq2 = seq(6, 30)
+    tmp_list2 = lapply(M_seq2, function(m) {
+      tmp = shapr:::shapley_weights(m = m,
+                                    N = sapply(seq(m - 1), choose, n = m),
+                                    n_components = seq(m - 1))
+      tmp = tmp/sum(tmp)
+      data.table(n_combinations = 2^m,
+                 col = factor(seq(ceiling((m-1)/2))),
+                 weight = tmp[seq(1, ceiling((m-1)/2))])
+    })
+    names(tmp_list2) = M_seq2
+    tmp_list2 = data.table::rbindlist(tmp_list2, idcol = "M")
+    tmp_list2[, M := as.factor(as.integer(M))]
+
+
+    ## MAKE THE PLOT (change if we want log-scale)
+    ggplot(tmp_list2, aes(x = M, y = weight, group = col, col = col)) +
+      geom_line() +
+      guides(fill=guide_legend(title=expression("Coalition size |"*S*"|")),
+             color = guide_legend(title=expression("Coalition size |"*S*"|"))) +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      labs(y = "Normalized Shapley kernel weight/sampling frequency") +
+      theme(legend.position="bottom", legend.box = "horizontal")
+  }
 }
