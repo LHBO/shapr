@@ -505,7 +505,12 @@ repeated_explanations = function(model,
         new_weights_string = tail(strsplit(sampling_method, "_")[[1]], 1)
         sampling_method_updated = gsub(paste0("_new_weights_", new_weights_string), "", sampling_method)
 
-        file_name = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_", ncol(x_explain), ".rds")
+        if (R.utils::System$getHostname() == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
+          file_name = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_", ncol(x_explain), ".rds")
+        } else {
+          # kadingir
+          file_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_", ncol(x_explain), ".rds")
+        }
         if (!file.exists(file_name)) stop("There are no Samp_prop_and_gompertz file for this dimension.")
         dt_new_weights = readRDS(file_name)
       } else {
