@@ -117,7 +117,7 @@ specific_coalition_set_weights$paired_coalitions_weights_direct_equal_weights = 
 
 args = commandArgs(trailingOnly = TRUE)
 # Extract which repetition we are to do
-samp_app = as.character(args[5])
+samp_app = as.character(args[1])
 if (!(samp_app %in% c("NULL", "NA", "NaN"))) {
   if (grepl(",", samp_app)) {
     samp_app = as.numeric(unlist(strsplit(samp_app, ",")))
