@@ -335,6 +335,7 @@ for (m in M_vec) {
   if (m == 17) {
     n_combinations_vec = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
                              80000, 90000, 100000, 11000, 12000, 13000)
+    n_combinations_vec = n_combinations_vec[n_combinations_vec %% 2 == 0]
   }
 
   # # Set up the parallel plan
@@ -354,6 +355,7 @@ for (m in M_vec) {
     saveRDS(list(n_combinations = n_combinations, tmp = tmp),
             file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res_tmp.rds")))
   }
+
   # tmp = lapply(n_combinations_vec, function(n_combinations) {
   #   Repeated_sampling_coalitions(m, n_combinations, B = B)
   # })
