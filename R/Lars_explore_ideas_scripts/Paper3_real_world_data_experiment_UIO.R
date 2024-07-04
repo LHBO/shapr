@@ -115,7 +115,23 @@ specific_coalition_set_weights$paired_coalitions_weights_direct_equal_weights = 
 
 
 
-
+args = commandArgs(trailingOnly = TRUE)
+# Extract which repetition we are to do
+samp_app = as.character(args[5])
+if (!(samp_app %in% c("NULL", "NA", "NaN"))) {
+  if (grepl(",", samp_app)) {
+    samp_app = as.numeric(unlist(strsplit(samp_app, ",")))
+  } else {
+    samp_app = unlist(strsplit(samp_app, ":"))
+    if (length(samp_app) > 1) {
+      samp_app = seq(as.numeric(samp_app[1]), as.numeric(samp_app[2]))
+    } else {
+      samp_app = as.numeric(samp_app)
+    }
+  }
+} else {
+  samp_app = NULL
+}
 
 n_combinations_vec = c(2, 4, 6, 8, 10, 12, 14, 16)
 
@@ -136,15 +152,11 @@ n_cumsum = n_cumsum[-length(n_cumsum)]
 n_combinations_vec = unique(sort(c(n_combinations_vec, n_cumsum)))
 
 
-B = 5
+
 B = 25
 
 res_dt = data.table(Strategy = character(), n_combinations = integer(), repetition = integer(), MAE = numeric())
 res = list()
-
-sampling_methods = c("unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions")
-sampling_methods = c("unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights")
-sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions")
 
 sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
                      "unique_paired_new_weights_gompertz",
@@ -160,6 +172,7 @@ sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights
                      "paired_coalitions_weights_direct_equal_weights",
                      "largest_weights",
                      "largest_weights_combination_size")
+if (!is.null(samp_app)) sampling_methods = sampling_methods[samp_app]
 
 
 sampling_method = sampling_methods[1]
@@ -246,6 +259,8 @@ for (sampling_method in sampling_methods) {
         explanation_now
     }
   }
+  saveRDS(res_dt[Strategy == sampling_method_full_name, ],
+          file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_dt_only_", sampling_method_full_name, ".rds")))
   saveRDS(list(res_dt = res_dt, res = res[[sampling_method_full_name]]),
           file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_", sampling_method_full_name, ".rds")))
 }
