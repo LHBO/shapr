@@ -477,7 +477,9 @@ sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights
                      "unique_paired_equal_weights",
                      "unique_paired_SW",
                      "paired_coalitions",
-                     "paired_coalitions_weights_direct_equal_weights")
+                     "paired_coalitions_weights_direct_equal_weights",
+                     "largest_weights",
+                     "largest_weights_combination_size")
 
 
 # First value where the coalition/combination sampling scheme has an effect, (first two are empty and full coalitions)

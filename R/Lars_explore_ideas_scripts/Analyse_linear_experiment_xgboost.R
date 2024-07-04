@@ -39,6 +39,7 @@ do_dt = TRUE
 do_figures = FALSE
 M = 10
 rhos = c(0.2)
+rho_equi = TRUE
 n_train = 1000
 n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1)[seq(M+1)]
@@ -176,7 +177,7 @@ if (do_dt) {
     level = 0.95,
     n_workers = 1,
     objects_to_return = "aggregated_results",
-    name_prefix = "Gompertz",# "Samp_VS_kernel_Xgboost" # "NSM2024_Xgboost"
+    name_prefix = "Gompertz_Xgboost",# "Samp_VS_kernel_Xgboost" # "NSM2024_Xgboost"
     )
 }
 
@@ -200,7 +201,10 @@ if (do_figures) {
   figures_list = lapply(save_files, function(save_file){
     plot_results(file_path = save_file,
                  index_combinations = NULL,
-                 only_these_sampling_methods = NULL,
+                 # only_these_sampling_methods = c("unique_paired_new_weights_empirical",
+                 #                                 "unique_paired_equal_weights",
+                 #                                 "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                 #                                 "paired_coalitions_new_weights_empirical"),
                  figures_to_make = c("figure_CI",
                                      "figure_mean",
                                      "figure_median",
@@ -217,6 +221,8 @@ if (do_figures) {
                  scale_x_log10 = FALSE,
                  n.dodge = 2,
                  plot_figures = FALSE)})
+  figures_list$rho_0.2$figure_mean
+  figures_list$rho_0.9$figure_CI
 }
 
 
