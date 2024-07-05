@@ -25,7 +25,7 @@
 # Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.9 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
 
 
-
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 1:25 6 10000 10000 1000 1000 10 0.2 TRUE NULL regression_separate NULL
 
 
 # Input From Command Line -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -156,7 +156,16 @@ setwd(folder)
 source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
 # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas") # Only need
 # library(shapr) # This must be the shapr version in the github repository.
-devtools::load_all(".")
+# devtools::load_all(".")
+if (Sys.info()[[4]] %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no")) {
+  devtools::clean_dll()
+  # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  #devtools::load_all(".")
+  library(shapr)
+} else {
+  devtools::load_all(".")
+}
 
 # Create data.tables ----------------------------------------------------------------------------------------------
 if (do_dt) {
