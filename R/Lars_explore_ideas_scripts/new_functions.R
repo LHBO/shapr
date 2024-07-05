@@ -1822,6 +1822,9 @@ aggregate_results = function(repeated_explanations_list,
   # Get the number of repetitions
   n_repetitions = length(repeated_explanations_list[[1]])
 
+  # Get the names
+  repeated_explanations_list_names = names(repeated_explanations_list)
+
   # Convert to matrix
   true_explanations_shapley_mat = as.matrix(true_explanations$shapley_values)
 
@@ -1830,22 +1833,23 @@ aggregate_results = function(repeated_explanations_list,
   # the overall evaluation criterion (MAE or MSE) between the true Shapley values
   # (using all coalitions and a high value of `n_combinations`) and the repeated runs
   # (different seed values) with different sampling methods and number of used coalitions.
-  system.time({results_list =
-    future.apply::future_lapply(repeated_explanations_list, function (ith_method) {
-      sapply(ith_method, function(ith_method_jth_repetition) {
-        sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
-          compute_MAE_MSE_fast(
-            mat_1 = true_explanations_shapley_mat,
-            mat_2 = as.matrix(ith_method_jth_repetition_kth_coalition$shapley_values),
-            evaluation_criterion = evaluation_criterion)
+  system.time({
+    results_list =
+      future.apply::future_lapply(repeated_explanations_list, function (ith_method) {
+        sapply(ith_method, function(ith_method_jth_repetition) {
+          sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
+            compute_MAE_MSE_fast(
+              mat_1 = true_explanations_shapley_mat,
+              mat_2 = as.matrix(ith_method_jth_repetition_kth_coalition$shapley_values),
+              evaluation_criterion = evaluation_criterion)
+          })
         })
       })
-    })
   })
 
   # For each method and `n_combination` value, compute the median and the quantile confidence interval
   # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
-  results_dt_with_missing_entries =
+  results =
     data.table::rbindlist(
       future.apply::future_lapply(results_list, function(ith_method) {
         median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
@@ -1858,13 +1862,13 @@ aggregate_results = function(repeated_explanations_list,
                                         min = apply(ith_method, 1, min),
                                         max = apply(ith_method, 1, max))
       }), idcol = "sampling")
-  results_dt_with_missing_entries$sampling = factor(results_dt_with_missing_entries$sampling,
-                                                    levels = names(repeated_explanations_list),
+  results$sampling = factor(results$sampling,
+                                                    levels = repeated_explanations_list_names,
                                                     ordered = TRUE)
 
   # Remove the rows with missing entries. This is in case for paired sampling methods which
   # does not support odd number of combinations, while the other sampling methods do.
-  results_dt = results_dt_with_missing_entries[!is.na(results_dt_with_missing_entries$median)]
+  results = results[!is.na(results$median)]
 
   # We also compute some alternative aggregated versions of the data not needed to make the figure.
   # Create an alternative aggregated results data.table
@@ -1878,7 +1882,7 @@ aggregate_results = function(repeated_explanations_list,
 
   # Convert the sampling column to a factor
   result_dt_alternative$sampling = factor(result_dt_alternative$sampling,
-                                          levels = names(repeated_explanations_list),
+                                          levels = repeated_explanations_list_names,
                                           ordered = TRUE)
 
   # Remove the rows with missing entries. This is in case for paired sampling methods which
@@ -1889,16 +1893,15 @@ aggregate_results = function(repeated_explanations_list,
   data.table::setnames(result_dt_alternative, c(names(result_dt_alternative)[1:2], paste(seq(n_repetitions))))
 
   # Convert from a wide to long data.table
-  result_dt_alternative_long = data.table::melt(data = result_dt_alternative,
-                                                id.vars = c("sampling", "n_combinations"),
-                                                variable.name = "repetition",
-                                                value.name = paste0("evaluation_criterion_", evaluation_criterion))
+  result_dt_alternative = data.table::melt(data = result_dt_alternative,
+                                           id.vars = c("sampling", "n_combinations"),
+                                           variable.name = "repetition",
+                                           value.name = paste0("evaluation_criterion_", evaluation_criterion))
 
   # Ensure that we are in sequential mode
   future::plan(sequential)
 
-  return(list(dt_CI = results_dt,
-              dt_wide = result_dt_alternative,
+  return(list(dt_CI = results,
               dt_long = result_dt_alternative_long,
               level = level,
               evaluation_criterion = evaluation_criterion))
