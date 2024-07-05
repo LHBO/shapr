@@ -1902,7 +1902,7 @@ aggregate_results = function(repeated_explanations_list,
   future::plan(sequential)
 
   return(list(dt_CI = results,
-              dt_long = result_dt_alternative_long,
+              dt_long = result_dt_alternative,
               level = level,
               evaluation_criterion = evaluation_criterion))
 }
