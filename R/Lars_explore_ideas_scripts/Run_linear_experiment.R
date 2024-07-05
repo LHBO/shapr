@@ -507,9 +507,10 @@ sampling_methods = c("paired_coalitions_weights",
 sampling_methods = c(
   "paired_coalitions_new_weights_empirical",
   "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
-  "paired_coalitions_new_weights_empirical",
-  "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+  "paired_coalitions",
+  "paired_coalitions_weights_direct_equal_weights",
   "largest_weights_new_weights_empirical",
+  "unique_paired_new_weights_empirical",
   "unique",
   "unique_paired",
   "unique_paired_equal_weights",
@@ -518,6 +519,7 @@ sampling_methods = c(
   #"largest_weights_combination_size",
   #"largest_weights_combination_size_new_weights_empirical"
 )
+
 
 # sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
 #                      "unique_paired_new_weights_gompertz",
