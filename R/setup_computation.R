@@ -164,7 +164,7 @@ shapley_setup <- function(internal) {
     if (is.null(new_weights_string)) stop("`new_weights_string` most be provided.")
     # new_weights_string = "empirical"
     # new_weights_string = "gompertz"
-    print("hei")
+    # print("hei")
 
     # Find the weights of the combination closest to n_combinations
     n_comb_use = dt_new_weights$n_combinations[which.min(abs(dt_new_weights$n_combinations - n_combinations))]
@@ -1220,6 +1220,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
   }
 
   # TODO: LARS sjekk at disse funker over. Se på hvordan Shapley MAE feilen utvikler seg med disse når vi øker `n_combinations`,
+  # print(dt)
   if (is.null(dt$p)) dt[,p:=NA]
 
   return(dt)
