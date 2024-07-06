@@ -1070,8 +1070,8 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
   } else if (sampling_method == "largest_weights_random") {
     # largest_weights random -------------------------------------------------------------------------------------------
 
-    for (n_combinations in seq(2, 2^m)) {
-      print(n_combinations)
+    # for (n_combinations in n_combinations_vec) {
+    #   print(n_combinations)
       # Add one if odd as we will do paired and then rather remove one coalition afterwards
       n_combinations_new = ifelse(n_combinations %% 2 == 1, n_combinations + 1, n_combinations)
 
@@ -1129,7 +1129,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       dt[-c(1, .N), N := n[n_features]]
       dt[, N := as.integer(N)]
       dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
-    }
+    #}
 
 
   } else if (sampling_method == "largest_weights_combination_size") {
