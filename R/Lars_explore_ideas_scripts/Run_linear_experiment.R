@@ -187,7 +187,7 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.9 FALSE NULL NULL NULL
-
+#
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 6 4 1000000 1000000 1000 500 17 0 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 6 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 6 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
@@ -596,7 +596,7 @@ n_combinations_array =
 if (M <= 8) n_combinations_array = seq(2, 2^M)
 
 if (M == 17) {
-  n_combinations_array = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
+  n_combinations_array = c(seq(2, 200, 2), 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
                            80000, 90000, 100000)
 }
 length(n_combinations_array)
