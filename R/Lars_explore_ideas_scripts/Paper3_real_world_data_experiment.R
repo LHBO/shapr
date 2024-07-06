@@ -64,7 +64,7 @@ cols = c(
   brewer.pal(n_combs + 1, "Oranges")[-1]
   )
 
-"#E5F5E0" "#A1D99B" "#31A354"
+#
 
 library(RColorBrewer)
 f <- function(pal) brewer.pal(brewer.pal.info[pal, "maxcolors"], pal)
@@ -280,7 +280,9 @@ sep_rf <- with_progress(
   )
 )
 future::plan(sequential) # To return to non-parallel computation
-saveRDS(sep_rf, file.path("/Users/larsolsen/PhD/Paper3/Paper3_save_location", paste0("Wine_data_sep_rf", ".rds")))
+#saveRDS(sep_rf, file.path("/Users/larsolsen/PhD/Paper3/Paper3_save_location", paste0("Wine_data_sep_rf", ".rds")))
+
+sep_rf = readRDS(file.path("/Users/larsolsen/PhD/Paper3/Paper3_save_location", paste0("Wine_data_sep_rf", ".rds")))
 
 sep_gaussian <- with_progress(
   shapr::explain(
@@ -332,7 +334,8 @@ specific_coalition_set_strategies = c("paired_coalitions",
                                       "single_mean_coalition_effect",
                                       "single_median_coalition_effect",
                                       "single_mean_ranking_over_each_test_obs",
-                                      "single_median_ranking_over_each_test_obs")
+                                      "single_median_ranking_over_each_test_obs",
+                                      "MAD")
 specific_coalition_set_strategies_sampling = c("paired_coalitions_weights",
                                                "paired_coalitions_weights_direct",
                                                "paired_coalitions_weights_equal_weights",
@@ -386,7 +389,11 @@ sampling_methods = c("unique_paired", "unique_paired_equal_weights", "unique_pai
 sampling_methods = c("unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights")
 sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions")
 
-sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+sampling_methods = c("largest_weights_random",
+                     "largest_weights_random_new_weights_empirical",
+                     "MAD",
+                     "MAD_new_weights_empirical",
+                     "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
                      "unique_paired_new_weights_gompertz",
                      "paired_coalitions_new_weights_gompertz",
                      "unique_paired_new_weights_empirical",
@@ -402,7 +409,7 @@ sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights
                      "largest_weights_combination_size")
 
 
-sampling_method = sampling_methods[1]
+sampling_method = sampling_methods[4]
 for (sampling_method in sampling_methods) {
   sampling_method_full_name = sampling_method
   if (!is.list(res[[sampling_method]])) res[[sampling_method]] = list()

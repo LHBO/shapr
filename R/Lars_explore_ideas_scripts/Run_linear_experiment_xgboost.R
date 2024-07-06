@@ -477,7 +477,11 @@ sampling_methods = c("largest_weights",
 
 
 
-sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+sampling_methods = c("largest_weights_random",
+                     "largest_weights_random_new_weights_empirical",
+                     "MAD",
+                     "MAD_new_weights_empirical",
+  "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
                      "unique_paired_new_weights_gompertz",
                      "paired_coalitions_new_weights_gompertz",
                      "unique_paired_new_weights_empirical",

@@ -484,12 +484,14 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
                                                   "chronological_order_increasing",
                                                   "chronological_order_decreasing",
                                                   "largest_weights",
+                                                  "largest_weights_random",
                                                   "largest_weights_combination_size",
                                                   "smallest_weights",
                                                   "smallest_weights_constant_SW",
                                                   "smallest_weights_combination_size",
                                                   "specific_coalition_set",
-                                                  "pilot_estimates_paired"),
+                                                  "pilot_estimates_paired",
+                                                  "MAD"),
                               sampling_method_full_name = NULL,
                               pilot_estimates_vS = NULL, #
                               specific_coalition_set = NULL,
@@ -518,7 +520,6 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
   w <- shapley_weights(m = m, N = n, n_features) * n
   p <- w / sum(w)
 
-
   # Check that user provided pilot estimates if the sampling method use pilot estimates.
   # TODO: note that in this version, the user need to manually provide the pilot estimates
   # when calling the `explain` function. In future versions, this should then be done internally in `shapr`.
@@ -542,7 +543,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
 
 
     # 20TH MAY, we add two new sampling methods that use the pilot estimates, but sample them instead, and use
-    # the sampling frequnce as the weights in stead of the true Shapley kernel weights.
+    # the sampling frequency as the weights in stead of the true Shapley kernel weights.
     if (sampling_method_full_name %in% c("paired_coalitions_weights", "paired_coalitions_weights_equal_weights", "paired_coalitions_weights_direct", "paired_coalitions_weights_direct_equal_weights")) {
       # freq pilot ------------------------------------------------------------------------------------------------------
 
@@ -1056,6 +1057,62 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     alternating_indices_relevant_sort = sort(alternating_indices_relevant)
     features = combinations[alternating_indices_relevant_sort]
     features
+
+    dt <- data.table::data.table(id_combination = seq(n_combinations))
+    dt[, features := features]
+    dt[, n_features := length(features[[1]]), id_combination]
+    dt[, N := 1]
+    dt[-c(1, .N), N := n[n_features]]
+    dt[, N := as.integer(N)]
+    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+
+
+  } else if (sampling_method == "largest_weights_random") {
+    # largest_weights random -------------------------------------------------------------------------------------------
+
+    # Add one if odd as we will do paired and then rather remove one coalition afterwards
+    n_combinations_new = ifelse(n_combinations %% 2 == 1, n_combinations + 1, n_combinations)
+
+    # Since we do paired version, we divide by two
+    n_combinations_new = n_combinations_new / 2
+
+    # Get all possible paired coalition sizes. Size 0 corresponds to empty/grand coalition.
+    all_coal_sizes = seq(0, ceiling((m - 1)/2))
+    all_paired_coal_sizes = seq(0, floor((m - 1)/2))
+    all_unique_coal_size = setdiff(all_coal_sizes, all_paired_coal_sizes)
+
+    # Get the number of paired coalitions of each size. Add 1 as we include coalition size 0.
+    n_coal_sizes <- sapply(all_coal_sizes, choose, n = m)
+    n_coal_sizes[all_unique_coal_size + 1] = n_coal_sizes[all_unique_coal_size + 1] / 2
+
+    # Get the cumulative sum of the number of coalitions for each size
+    coalition_sizes_cumsum = cumsum(n_coal_sizes)
+
+    # Find out which coalition size we have to do the sampling in
+    sample_in_this_coalition_size = which.max(coalition_sizes_cumsum > n_combinations_new)
+
+    # Get the number of paired coalitions to sample
+    n_sample_in_this_coalition_size = n_combinations_new - coalition_sizes_cumsum[sample_in_this_coalition_size - 1]
+
+    # Get the indices of earlier coalition sizes
+    id_comb_include = seq(coalition_sizes_cumsum[sample_in_this_coalition_size - 1])
+
+    # Then sample the remaining coalitions
+    id_comb_include_samp = sort(sample(seq(coalition_sizes_cumsum[sample_in_this_coalition_size - 1] + 1,
+                                      coalition_sizes_cumsum[sample_in_this_coalition_size]),
+                                  n_sample_in_this_coalition_size))
+    id_comb_include = c(id_comb_include, id_comb_include_samp)
+
+    # Get the paired indices too
+    id_comb_include = c(id_comb_include, rev(2^m + 1 - id_comb_include))
+
+    if (n_combinations %% 2 == 1) id_comb_include = id_comb_include[-(ceiling(n_combinations/2) + 1)]
+
+    # Create list of all feature combinations
+    combinations = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE)
+
+    # Get the features to include
+    features = combinations[id_comb_include]
 
     dt <- data.table::data.table(id_combination = seq(n_combinations))
     dt[, features := features]

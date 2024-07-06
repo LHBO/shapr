@@ -210,7 +210,9 @@ repeated_explanations = function(model,
                                                       "single_median_coalition_effect",
                                                       "single_mean_ranking_over_each_test_obs",
                                                       "single_median_ranking_over_each_test_obs",
-                                                      "pilot_estimates_paired"),
+                                                      "pilot_estimates_paired",
+                                                      "largest_weights_random",
+                                                      "MAD"),
                                  n_repetitions = 10,
                                  use_precomputed_vS = TRUE,
                                  use_pilot_estimates_regression = TRUE,
@@ -251,7 +253,8 @@ repeated_explanations = function(model,
                                         "single_mean_coalition_effect",
                                         "single_median_coalition_effect",
                                         "single_mean_ranking_over_each_test_obs",
-                                        "single_median_ranking_over_each_test_obs")
+                                        "single_median_ranking_over_each_test_obs",
+                                        "MAD")
 
   # Check if we are using the `specific_coalition_set` parameter in the `explain` function.
   # TODO. Here I should check that these are substrings of the sampling_methods, as the sampling
@@ -1066,7 +1069,8 @@ pilot_estimates_coal_order = function(explanation,
                                                      "single_mean_coalition_effect",
                                                      "single_median_coalition_effect",
                                                      "single_mean_ranking_over_each_test_obs",
-                                                     "single_median_ranking_over_each_test_obs"),
+                                                     "single_median_ranking_over_each_test_obs",
+                                                     "MAD"),
                                       plot_figures = FALSE,
                                       always_empty_and_grand_coalitions_first = TRUE) {
 
@@ -1102,6 +1106,67 @@ pilot_estimates_coal_order = function(explanation,
 
   # List to store the results to be returned
   return_list = list()
+  if ("MAD" %in% strategies) {
+
+    # Compute the absolute difference between v(S; x) and f(x) for all x and S
+    T = abs(explanation$internal$output$dt_vS[,-"id_combination"] -
+              explanation$internal$output$dt_vS[rep(.N, .N), -"id_combination"])
+
+    # Remove the empty and grand coalitions
+    T = T[-c(1, .N)]
+
+    # Compute the MAD and its inverse. A coalition with low MAD contains important features, for the smaller coalition
+    # sizes. While the MAD is high for large coalition sizes where you miss an important feature.
+    MAD = rowMeans(T)
+
+    # Compute the number of coalitions of each size
+    n_features <- seq(M - 1)
+    n <- sapply(n_features, choose, n = M)
+
+    # Compute the cumulative sum of the number of features in the different coalition sizes
+    n_cumsum = c(0, cumsum(n)) # Add 0 as a left bound for first coalition size and to make the lapply below work
+
+    # Make a list where we the i'th entry is a vector containing the MAD values for coalitions of size i
+    MAD_comb_size = lapply(seq(length(n_cumsum) - 1), function(idx) MAD[seq(n_cumsum[idx] + 1, n_cumsum[idx + 1])])
+
+    # Get the possible coalition sizes that have a paired coalition size. So max{|S|, |Sbar|}.
+    all_coal_sizes = seq(ceiling((M - 1)/2))
+    all_paired_coal_sizes = seq(floor((M - 1)/2))
+
+    # Index updates to use below. I.e., for size 2, we need to add M to the orders to get the overall order
+    # sapply(all_coal_sizes, function(size) length(unlist(MAD_comb_size[seq(0, size - 1)])))
+    update_indices = c(0, cumsum(sapply(MAD_comb_size[all_coal_sizes - 1], length)))
+
+    # Get the order of most important coalitions for each size
+    MAD_order_list = lapply(all_coal_sizes, function(size) {
+
+      # Update the index so it respects the previous coalition sizes
+      update_index = update_indices[size]
+
+      if (size %in% all_paired_coal_sizes) {
+        # Does have a paired version. Then we compute MAD(S) - MAD(Sbar).
+        # An important S will have a low MAD(S) and high MAD(Sbar).
+        # So overall, an important S yields a low MAD(S) - MAD(Sbar). So order them in increasing order.
+        # Need to reverse the order to get the same order in both arrays.
+        order_now = update_index + order(MAD_comb_size[[size]] - rev(MAD_comb_size[[M - size]]), decreasing = FALSE)
+
+        # Add the paired version Sbar right after the S, so that they are kept together
+        order_now = c(rbind(order_now, 2^M - 1 - order_now))
+      } else {
+        # No paired version, so order the coalitions in increasing order
+        order_now = update_index + order(MAD_comb_size[[size]], decreasing = FALSE)
+      }
+      order_now
+    })
+
+    MAD_order = c(1, 2^M, unlist(MAD_order_list) + 1) # Include empty and grand comb, and add one due to empty set.
+
+    # plot(seq(2, length(MAD) + 1), MAD[MAD_order[-c(1,2)] - 1])
+
+    return_list$MAD = MAD_order
+
+
+  }
 
   if (any(c("paired_coalitions", "paired_coalitions_sub", "paired_coalitions_scaled", "paired_coalitions_avg",
             "paired_coalitions_norm") %in% strategies)) {

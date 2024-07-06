@@ -87,7 +87,8 @@ specific_coalition_set_strategies = c("paired_coalitions",
                                       "single_mean_coalition_effect",
                                       "single_median_coalition_effect",
                                       "single_mean_ranking_over_each_test_obs",
-                                      "single_median_ranking_over_each_test_obs")
+                                      "single_median_ranking_over_each_test_obs",
+                                      "MAD")
 specific_coalition_set_strategies_sampling = c("paired_coalitions_weights",
                                                "paired_coalitions_weights_direct",
                                                "paired_coalitions_weights_equal_weights",
@@ -158,7 +159,11 @@ B = 25
 res_dt = data.table(Strategy = character(), n_combinations = integer(), repetition = integer(), MAE = numeric())
 res = list()
 
-sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+sampling_methods = c("largest_weights_random",
+                     "largest_weights_random_new_weights_empirical",
+                     "MAD",
+                     "MAD_new_weights_empirical",
+                     "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
                      "unique_paired_new_weights_gompertz",
                      "paired_coalitions_new_weights_gompertz",
                      "unique_paired_new_weights_empirical",
@@ -275,3 +280,71 @@ for (sampling_method in sampling_methods) {
 saveRDS(res_dt, file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_only_res_dt", ".rds")))
 
 
+
+
+if (FALSE) {
+
+
+  folder_name = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+
+  files <- list.files(path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location", pattern = "NEW_Wine_data_res_dt_only", full.names = TRUE)
+
+  res_dt = rbindlist(lapply(files, function(x) readRDS(x)))
+  res_dt_v2 = copy(res_dt)
+  res_dt_v2[, avg_MAE := mean(MAE), by = list(Strategy, n_combinations)]
+  res_dt_v2[, c("lower", "median", "upper") := as.list(quantile(MAE, c(0.025, 0.5, 0.975))), by = .(Strategy, n_combinations)]
+
+  res_dt_v2[, Strategy := factor(Strategy,
+                                 levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
+                                            "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
+                                            "paired_coalitions_weights_direct_equal_weights",
+                                            "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                            "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                            "paired_coalitions",
+                                            "paired_coalitions_new_weights_empirical",
+                                            "paired_coalitions_new_weights_gompertz",
+                                            "largest_weights",
+                                            "largest_weights_combination_size",
+                                            "largest_weights_new_weights_empirical",
+                                            "largest_weights_combination_size_new_weights_empirical"),
+                                 labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
+                                            "Paired Empirical", "Paired Gompertz",
+                                            "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
+                                            "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
+                                            "Largest Weights", "Largest Weights Coalition",
+                                            "Largest Weights Empirical", "Largest Weights Coalition Empirical"),
+                                 ordered = FALSE)]
+
+  library(ggplot2)
+  fig_wine = ggplot(data = res_dt_v2, aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.1) +
+    geom_line(linewidth = 1) +
+    scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x), labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 5)) +
+    labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4)))
+
+  fig_wine
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_V4.png",
+         plot = fig_wine,
+         width = 14.2,
+         height = 7,
+         scale = 0.85,
+         dpi = 350)
+
+
+
+
+
+
+
+
+
+
+
+}

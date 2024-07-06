@@ -187,10 +187,7 @@
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 5 4 1000000 1000000 1000 500 17 0.9 FALSE NULL NULL NULL
-#
-# #
 
-# # ALL 6 STRATEGIES
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 6 4 1000000 1000000 1000 500 17 0 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 6 4 1000000 1000000 1000 500 17 0.2 FALSE NULL NULL NULL
 # Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 6 4 1000000 1000000 1000 500 17 0.5 FALSE NULL NULL NULL
@@ -505,6 +502,10 @@ sampling_methods = c("paired_coalitions_weights",
                      )
 
 sampling_methods = c(
+  "largest_weights_random",
+  "largest_weights_random_new_weights_empirical",
+  "MAD",
+  "MAD_new_weights_empirical",
   "paired_coalitions_new_weights_empirical",
   "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
   "paired_coalitions",

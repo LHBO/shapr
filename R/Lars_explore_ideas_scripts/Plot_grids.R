@@ -422,6 +422,8 @@ if (FALSE) {
 
     }
     gridExtra::grid.arrange(grobs = figs, nrow = 2)
+
+
   }
 
 
@@ -658,6 +660,94 @@ if (FALSE) {
 
 
 
+  # M = 17 ----------------------------------------------------------------------------------------------------------
+  {
+    # Parameters
+    rhos = c(0,0.2,0.5,0.9)
+    rho_equi = FALSE # Can NOT change this
+
+    only_these_sampling_methods = c("unique",
+                                    "unique_paired",
+                                    "unique_paired_equal_weights",
+                                    "unique_paired_SW")
+
+    # Pilot linear regression
+    # Load the results and make the figures
+    figs = list()
+    for (rho_idx in seq_along(rhos)) {
+      rho = rhos[rho_idx]
+      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_", rho, "_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_dt_MAE.rds"),
+                                     index_combinations = NULL,
+                                     only_these_sampling_methods = only_these_sampling_methods,
+                                     figures_to_make = c("figure_CI",
+                                                         "figure_mean",
+                                                         "figure_median",
+                                                         "figure_lines",
+                                                         "figure_boxplot",
+                                                         "figure_lines_boxplot",
+                                                         "figure_boxplot_lines"),
+                                     ggplot_theme = NULL,
+                                     brewer_palette = NULL,
+                                     brewer_direction = 1,
+                                     flip_coordinates = FALSE,
+                                     legend_position = NULL,
+                                     scale_y_log10 = TRUE,
+                                     scale_x_log10 = FALSE,
+                                     n.dodge = 2,
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+      if (rho_idx != length(rhos)) {
+        figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
+      }
+
+    }
+    gridExtra::grid.arrange(grobs = figs, nrow = 2)
+
+    dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
+
+    dt_all[, sampling := factor(sampling,
+                                levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions"),
+                                labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel", "Pilot Average", "Pilot Kernel"),
+                                ordered = FALSE)]
+
+    fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
+      geom_line(linewidth = 1) +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 1), fill = guide_legend(nrow = 1)) +
+      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.6)),
+            legend.text = element_text(size = rel(1.6)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5))) +
+      scale_color_manual(values = scales::hue_pal()(6)[1:4]) +
+      scale_fill_manual(values = scales::hue_pal()(6)[1:4])
+    fig2
+
+    fig2
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5.png",
+           plot = fig2,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+
+
+  }
+
+
+
+
+
 }
 
 
@@ -792,6 +882,33 @@ if (FALSE) {
       "unique_paired_equal_weights_50000",
       "unique_paired_equal_weights_symmetric",
       "single_mean_coalition_effect"
+    )
+
+    only_these_sampling_methods = c(
+      "paired_coalitions_weights",
+      "paired_coalitions_weights_direct",
+      "paired_coalitions_weights_equal_weights",
+      "paired_coalitions_weights_direct_equal_weights",
+      "paired_coalitions",
+      # "unique",
+      # "unique_unif",
+      # "unique_unif_V2",
+      # "unique_SW",
+      # "unique_equal_weights",
+      # "unique_equal_weights_symmetric",
+      # "unique_paired",
+      # "unique_paired_unif",
+      # "unique_paired_unif_V2",
+      # "unique_paired_SW",
+       "unique_paired_equal_weights"
+      # "unique_paired_equal_weights_100",
+      # "unique_paired_equal_weights_500",
+      # "unique_paired_equal_weights_1000",
+      # "unique_paired_equal_weights_5000",
+      # "unique_paired_equal_weights_10000",
+      # "unique_paired_equal_weights_50000",
+      # "unique_paired_equal_weights_symmetric",
+      # "single_mean_coalition_effect"
     )
 
     only_these_sampling_methods = c(
@@ -1010,6 +1127,498 @@ if (FALSE) {
   }
 
 
+  ## Paper3 ----------------------------------------------------------------------------------------------------------
+  {
+    # Parameters
+    rhos = c(0,0.2,0.5,0.9)
+    rho_equi = TRUE # Can change this
+
+    only_these_sampling_methods = c("unique",
+                                    "unique_paired",
+                                    "unique_paired_equal_weights",
+                                    "unique_paired_SW",
+                                    "paired_coalitions",
+                                    "paired_coalitions_weights_direct_equal_weights")
+
+    # Pilot linear regression
+    # Load the results and make the figures
+    figs = list()
+    for (rho_idx in seq_along(rhos)) {
+      rho = rhos[rho_idx]
+      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/NSM2024_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_dt_MAE.rds"),
+                                     index_combinations = NULL,
+                                     only_these_sampling_methods = only_these_sampling_methods,
+                                     figures_to_make = c("figure_CI",
+                                                         "figure_mean",
+                                                         "figure_median",
+                                                         "figure_lines",
+                                                         "figure_boxplot",
+                                                         "figure_lines_boxplot",
+                                                         "figure_boxplot_lines"),
+                                     ggplot_theme = NULL,
+                                     brewer_palette = NULL,
+                                     brewer_direction = 1,
+                                     flip_coordinates = FALSE,
+                                     legend_position = NULL,
+                                     scale_y_log10 = TRUE,
+                                     scale_x_log10 = FALSE,
+                                     n.dodge = 2,
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+      if (rho_idx != length(rhos)) {
+        figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
+      }
+
+    }
+    gridExtra::grid.arrange(grobs = figs, nrow = 2)
+
+    dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
+
+    dt_all[, sampling := factor(sampling,
+                                levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions"),
+                                labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel", "Pilot Average", "Pilot Kernel"),
+                                ordered = FALSE)]
+
+    fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
+      geom_line(linewidth = 1) +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      ggplot2::scale_fill_hue() +
+      ggplot2::scale_color_hue() +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 1), fill = guide_legend(nrow = 1)) +
+      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.6)),
+            legend.text = element_text(size = rel(1.6)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5)))
+
+    fig2
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_plot_with_V3.png",
+           plot = fig2,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+  }
+
+
+
+  ### With new methods ------------------------------------------------------------------------------------------------
+  {
+    # Parameters
+    rhos = c(0,0.2,0.5,0.9)
+    rho_equi = TRUE # Can NOT change this
+
+    # only_these_sampling_methods = c("unique",
+    #                                 "unique_paired",
+    #                                 "unique_paired_equal_weights",
+    #                                 "unique_paired_SW",
+    #                                 "paired_coalitions",
+    #                                 "paired_coalitions_weights_direct_equal_weights")
+
+    # Pilot linear regression
+    # Load the results and make the figures
+    figs = list()
+    for (rho_idx in seq_along(rhos)) {
+      rho = rhos[rho_idx]
+      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_dt_MAE.rds"),
+                                     index_combinations = NULL,
+                                     #only_these_sampling_methods = only_these_sampling_methods,
+                                     figures_to_make = c("figure_CI",
+                                                         "figure_mean",
+                                                         "figure_median",
+                                                         "figure_lines",
+                                                         "figure_boxplot",
+                                                         "figure_lines_boxplot",
+                                                         "figure_boxplot_lines"),
+                                     ggplot_theme = NULL,
+                                     brewer_palette = NULL,
+                                     brewer_direction = 1,
+                                     flip_coordinates = FALSE,
+                                     legend_position = NULL,
+                                     scale_y_log10 = TRUE,
+                                     scale_x_log10 = FALSE,
+                                     n.dodge = 2,
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+      if (rho_idx != length(rhos)) {
+        figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
+      }
+
+    }
+    gridExtra::grid.arrange(grobs = figs, nrow = 2)
+
+    dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
+
+    dt_all[, sampling := factor(sampling,
+                                levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
+                                           "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
+                                           "paired_coalitions_weights_direct_equal_weights",
+                                           "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                           "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                           "paired_coalitions",
+                                           "paired_coalitions_new_weights_empirical",
+                                           "paired_coalitions_new_weights_gompertz",
+                                           "largest_weights",
+                                           "largest_weights_combination_size",
+                                           "largest_weights_new_weights_empirical",
+                                           "largest_weights_combination_size_new_weights_empirical"),
+                                labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
+                                           "Paired Empirical", "Paired Gompertz",
+                                           "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
+                                           "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
+                                           "Largest Weights", "Largest Weights Coalition",
+                                           "Largest Weights Empirical", "Largest Weights Coalition Empirical"),
+                                ordered = FALSE)]
+
+    fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
+      geom_line(linewidth = 1) +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      ggplot2::scale_fill_hue() +
+      ggplot2::scale_color_hue() +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 4), fill = guide_legend(nrow = 4)) +
+      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.6)),
+            legend.text = element_text(size = rel(1.6)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5)))
+
+    fig2
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_plot_with_V3.png",
+           plot = fig2,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+  }
+
+
+  ### Freq vs kernel shap values ----------
+  {
+    # Parameters
+    rhos = c(0,0.2,0.5,0.9)
+    rho_equi = TRUE # Can change this
+
+    only_these_sampling_methods = c(
+      "largest_weights",
+      "unique_paired_unif_V2",
+      "unique_paired_SW",
+      "unique_paired_equal_weights",
+      "unique_paired_equal_weights_100",
+      "unique_paired_equal_weights_500",
+      "unique_paired_equal_weights_1000",
+      "unique_paired_equal_weights_2500",
+      "unique_paired_equal_weights_5000",
+      "unique_paired_equal_weights_10000",
+      "unique_paired_equal_weights_50000",
+      "unique_paired_equal_weights_symmetric",
+      "paired_coalitions"
+      )
+
+    only_these_sampling_methods = c(
+      "largest_weights",
+      #"unique_paired_unif_V2",
+      "unique_paired_SW",
+      #"unique_paired_equal_weights",
+      #"unique_paired_equal_weights_symmetric",
+      "paired_coalitions"
+    )
+
+    only_these_sampling_methods = c(
+      # "largest_weights",
+      # "unique_paired_unif_V2",
+      "unique_paired_SW",
+      "unique_paired_equal_weights",
+      "unique_paired_equal_weights_100",
+      "unique_paired_equal_weights_500",
+      "unique_paired_equal_weights_1000",
+      "unique_paired_equal_weights_2500",
+      "unique_paired_equal_weights_5000",
+      "unique_paired_equal_weights_10000",
+      "unique_paired_equal_weights_50000"
+      # "unique_paired_equal_weights_symmetric",
+      # "paired_coalitions"
+    )
+
+    # Pilot linear regression
+    # Load the results and make the figures
+    figs = list()
+    for (rho_idx in seq_along(rhos)) {
+      rho = rhos[rho_idx]
+      figs[[rho_idx]] = plot_results(file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_VS_kernel_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_", rho_equi ,"_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_pilot_separate_linear_reg_dt_MAE.rds"),
+                                     index_combinations = NULL,
+                                     only_these_sampling_methods = only_these_sampling_methods,
+                                     figures_to_make = c("figure_CI",
+                                                         "figure_mean",
+                                                         "figure_median",
+                                                         "figure_lines",
+                                                         "figure_boxplot",
+                                                         "figure_lines_boxplot",
+                                                         "figure_boxplot_lines"),
+                                     ggplot_theme = NULL,
+                                     brewer_palette = NULL,
+                                     brewer_direction = 1,
+                                     flip_coordinates = FALSE,
+                                     legend_position = NULL,
+                                     scale_y_log10 = TRUE,
+                                     scale_x_log10 = FALSE,
+                                     n.dodge = 2,
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+      if (rho_idx != length(rhos)) {
+        figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
+      }
+
+    }
+    gridExtra::grid.arrange(grobs = figs, nrow = 2)
+
+    dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
+
+    dt_all[, sampling := factor(sampling,
+                                levels =  c(
+                                  "largest_weights",
+                                  "unique_paired_unif_V2",
+                                  "unique_paired_equal_weights",
+                                  "unique_paired_equal_weights_100",
+                                  "unique_paired_equal_weights_500",
+                                  "unique_paired_equal_weights_1000",
+                                  "unique_paired_equal_weights_2500",
+                                  "unique_paired_equal_weights_5000",
+                                  "unique_paired_equal_weights_10000",
+                                  "unique_paired_equal_weights_50000",
+                                  "unique_paired_equal_weights_symmetric", # Same as "unique_paired_equal_weights"
+                                  "paired_coalitions",
+                                  "unique_paired_SW"
+                                ),
+                                labels = c(
+                                  "Largest weights",
+                                  "Uniform",
+                                  "Paired Average",
+                                  "Paired Average (L = 100)",
+                                  "Paired Average (L = 500)",
+                                  "Paired Average (L = 1000)",
+                                  "Paired Average (L = 2500)",
+                                  "Paired Average (L = 5000)",
+                                  "Paired Average (L = 10000)",
+                                  "Paired Average (L = 50000)",
+                                  "Paired Average Symmetric", # Same as "Paired Average"
+                                  "Pilot kernel",
+                                  "Paired Kernel"
+                                ),
+                                ordered = FALSE)]
+
+    fig2 = ggplot(dt_all[!(sampling %in% c("Largest weights",
+                                      "Uniform",
+                                      "Unique Kernel",
+                                      "Pilot kernel"))], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.3) +
+      geom_line(linewidth = 1) +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      ggplot2::scale_fill_hue() +
+      ggplot2::scale_color_hue() +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
+      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("MAE("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.6)),
+            legend.text = element_text(size = rel(1.6)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5)))
+
+    fig2
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_VS_kernel_Paper3_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_V3.png",
+           plot = fig2,
+           width = 14.2,
+           height = 11,
+           scale = 0.85,
+           dpi = 350)
+
+  }
+
+
+  ### Gompertz --------------------------------------------------------------------------------------------------------
+
+  {
+    # Parameters
+    rhos = c(0,0.2,0.5,0.9)
+    rho_equi = TRUE # Can NOT change this
+    pilot = TRUE
+    ext_str = ifelse(pilot, "_pilot_separate_linear_reg", "")
+
+    only_these_sampling_methods = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
+                                    "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
+                                    "paired_coalitions_weights_direct_equal_weights",
+                                    "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                    "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                    "paired_coalitions",
+                                    "paired_coalitions_new_weights_empirical",
+                                    "paired_coalitions_new_weights_gompertz",
+                                    "largest_weights",
+                                    "largest_weights_combination_size",
+                                    "largest_weights_new_weights_empirical",
+                                    "largest_weights_combination_size_new_weights_empirical")
+
+
+    # Pilot linear regression
+    # Load the results and make the figures
+    figs = list()
+    for (rho_idx in seq_along(rhos)) {
+      rho = rhos[rho_idx]
+      file_path = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_",
+                         rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str ,"_dt_MAE.rds")
+      figs[[rho_idx]] = plot_results(file_path = file_path ,
+                                     index_combinations = NULL,
+                                     only_these_sampling_methods = only_these_sampling_methods,
+                                     figures_to_make = c("figure_CI",
+                                                         "figure_mean",
+                                                         "figure_median",
+                                                         "figure_lines",
+                                                         "figure_boxplot",
+                                                         "figure_lines_boxplot",
+                                                         "figure_boxplot_lines"),
+                                     ggplot_theme = NULL,
+                                     brewer_palette = NULL,
+                                     brewer_direction = 1,
+                                     flip_coordinates = FALSE,
+                                     legend_position = NULL,
+                                     scale_y_log10 = TRUE,
+                                     scale_x_log10 = FALSE,
+                                     n.dodge = 2,
+                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+      if (rho_idx != length(rhos)) {
+        figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
+      }
+
+    }
+    gridExtra::grid.arrange(grobs = figs, nrow = 2)
+
+    dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
+
+
+
+
+    dt_all[, sampling := factor(sampling,
+                                levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
+                                           "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
+                                           "paired_coalitions_weights_direct_equal_weights",
+                                           "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                           "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                           "paired_coalitions",
+                                           "paired_coalitions_new_weights_empirical",
+                                           "paired_coalitions_new_weights_gompertz",
+                                           "largest_weights",
+                                           "largest_weights_combination_size",
+                                           "largest_weights_new_weights_empirical",
+                                           "largest_weights_combination_size_new_weights_empirical"),
+                                labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
+                                           "Paired Empirical", "Paired Gompertz",
+                                           "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
+                                           "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
+                                           "Largest Weights", "Largest Weights Coalition",
+                                           "Largest Weights Empirical", "Largest Weights Coalition Empirical"),
+                                ordered = FALSE)]
+
+    m = 10
+    n_features <- seq(ceiling((m - 1)/2))
+    n <- sapply(n_features, choose, n = m)
+    n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+    n_cumsum = (cumsum(n) + 2)
+    n_cumsum = n_cumsum[-length(n_cumsum)]
+
+    fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
+      geom_line(linewidth = 0.6) +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
+      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.6)),
+            legend.text = element_text(size = rel(1.6)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5)))
+      # scale_color_manual(values = scales::hue_pal()(6)[1:4]) +
+      # scale_fill_manual(values = scales::hue_pal()(6)[1:4])
+    fig2
+
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_V1.png"),
+           plot = fig2,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+
+    samps = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Pilot Average", "Pilot Kernel")
+    samps = c("Paired Average", "Paired Kernel", "Paired Empirical", "Paired Gompertz")
+
+    samps = c("Paired Average", "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz")
+
+    samps = c("Paired Average", "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz")
+    samps = c("Paired Average", "Pilot Order Empirical", "Paired Empirical", "Largest Weights",  "Largest Weights Coalition",
+              "Largest Weights Empirical", "Largest Weights Coalition Empirical")
+    fig3 = ggplot(dt_all[sampling %in% samps], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
+      geom_line(linewidth = 0.6) +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.6)),
+            legend.text = element_text(size = rel(1.6)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5)))
+
+    fig3
+
+
+    fig2
+
+  }
 
 
 
@@ -1058,7 +1667,16 @@ dt_list = data.table::rbindlist(
               current_combination_idx_in_all_combinations =
                 sapply(seq(nrow(S)), function(idx) which(apply(S_true, 1, function(x) identical(x, S[idx,]))))
 
-              data.table(type = sampling_method, n_combinations = n_combinations - 4, id = current_combination_idx_in_all_combinations, weight = X$shapley_weight)
+              return_dt = data.table(type = sampling_method, n_combinations = n_combinations - 4, id = current_combination_idx_in_all_combinations, weight = X$shapley_weight)
+
+              if (sampling_method == "unique_paired") {
+                return_dt = rbind(
+                  return_dt,
+                  data.table(type = "unique_paired_kernel", n_combinations = n_combinations - 4, id = current_combination_idx_in_all_combinations, weight = X_true$shapley_weight[current_combination_idx_in_all_combinations])
+                )
+              }
+
+              return(return_dt)
             })
           ))
   })
@@ -1105,18 +1723,18 @@ if (version == "NSM") {
 
 } else if (version == "paper3") {
   dt[, type := factor(type,
-                      levels = c("unique", "unique_paired", "unique_paired_equal_weights", "kernel"),
-                      labels = c("Unique", "Paired", "Paired Avg.", "Kernel"))]
+                      levels = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_kernel", "kernel"),
+                      labels = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Shapley Kernel Weights"))]
 
 
-  fig = ggplot(dt, aes(x = id, y = weight, col = type)) +
+  fig = ggplot(dt[type != "Shapley Kernel Weights"], aes(x = id, y = weight, col = type)) +
     geom_vline(xintercept = 512.5, color = "darkgrey", linetype = "dashed", linewidth = 0.9) +
     geom_point(alpha = 0.6) +
     scale_y_log10(
       breaks = scales::trans_breaks("log10", function(x) 10^x),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
-    facet_wrap(. ~ n_combinations, labeller = label_bquote(cols = N[combinations] ==.(n_combinations)),
+    facet_wrap(. ~ n_combinations, labeller = label_bquote(cols = N[S] ==.(n_combinations)),
                ncol = 2) +
     theme(legend.position = 'bottom') +
     guides(col = guide_legend(nrow = 1)) +
@@ -1127,16 +1745,20 @@ if (version == "NSM") {
           axis.title = element_text(size = rel(1.6)),
           axis.title.y = element_text(size = rel(1.1)),
           axis.text = element_text(size = rel(1.5))) +
-    scale_color_manual(values = c(gg_color_hue(3), "#000000"))
+    geom_step(data = dt[type == "Shapley Kernel Weights"]) +
+    scale_color_manual(values = c(gg_color_hue(3), "#000000", "#000000"))
 
   fig
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights.png", # Saving 14.2 x 9.98 in image
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights_3.png", # Saving 14.2 x 9.98 in image
          plot = fig,
+         width = 14.2,
+         height = 9.98,
          scale = 0.85,
-         dpi = 300)
+         dpi = 350)
 } else {
   stop("Unknown version.")
 }
+
 
 
 
