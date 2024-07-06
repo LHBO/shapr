@@ -184,14 +184,16 @@ shapley_setup <- function(internal) {
     #
     # dt_new_weights_now[, get(new_weights_string)]
   }
-  #print(X)
+  print(X)
 
   # Get weighted matrix ----------------
+  print("Time to compute W")
   W <- weight_matrix(
     X = X,
     normalize_W_weights = TRUE,
     is_groupwise = is_groupwise
   )
+  print("Done with computing W")
   # X_true = copy(X)
   # X_true[, shapley_weight := shapley_weight_2]
   # W2 <- weight_matrix(
