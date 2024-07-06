@@ -188,6 +188,7 @@ shapley_setup <- function(internal) {
 
   # Get weighted matrix ----------------
   print("Time to compute W")
+  print(internal$parameters$n_combinations)
   W <- weight_matrix(
     X = X,
     normalize_W_weights = TRUE,
