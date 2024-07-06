@@ -154,7 +154,7 @@ n_combinations_vec = unique(sort(c(n_combinations_vec, n_cumsum)))
 
 
 
-B = 25
+B = 100
 
 res_dt = data.table(Strategy = character(), n_combinations = integer(), repetition = integer(), MAE = numeric())
 res = list()
