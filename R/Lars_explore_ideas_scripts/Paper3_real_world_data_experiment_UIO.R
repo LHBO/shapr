@@ -306,13 +306,18 @@ if (FALSE) {
                                             "largest_weights",
                                             "largest_weights_combination_size",
                                             "largest_weights_new_weights_empirical",
-                                            "largest_weights_combination_size_new_weights_empirical"),
+                                            "largest_weights_combination_size_new_weights_empirical",
+                                            "largest_weights_random", "largest_weights_random_new_weights_empirical",
+                                            "MAD", "MAD_new_weights_empirical"
+                                            ),
                                  labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                             "Paired Empirical", "Paired Gompertz",
                                             "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
                                             "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
                                             "Largest Weights", "Largest Weights Coalition",
-                                            "Largest Weights Empirical", "Largest Weights Coalition Empirical"),
+                                            "Largest Weights Empirical", "Largest Weights Coalition Empirical",
+                                            "Largest Weights Random", "Largest Weights Random Empirical",
+                                            "MAD", "MAD Empirical"),
                                  ordered = FALSE)]
 
   library(ggplot2)
@@ -339,7 +344,24 @@ if (FALSE) {
 
 
 
+  samp = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Largest Weights Random", "Largest Weights Random Empirical",
+           "MAD", "MAD Empirical")
 
+
+  fig_wine2 = ggplot(data = res_dt_v2[Strategy %in% samp], aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
+   # geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.1) +
+    geom_line(linewidth = 1) +
+    scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x), labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 5)) +
+    labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4)))
+
+  fig_wine2
 
 
 
