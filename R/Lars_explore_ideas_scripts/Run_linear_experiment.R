@@ -389,9 +389,9 @@ if (UiO) {
 # devtools::load_all(".")
 if (Sys.info()[[4]] %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no") || R.utils::System$getHostname() %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no") ) {
 
-  devtools::clean_dll()
+  # devtools::clean_dll()
+  # # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
-  devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
   #devtools::load_all(".")
   library(shapr)
 } else {
@@ -598,7 +598,7 @@ if (M <= 8) n_combinations_array = seq(2, 2^M)
 
 if (M == 17) {
   n_combinations_array = c(seq(2, 200, 2), 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
-                           80000, 90000, 100000, 110000, 120000, 130000)
+                           80000, 90000, 100000, 110000, 120000, 130000, 131000)
 }
 length(n_combinations_array)
 
