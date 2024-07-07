@@ -140,7 +140,7 @@ n_combinations_vec = c(1600, 1700, 1800, 1900)
 n_combinations_vec  = c(2, 10, 100, 500)
 n_combinations_vec = c(2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 200, 300, 400,
                        430, 440, 450, 460, 470, 480, 490, 500, 600, 700, 800, 900, 1000, 1070, 1100, 1110, 1120, 1130, 1140, 1200,
-                       1250, 1500, 1750, 1800, 1900, 2000)
+                       1250, 1500, 1750, 1800, 1900, 2000, 2010, 2020, 2030, 2040, 2044)
 
 m = 11
 n_features <- seq(ceiling((m - 1)/2))
@@ -309,19 +309,28 @@ if (FALSE) {
                                             "largest_weights_combination_size_new_weights_empirical",
                                             "largest_weights_random", "largest_weights_random_new_weights_empirical",
                                             "MAD", "MAD_new_weights_empirical"
-                                            ),
+                                 ),
                                  labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                             "Paired Empirical", "Paired Gompertz",
                                             "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
                                             "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
-                                            "Largest Weights", "Largest Weights Coalition",
-                                            "Largest Weights Empirical", "Largest Weights Coalition Empirical",
-                                            "Largest Weights Random", "Largest Weights Random Empirical",
-                                            "MAD", "MAD Empirical"),
+                                            "Largest", "Largest Coalition",
+                                            "Largest Order Empirical", "Largest Order Coalition Empirical",
+                                            "Paired Largest", "Paired Largest Empirical",
+                                            "MAD", "MAD Empirical"
+                                 ),
                                  ordered = FALSE)]
+
+  m = 11
+  n_features <- seq(ceiling((m - 1)/2))
+  n <- sapply(n_features, choose, n = m)
+  n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+  n_cumsum = (cumsum(n) + 2) + 0.5
+
 
   library(ggplot2)
   fig_wine = ggplot(data = res_dt_v2, aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
+    geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.1) +
     geom_line(linewidth = 1) +
     scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x), labels = scales::trans_format("log10", scales::math_format(10^.x))) +
@@ -335,7 +344,7 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4)))
 
   fig_wine
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_V4.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_V6.png",
          plot = fig_wine,
          width = 14.2,
          height = 7,
@@ -344,28 +353,57 @@ if (FALSE) {
 
 
 
-  samp = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Largest Weights Random", "Largest Weights Random Empirical",
+
+  samp = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical",
            "MAD", "MAD Empirical")
+  samp = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical")
 
-
-  fig_wine2 = ggplot(data = res_dt_v2[Strategy %in% samp], aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
-   # geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.1) +
+  fig_wine_2 = ggplot(data = res_dt_v2[Strategy %in% samp], aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
+    geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.1) +
     geom_line(linewidth = 1) +
     scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x), labels = scales::trans_format("log10", scales::math_format(10^.x))) +
     theme(legend.position = 'bottom') +
-    guides(col = guide_legend(nrow = 5)) +
+    guides(col = guide_legend(nrow = 2)) +
     labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.39)),
+          legend.text = element_text(size = rel(1.39)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4)))
+
+  fig_wine_2
+
+
+
+
+
+
+  fig_wine_3 = ggplot(data = data.table(pred = sep_rf$pred_explain), aes(x = pred)) +
+    geom_histogram(color="black", fill = "grey") +
+    geom_vline(aes(xintercept = p0), color = "red", linewidth = 1, linetype = "dashed") +
+    annotate('text', x = 6.15, y = 12.72,
+             label = "phi[0]==5.65",
+             parse = TRUE,
+             size = 8,
+             color = "red") +
+    labs(color = "Strategy:", fill = "Strategy:", x = expression(f(bold(x)*"*")), y = "Count") +
     theme(strip.text = element_text(size = rel(1.5)),
           legend.title = element_text(size = rel(1.5)),
           legend.text = element_text(size = rel(1.5)),
           axis.title = element_text(size = rel(1.5)),
           axis.text = element_text(size = rel(1.4)))
 
-  fig_wine2
 
 
+  fig_wine_4 = gridExtra::grid.arrange(fig_wine_2, fig_wine_3, ncol = 2, widths = c(6,4))
 
-
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_and_Hist_V1.png",
+         plot = fig_wine_4,
+         width = 14.2,
+         height = 7,
+         scale = 0.85,
+         dpi = 350)
 
 
 
