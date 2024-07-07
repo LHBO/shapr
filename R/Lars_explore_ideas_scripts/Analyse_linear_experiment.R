@@ -188,9 +188,25 @@ setwd(folder)
 
 # Load the new functions
 source(file.path(folder, "R/Lars_explore_ideas_scripts/new_functions.R"))
+
+# devtools::load_all(".")
+if (Sys.info()[[4]] %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no") || R.utils::System$getHostname() %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no") ) {
+  print("Hei1")
+
+  devtools::clean_dll()
+  # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
+  #devtools::load_all(".")
+  library(shapr)
+} else {
+  print("Hei2")
+  devtools::load_all(".")
+}
+
+
 # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas") # Only need
 # library(shapr) # This must be the shapr version in the github repository.
-devtools::load_all(".")
+# devtools::load_all(".")
 
 # Create data.tables ----------------------------------------------------------------------------------------------
 if (do_dt) {
@@ -322,6 +338,31 @@ ff = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/
                   n.dodge = 2,
                   plot_figures = FALSE)
 ff$figure_mean
+
+ff = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_0.5_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_dt_MAE.rds",
+                  index_combinations = NULL,
+                  #only_these_sampling_methods = c("unique", "unique_unif", "unique_SW", "unique_paired", "unique_paired_unif", "unique_paired_SW", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_paired", "unique_paired_unif", "unique_paired_SW", "unique_paired_equal_weights", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique", "unique_SW", "unique_paired_equal_weights", "unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "paired_coalitions"),
+                  #only_these_sampling_methods = c("unique_paired_equal_weights", "unique_paired_equal_weights_1000", "unique_paired_equal_weights_5000", "unique_paired_equal_weights_10000", "unique_paired_equal_weights_50000", "unique_paired_SW", "paired_coalitions"),
+                  figures_to_make = c("figure_CI",
+                                      "figure_mean",
+                                      "figure_median",
+                                      "figure_lines",
+                                      "figure_boxplot",
+                                      "figure_lines_boxplot",
+                                      "figure_boxplot_lines"),
+                  ggplot_theme = NULL,
+                  brewer_palette = NULL,
+                  brewer_direction = 1,
+                  flip_coordinates = FALSE,
+                  legend_position = NULL,
+                  scale_y_log10 = TRUE,
+                  scale_x_log10 = FALSE,
+                  n.dodge = 2,
+                  plot_figures = FALSE)
+ff$figure_mean
+
 
 pilot = plot_results(file_path = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_9_n_train_1000_n_test_1000_rho_0.7_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_dt_MAE.rds",
                   index_combinations = NULL,
