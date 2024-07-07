@@ -387,7 +387,8 @@ if (UiO) {
   # }
 }
 # devtools::load_all(".")
-if (Sys.info()[[4]] %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no")) {
+if (Sys.info()[[4]] %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no") || R.utils::System$getHostname() %in% c("nam-shub-01.uio.no", "nam-shub-02.uio.no") ) {
+
   devtools::clean_dll()
   # devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
   devtools::install_github(repo = "LHBO/shapr", ref = "Lars/paper3_ideas")
