@@ -320,7 +320,7 @@ res_list = list()
 
 for (m in M_vec) {
   print(m)
-  if (m <= 8) {
+  if (m <= 10) {
     n_combinations_vec = seq(4, 2^m, 2)
   } else if (m <= 12) {
     n_combinations_vec = seq(4, 2^m, 8)
@@ -494,4 +494,96 @@ if (FALSE) {
       labs(y = "Normalized Shapley kernel weight/sampling frequency") +
       theme(legend.position="bottom", legend.box = "horizontal")
   }
+}
+
+
+if (FALSE) {
+
+  # Load the data
+  {
+    M_seq = c(10, 17)
+
+    dt_res_list = lapply(M_seq, function (m) {
+      dt_full = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res.rds"))
+      dt_full = dt_full[n_features %in% seq(1, ceiling((m-1)/2))]
+      return(dt_full)
+    })
+    names(dt_res_list) = M_seq
+
+    dt_res = data.table::rbindlist(dt_res_list, idcol = "M")
+    dt_res[, M := as.integer(M)]
+    dt_res[, M := factor(M, levels = M_seq, labels = paste0("M = ", M_seq))]
+
+
+    tmp_list = lapply(M_seq, function(m) {
+      tmp = shapr:::shapley_weights(m = m,
+                                    N = sapply(seq(m - 1), choose, n = m),
+                                    n_components = seq(m - 1))
+      tmp = tmp/sum(tmp)
+      data.table(n_combinations = 2^m,
+                 col = factor(seq(ceiling((m-1)/2))),
+                 weight = tmp[seq(1, ceiling((m-1)/2))])
+    })
+    names(tmp_list) = M_seq
+    tmp_list = data.table::rbindlist(tmp_list, idcol = "M")
+    tmp_list[, M := factor(M, levels = M_seq, labels = paste0("M = ", M_seq))]
+
+  }
+
+
+  ## MAKE THE PLOT (change if we want ribbons and log-scale)
+  fig_samp = ggplot(data = dt_res, aes(x = n_combinations, y = mean)) +
+    geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features),
+                alpha = 0.4, linewidth = 0.1) + ylim(c(0, 0.5)) +
+    geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 1) +
+    facet_wrap("M ~ .", ncol = 2, scales = "free_x") +
+    #facet_wrap("M ~ .", ncol = 2) +
+    geom_point(tmp_list,
+               mapping = aes(x = n_combinations, y = weight, colour = col),
+               size = 2) +
+    expand_limits(y = 0) +
+    #     scale_y_log10(
+    #   breaks = scales::trans_breaks("log10", function(x) 10^x),
+    #   labels = scales::trans_format("log10", scales::math_format(10^.x))
+    # )
+    guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
+    labs(x = expression(N[S]), y = "Normalized Shapley kernel weight/sampling frequency") +
+    theme(legend.position="bottom", legend.box = "horizontal") +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4)))
+  fig_samp
+
+
+  ## MAKE THE PLOT (change if we want ribbons and log-scale)
+  fig_samp_log = ggplot(data = dt_res, aes(x = n_combinations, y = mean)) +
+    #geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features), alpha = 0.4, linewidth = 0.1) +
+    #ylim(c(0, 0.5)) +
+    geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 1) +
+    facet_wrap("M ~ .", ncol = 2, scales = "free_x") +
+    #facet_wrap("M ~ .", ncol = 2) +
+    geom_point(tmp_list,
+               mapping = aes(x = n_combinations, y = weight, colour = col),
+               size = 2) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
+    labs(x = expression(N[S]), y = "Normalized Shapley kernel weight/sampling frequency on") +
+    theme(legend.position="bottom", legend.box = "horizontal") +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4)))
+  fig_samp_log
+
+
+
+
 }
