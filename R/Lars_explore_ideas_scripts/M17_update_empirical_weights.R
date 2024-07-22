@@ -104,6 +104,7 @@ for (rho_idx in seq(length(rhos))) {
     repetition_idx = 1
     #relevant_repetitions = 7
     for (repetition_idx in seq_along(relevant_repetitions)) {
+      if (repetition == 7) next
 
       # Get the current repetition
       repetition = relevant_repetitions[repetition_idx]
