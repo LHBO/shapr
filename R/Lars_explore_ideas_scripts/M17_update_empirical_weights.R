@@ -52,7 +52,7 @@ max_repetitions = 50
 new_empirical_weights = readRDS(file.path(folder_save, paste0("Samp_prop_and_gompertz_M_", M, ".rds")))
 
 # The values of rho that we have to fix
-rhos = c(0, 0.2, 0.5, 0.9)
+rhos = c(0.5, 0.9)
 
 # Iterate over the rhos
 rho_idx = 2
@@ -133,6 +133,7 @@ for (rho_idx in seq(length(rhos))) {
       # Iterate over them
       sampling_method = relevant_sampling_methods[1]
       for (sampling_method in relevant_sampling_methods) {
+        message(sampling_method)
 
         # Get the results for the current sampling method
         current_repetition_results_now = current_repetition_results[[sampling_method]]$repetition_1
@@ -151,11 +152,7 @@ for (rho_idx in seq(length(rhos))) {
           n_comb_use = new_empirical_weights$n_combinations[which.min(abs(new_empirical_weights$n_combinations - n_comb_now))]
           dt_new_weights_now = new_empirical_weights[n_combinations == n_comb_use]
 
-          if (all(unique(X$shapley_weight)[-1] %in% dt_new_weights_now$empirical)) {
-            next # Already have the correct values
-          } else {
-            print(n_comb_now)
-          }
+          if (all(unique(X$shapley_weight)[-1] %in% dt_new_weights_now$empirical)) next # Already have the correct values
 
           X[, shapley_weight := as.numeric(shapley_weight)]
 
@@ -209,7 +206,7 @@ for (rho_idx in seq(length(rhos))) {
                                            as.matrix(true_explanation$shapley_values),
                                            evaluation_criterion = "MAE")
 
-          print(c(old_error, new_error))
+          message(c(n_comb_now, old_error, new_error, old_error - new_error))
 
 
 
