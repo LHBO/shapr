@@ -1,4 +1,8 @@
+library(data.table)
 
+# Get the name of the computer we are working on
+hostname = R.utils::System$getHostname()
+cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
 
 # Check if we are working on an UiO computer or not and define the correct folder based on system
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
@@ -16,6 +20,11 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
+}
+
+compute_MAE_MSE_fast = function(mat_1, mat_2, evaluation_criterion = c("MSE", "MAE")) {
+  evaluation_criterion = match.arg(evaluation_criterion)
+  if (evaluation_criterion == "MSE") mean((mat_1[,-1] - mat_2[,-1])^2) else mean(abs(mat_1[,-1] - mat_2[,-1]))
 }
 
 
@@ -46,8 +55,9 @@ new_empirical_weights = readRDS(file.path(folder_save, paste0("Samp_prop_and_gom
 rhos = c(0, 0.2, 0.5, 0.9)
 
 # Iterate over the rhos
-rho = 0.2
-for (rho in rhos) {
+rho_idx = 2
+for (rho_idx in length(rhos)) {
+    rho = rhos[rho_idx]
 
     # Make file names
     if (name_prefix == "") {
@@ -125,16 +135,20 @@ for (rho in rhos) {
         # Get the results for the current sampling method
         current_repetition_results_now = current_repetition_results[[sampling_method]]$repetition_1
 
-
         # We skip n_combinations = 2
         i = 2
         for (i in seq(2, length(current_repetition_results_now))) {
-          n_comb_now = as.integer(strsplit(names(res_sampling_method_now)[i], "n_combinations_")[[1]][2])
+          n_comb_now = as.integer(strsplit(names(current_repetition_results_now)[i], "n_combinations_")[[1]][2])
+          if (n_comb_now == 2^M) next
 
           # Current results
           current_n_comb = current_repetition_results_now[[i]]
           X = copy(current_n_comb$only_save$X)
 
+          if (all(unique(X$shapley_weight)[-1] %in% dt_new_weights_now$empirical)) {
+            print(n_comb_now)
+            next # Already have the correct values
+          }
 
           # Find the weights of the combination closest to n_combinations
           n_comb_use = new_empirical_weights$n_combinations[which.min(abs(new_empirical_weights$n_combinations - n_comb_now))]
@@ -181,11 +195,26 @@ for (rho in rhos) {
           current_n_comb$only_save$X = X
           current_n_comb$only_save$W = W_updated
           current_n_comb$shapley_values = dt_kshap
-          return_list[[sampling_method]][[i]] = current_n_comb
+
+
+          # Look at the errors
+          old_error = compute_MAE_MSE_fast(as.matrix(current_repetition_results[[sampling_method]]$repetition_1[[i]]$shapley_values),
+                                           as.matrix(true_explanation$shapley_values),
+                                           evaluation_criterion = "MAE")
+
+          new_error = compute_MAE_MSE_fast(as.matrix(dt_kshap),
+                                           as.matrix(true_explanation$shapley_values),
+                                           evaluation_criterion = "MAE")
+
+          print(c(old_error, new_error))
+
 
 
           # Update the list
           current_repetition_results[[sampling_method]]$repetition_1[[i]] = current_n_comb
+
+
+
 
         }
       }
