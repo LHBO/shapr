@@ -599,6 +599,12 @@ if (M <= 8) n_combinations_array = seq(2, 2^M)
 if (M == 17) {
   n_combinations_array = c(seq(2, 200, 2), 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
                            80000, 90000, 100000, 110000, 120000, 130000, 131000)
+
+  n_combinations_vec_extra <- sapply(seq(ceiling((M - 1)/2)), choose, n = M)
+  n_combinations_vec_extra[seq(floor((M - 1)/2))] = 2*n_combinations_vec_extra[seq(floor((mM- 1)/2))]
+  n_combinations_vec_extra = cumsum(n_combinations_vec_extra) + 2
+  n_combinations_vec_extra = n_combinations_vec_extra[-length(n_combinations_vec_extra)]
+  n_combinations_array = n_combinations_vec_extra[!(n_combinations_vec_extra %in% n_combinations_array)]
 }
 length(n_combinations_array)
 
@@ -839,8 +845,8 @@ for (rho_idx in seq_along(rhos)) {
         file_name_update = paste(file_name, "pilot", strsplit(pilot_approach_regression, "_")[[1]][2],
                                   sub(".*::([^\\(]+)\\(.*", "\\1",  pilot_regression_model), sep = "_")
       }
-      save_file_name_rep = file.path(folder_save, paste0(file_name_update, "_estimated_repetition_", repetition, ".rds"))
-      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name_update, "_estimated_repetition_tmp", repetition, ".rds"))
+      save_file_name_rep = file.path(folder_save, paste0(file_name_update, "_estimated_repetition_", repetition, "_extra.rds"))
+      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name_update, "_estimated_repetition_tmp", repetition, "_extra.rds"))
 
       # Estimated Shapley -----------------------------------------------------------------------------------------------
       # Get the seed for the current repetition
