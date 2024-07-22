@@ -601,7 +601,7 @@ if (M == 17) {
                            80000, 90000, 100000, 110000, 120000, 130000, 131000)
 
   n_combinations_vec_extra <- sapply(seq(ceiling((M - 1)/2)), choose, n = M)
-  n_combinations_vec_extra[seq(floor((M - 1)/2))] = 2*n_combinations_vec_extra[seq(floor((mM- 1)/2))]
+  n_combinations_vec_extra[seq(floor((M - 1)/2))] = 2*n_combinations_vec_extra[seq(floor((M - 1)/2))]
   n_combinations_vec_extra = cumsum(n_combinations_vec_extra) + 2
   n_combinations_vec_extra = n_combinations_vec_extra[-length(n_combinations_vec_extra)]
   n_combinations_array = n_combinations_vec_extra[!(n_combinations_vec_extra %in% n_combinations_array)]
