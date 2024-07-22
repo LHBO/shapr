@@ -116,8 +116,9 @@ for (rho_idx in seq(length(rhos))) {
       save_file_name_rep = file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, ".rds"))
 
       # Load the rds file
+      message("Start reading...")
       current_repetition_results = readRDS(save_file_name_rep)
-
+      message("Done reading...")
 
       # Time to update the empirical weights for the approaches that used them and recompute the Shapley values and save the new values
 
@@ -150,8 +151,9 @@ for (rho_idx in seq(length(rhos))) {
           dt_new_weights_now = new_empirical_weights[n_combinations == n_comb_use]
 
           if (all(unique(X$shapley_weight)[-1] %in% dt_new_weights_now$empirical)) {
-            print(n_comb_now)
             next # Already have the correct values
+          } else {
+            print(n_comb_now)
           }
 
           X[, shapley_weight := as.numeric(shapley_weight)]
@@ -220,8 +222,9 @@ for (rho_idx in seq(length(rhos))) {
       }
 
       # Save the updated version of the results
+      message("Start saving...")
       saveRDS(current_repetition_results, save_file_name_rep)
-
+      message("Done saving...")
 
     }
 }
