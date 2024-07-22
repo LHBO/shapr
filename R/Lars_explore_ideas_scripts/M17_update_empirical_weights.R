@@ -206,7 +206,7 @@ for (rho_idx in seq(length(rhos))) {
                                            as.matrix(true_explanation$shapley_values),
                                            evaluation_criterion = "MAE")
 
-          message(c(n_comb_now, old_error, new_error, old_error - new_error))
+          print(c(n_comb_now, old_error, new_error, old_error - new_error))
 
 
 
