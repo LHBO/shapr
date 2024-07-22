@@ -56,7 +56,7 @@ rhos = c(0, 0.2, 0.5, 0.9)
 
 # Iterate over the rhos
 rho_idx = 2
-for (rho_idx in length(rhos)) {
+for (rho_idx in seq(length(rhos))) {
     rho = rhos[rho_idx]
 
     # Make file names
@@ -145,14 +145,14 @@ for (rho_idx in length(rhos)) {
           current_n_comb = current_repetition_results_now[[i]]
           X = copy(current_n_comb$only_save$X)
 
+          # Find the weights of the combination closest to n_combinations
+          n_comb_use = new_empirical_weights$n_combinations[which.min(abs(new_empirical_weights$n_combinations - n_comb_now))]
+          dt_new_weights_now = new_empirical_weights[n_combinations == n_comb_use]
+
           if (all(unique(X$shapley_weight)[-1] %in% dt_new_weights_now$empirical)) {
             print(n_comb_now)
             next # Already have the correct values
           }
-
-          # Find the weights of the combination closest to n_combinations
-          n_comb_use = new_empirical_weights$n_combinations[which.min(abs(new_empirical_weights$n_combinations - n_comb_now))]
-          dt_new_weights_now = new_empirical_weights[n_combinations == n_comb_use]
 
           X[, shapley_weight := as.numeric(shapley_weight)]
 
