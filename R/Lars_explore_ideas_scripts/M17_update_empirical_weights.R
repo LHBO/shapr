@@ -52,7 +52,7 @@ max_repetitions = 50
 new_empirical_weights = readRDS(file.path(folder_save, paste0("Samp_prop_and_gompertz_M_", M, ".rds")))
 
 # The values of rho that we have to fix
-rhos = c(0.5, 0.9)
+rhos = c(0.2, 0.9)
 
 # Iterate over the rhos
 rho_idx = 2
