@@ -102,7 +102,7 @@ for (rho_idx in seq(length(rhos))) {
 
     # Iterate over the repetitions
     repetition_idx = 1
-    relevant_repetitions = 7
+    #relevant_repetitions = 7
     for (repetition_idx in seq_along(relevant_repetitions)) {
 
       # Get the current repetition
@@ -214,9 +214,6 @@ for (rho_idx in seq(length(rhos))) {
 
           # Update the list
           current_repetition_results[[sampling_method]]$repetition_1[[i]] = current_n_comb
-
-
-
 
         }
       }
