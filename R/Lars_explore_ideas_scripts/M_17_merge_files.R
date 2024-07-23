@@ -42,7 +42,7 @@ max_repetitions = 50
 
 
 # The values of rho that we have to fix
-rhos = c(0.5, 0.9, 0.2, 0)
+rhos = c(0, 0.2, 0.5, 0.9)
 
 # Iterate over the rhos
 rho_idx = 2
@@ -86,7 +86,10 @@ for (rho_idx in seq(length(rhos))) {
 
   # Iterate over the repetitions
   repetition_idx = 1
-  relevant_repetitions = c(2, 7:9, 6)
+  if (rho == 0) relevant_repetitions = 1:9
+  if (rho == 0.2) relevant_repetitions = 1:9
+  if (rho == 0.5) relevant_repetitions = c(1, 6:9)
+  if (rho == 0.9) relevant_repetitions = c(2, 6:9)
   # Mangler 1, 10
   for (repetition_idx in seq_along(relevant_repetitions)) {
 
