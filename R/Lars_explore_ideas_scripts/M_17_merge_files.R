@@ -86,7 +86,7 @@ for (rho_idx in seq(length(rhos))) {
 
   # Iterate over the repetitions
   repetition_idx = 1
-  relevant_repetitions = 2:5
+  relevant_repetitions = 3:5
   for (repetition_idx in seq_along(relevant_repetitions)) {
 
     # Get the current repetition
