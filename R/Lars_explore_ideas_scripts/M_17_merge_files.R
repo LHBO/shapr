@@ -134,7 +134,8 @@ for (rho_idx in seq(length(rhos))) {
 
       list_new = c(list1, list2)
       print(names(list_new))
-      list_new = list_new[order(as.integer(unlist(regmatches(names(list_new), gregexpr("\\d+", names(list_new))))))]
+      new_order = order(as.integer(sapply(strsplit(names(list_new), "_(?!.*_)", perl=TRUE), "[[", 2)))
+      list_new = list_new[new_order]
       print(names(list_new))
       current_repetition_results[[sampling_method]]$repetition_1 = list_new
     }
