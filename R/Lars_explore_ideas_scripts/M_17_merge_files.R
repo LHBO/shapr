@@ -68,21 +68,21 @@ for (rho_idx in seq(length(rhos))) {
   save_file_name_setup = file.path(folder_save, paste0(file_name, "_model.rds"))
   save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
 
-  #  Find the relevant files in the folder and their repetition numbers/indices
-  files_in_dir = list.files(folder_save)
-  relevant_files_in_dir = files_in_dir[grepl(paste0(file_name_updated, "_estimated_repetition_"), files_in_dir)]
-  relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
-  if (length(relevant_files_in_dir) == 0) {
-    stop(paste0("Cannot find any files for the provided paremeters. ",
-                "Looking for file name structures '", file_name, "'."))
-  }
-  relevant_repetitions =
-    sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
-  relevant_repetitions = relevant_repetitions[seq(min(max_repetitions, length(relevant_repetitions)))]
-  if (!is.null(max_repetitions) && max_repetitions > length(relevant_repetitions)) {
-    message(paste0("The parameter `max_repetitions` (", max_repetitions, ") is larger than the number of available ",
-                   "repetitions (", length(relevant_repetitions), "). Use all available repetitions.\n"))
-  }
+  # #  Find the relevant files in the folder and their repetition numbers/indices
+  # files_in_dir = list.files(folder_save)
+  # relevant_files_in_dir = files_in_dir[grepl(paste0(file_name_updated, "_estimated_repetition_"), files_in_dir)]
+  # relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
+  # if (length(relevant_files_in_dir) == 0) {
+  #   stop(paste0("Cannot find any files for the provided paremeters. ",
+  #               "Looking for file name structures '", file_name, "'."))
+  # }
+  # relevant_repetitions =
+  #   sort(as.integer(sapply(strsplit(unlist(strsplit(relevant_files_in_dir, '.rds')), '\\_'), tail, 1)))
+  # relevant_repetitions = relevant_repetitions[seq(min(max_repetitions, length(relevant_repetitions)))]
+  # if (!is.null(max_repetitions) && max_repetitions > length(relevant_repetitions)) {
+  #   message(paste0("The parameter `max_repetitions` (", max_repetitions, ") is larger than the number of available ",
+  #                  "repetitions (", length(relevant_repetitions), "). Use all available repetitions.\n"))
+  # }
 
 
   # Iterate over the repetitions
@@ -126,6 +126,8 @@ for (rho_idx in seq(length(rhos))) {
 
     # Iterate over the sampling methods and merge the lists
     for (sampling_method in names(current_repetition_results)) {
+      if (sampling_method == "True_vs_Pilot_Order") next
+      print(sampling_method)
       list1 = current_repetition_results[[sampling_method]]$repetition_1
       list2 = current_repetition_results_extra[[sampling_method]]$repetition_1
 
@@ -133,10 +135,11 @@ for (rho_idx in seq(length(rhos))) {
       if (is.null(list2)) next
 
       list_new = c(list1, list2)
-      print(names(list_new))
+      #print(names(list_new))
       new_order = order(as.integer(sapply(strsplit(names(list_new), "_(?!.*_)", perl=TRUE), "[[", 2)))
       list_new = list_new[new_order]
-      print(names(list_new))
+      #print(names(list_new))
+      # print(sampling_method)
       current_repetition_results[[sampling_method]]$repetition_1 = list_new
     }
 
