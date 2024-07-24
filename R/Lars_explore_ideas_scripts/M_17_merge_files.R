@@ -134,6 +134,13 @@ for (rho_idx in seq(length(rhos))) {
       if (is.null(list1)) next
       if (is.null(list2)) next
 
+      list2[[1]]$only_save = list(X = list2[[1]]$internal$objects$X,
+                                  W = list2[[1]]$internal$objects$W,
+                                  S = list2[[1]]$internal$objects$S)
+      list2[[1]]$internal = NULL
+      list2[[1]]$pred_explain = NULL
+      list2[[1]]$timing = NULL
+
       list_new = c(list1, list2)
       #print(names(list_new))
       new_order = order(as.integer(sapply(strsplit(names(list_new), "_(?!.*_)", perl=TRUE), "[[", 2)))
