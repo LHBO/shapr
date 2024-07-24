@@ -88,7 +88,7 @@ for (rho_idx in seq(length(rhos))) {
   # Iterate over the repetitions
   repetition_idx = 1
   if (rho == 0) relevant_repetitions = 1:9
-  if (rho == 0.2) relevant_repetitions = 4:9 # Mangler 3
+  if (rho == 0.2) relevant_repetitions = 3:9 # Mangler 3
   if (rho == 0.5) relevant_repetitions = c(1, 6:9)
   if (rho == 0.9) relevant_repetitions = c(2, 6:9)
   # Mangler 1, 10
