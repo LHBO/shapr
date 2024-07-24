@@ -104,6 +104,7 @@ for (rho_idx in seq(length(rhos))) {
 
     # Create the save file name
     save_file_name_rep = file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, ".rds"))
+    save_file_name_rep_tmp = file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "tmp_new.rds"))
     save_file_name_rep_extra = file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_extra.rds"))
 
     # We only combine them if they exists
@@ -141,8 +142,9 @@ for (rho_idx in seq(length(rhos))) {
 
     # Save the updated version of the results
     message("Start saving...")
-    saveRDS(current_repetition_results, save_file_name_rep)
+    saveRDS(current_repetition_results, save_file_name_rep_tmp)
     message("Done saving...")
+    file.rename(save_file_name_rep_tmp, save_file_name_rep)
     file.remove(save_file_name_rep_extra)
   }
 
