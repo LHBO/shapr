@@ -42,7 +42,7 @@ max_repetitions = 50
 
 
 # The values of rho that we have to fix
-rhos = c(0.9, 0,5)# c(0.9, 0.2, 0.5)
+rhos = 0.5#c(0.9, 0.5)# c(0.9, 0.2, 0.5)
 # Ferdig 0
 
 # Iterate over the rhos
