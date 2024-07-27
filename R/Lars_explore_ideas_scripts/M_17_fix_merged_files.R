@@ -42,6 +42,7 @@ max_repetitions = 50
 
 
 # Extract which repetition we are to do
+args = commandArgs(trailingOnly = TRUE)
 relevant_repetitions = as.character(args[2])
 if (!(relevant_repetitions %in% c("NULL", "NA", "NaN"))) {
   if (grepl(",", relevant_repetitions)) {
@@ -69,6 +70,8 @@ if (!(rhos %in% c("NULL", "NA", "NaN"))) {
 } else {
   rhos = c(0, 0.2, 0.5, 0.9)
 }
+print(rhos)
+print(relevant_repetitions)
 
 
 # Iterate over the rhos
