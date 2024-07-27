@@ -179,7 +179,7 @@ for (rho_idx in seq(length(rhos))) {
     message("Start saving fixed results...")
     saveRDS(current_repetition_results, save_file_name_rep_tmp)
     message("Done saving fixed results...")
-    #file.rename(save_file_name_rep_tmp, save_file_name_rep)
+    file.rename(save_file_name_rep_tmp, save_file_name_rep)
   }
 }
 
