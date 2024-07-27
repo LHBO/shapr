@@ -136,6 +136,7 @@ for (rho_idx in seq(length(rhos))) {
 
     # We only combine them if they exists
     if (!file.exists(save_file_name_rep)) next
+    print(file.info(save_file_name_rep)$size)
     if (file.info(save_file_name_rep)$size > 15000000000) {
       message("Skip as the file size is to small to have been merged incorrectly.")
       next
