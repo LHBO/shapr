@@ -40,10 +40,35 @@ betas = betas[seq(M+1)]
 use_pilot_estimates_regression = FALSE
 max_repetitions = 50
 
+# Extract which repetition we are to do
+relevant_repetitions = as.character(args[2])
+if (!(relevant_repetitions %in% c("NULL", "NA", "NaN"))) {
+  if (grepl(",", relevant_repetitions)) {
+    relevant_repetitions = as.numeric(unlist(strsplit(relevant_repetitions, ",")))
+  } else {
+    relevant_repetitions = unlist(strsplit(relevant_repetitions, ":"))
+    if (length(relevant_repetitions) > 1) {
+      relevant_repetitions = seq(as.numeric(relevant_repetitions[1]), as.numeric(relevant_repetitions[2]))
+    } else {
+      relevant_repetitions = as.numeric(relevant_repetitions)
+    }
+  }
+} else {
+  relevant_repetitions = 1:10
+}
 
-# The values of rho that we have to fix
-rhos = c(0.9)#0.5#c(0.9, 0.5)# c(0.9, 0.2, 0.5)
-# Ferdig 0
+# Extract the correlation level
+rhos = unlist(strsplit(args[1], ","))
+if (!(rhos %in% c("NULL", "NA", "NaN"))) {
+  if (length(rhos) > 1) {
+    rhos = unname(sapply(rhos, function(i) as.numeric(i)))
+  } else {
+    rhos = as.numeric(rhos)
+  }
+} else {
+  rhos = c(0, 0.2, 0.5, 0.9)
+}
+
 
 # Iterate over the rhos
 rho_idx = 2
@@ -87,10 +112,10 @@ for (rho_idx in seq(length(rhos))) {
 
   # Iterate over the repetitions
   repetition_idx = 1
-  if (rho == 0) relevant_repetitions = 1:9
-  if (rho == 0.2) relevant_repetitions = 3:9 # Mangler 3
-  if (rho == 0.5) relevant_repetitions = c(7,8,9,10) #c(1, 6:9)
-  if (rho == 0.9) relevant_repetitions = c(2) #c(2, 6:9)
+  # if (rho == 0) relevant_repetitions = 1:9
+  # if (rho == 0.2) relevant_repetitions = 3:9 # Mangler 3
+  # if (rho == 0.5) relevant_repetitions = c(7,8,9,10) #c(1, 6:9)
+  # if (rho == 0.9) relevant_repetitions = c(2) #c(2, 6:9)
   #relevant_repetitions = 10
   # Mangler 1, 10
   for (repetition_idx in seq_along(relevant_repetitions)) {
