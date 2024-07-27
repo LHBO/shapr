@@ -172,7 +172,9 @@ for (rho_idx in seq(length(rhos))) {
 
 
       new_order = order(as.integer(sapply(strsplit(names(list), "_(?!.*_)", perl=TRUE), "[[", 2)))
-      current_repetition_results[[sampling_method]]$repetition_1 =list[new_order]
+      list_new = list[new_order]
+      print(names(list_new))
+      current_repetition_results[[sampling_method]]$repetition_1 = list_new
     }
 
 
