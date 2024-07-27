@@ -171,8 +171,6 @@ for (rho_idx in seq(length(rhos))) {
           current_combination_idx_in_all_combinations = as.numeric(S_all_list[apply(S_sampled, 1, paste, collapse = "")])
 
 
-
-
           # Use the pre-computed v(S) data provided by the user
           processed_vS_list = true_explanation$internal$output
 
@@ -197,7 +195,6 @@ for (rho_idx in seq(length(rhos))) {
           current_n_comb$only_save$W = W_updated
           current_n_comb$shapley_values = dt_kshap
 
-
           # Look at the errors
           old_error = compute_MAE_MSE_fast(as.matrix(current_repetition_results[[sampling_method]]$repetition_1[[i]]$shapley_values),
                                            as.matrix(true_explanation$shapley_values),
@@ -213,7 +210,7 @@ for (rho_idx in seq(length(rhos))) {
 
 
           # Update the list
-          current_repetition_results[[sampling_method]]$repetition_1[[i]] = current_n_combn
+          current_repetition_results[[sampling_method]]$repetition_1[[i]] = current_n_comb
 
         }
       }
@@ -228,6 +225,45 @@ for (rho_idx in seq(length(rhos))) {
 }
 
 
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_1e+05"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_1000"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_5000"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_6428"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_10000"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_10000"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_80000"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_82452"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical$repetition_1[["n_combinations_90000"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
+#
+# compute_MAE_MSE_fast(as.matrix(tmp2$largest_weights_random_new_weights_empirical_$repetition_1[["n_combinations_10000"]]$shapley_values),
+#                      as.matrix(true$shapley_values),
+#                      evaluation_criterion = "MAE")
 
 
 # GARBADGE
