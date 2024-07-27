@@ -52,7 +52,7 @@ max_repetitions = 50
 new_empirical_weights = readRDS(file.path(folder_save, paste0("Samp_prop_and_gompertz_M_", M, ".rds")))
 
 # The values of rho that we have to fix
-rhos = c(0.5, 0.9, 0.2, 0)
+rhos = c(0.2, 0.5, 0.9, 0)
 
 # Iterate over the rhos
 rho_idx = 2
@@ -115,6 +115,7 @@ for (rho_idx in seq(length(rhos))) {
 
       # Create the save file name
       save_file_name_rep = file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, ".rds"))
+      save_file_name_rep_tmp = file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_tmp_new.rds"))
 
       # Load the rds file
       message("Start reading...")
@@ -206,20 +207,22 @@ for (rho_idx in seq(length(rhos))) {
                                            as.matrix(true_explanation$shapley_values),
                                            evaluation_criterion = "MAE")
 
-          print(c(n_comb_now, old_error, new_error, old_error - new_error))
+          message(paste0("n_combinations = ", n_comb_now, ", old_error = ", old_error, ", new_error = ",
+                         new_error, ", difference = ", old_error - new_error, "."))
 
 
 
           # Update the list
-          current_repetition_results[[sampling_method]]$repetition_1[[i]] = current_n_comb
+          current_repetition_results[[sampling_method]]$repetition_1[[i]] = current_n_combn
 
         }
       }
 
       # Save the updated version of the results
       message("Start saving...")
-      saveRDS(current_repetition_results, save_file_name_rep)
+      saveRDS(current_repetition_results, save_file_name_rep_tmp)
       message("Done saving...")
+      file.rename(save_file_name_rep_tmp, save_file_name_rep)
 
     }
 }
