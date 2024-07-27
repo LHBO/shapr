@@ -155,7 +155,7 @@ for (rho_idx in seq(length(rhos))) {
       list = current_repetition_results[[sampling_method]]$repetition_1
       list = list[!is.na(names(list))] # Remove the NA
 
-      if (is.null(list1)) next
+      if (is.null(list)) next
 
 
       # Remove the extra stuff for
