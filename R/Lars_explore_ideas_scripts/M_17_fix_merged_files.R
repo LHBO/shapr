@@ -148,10 +148,6 @@ for (rho_idx in seq(length(rhos))) {
     message("Done reading the incorrectly merged file...")
 
 
-    if (!isTRUE(all.equal(names(current_repetition_results), names(current_repetition_results_extra)))) {
-      print(all.equal(names(current_repetition_results), names(current_repetition_results_extra)))
-    }
-
     # Iterate over the sampling methods and merge the lists
     for (sampling_method in names(current_repetition_results)) {
       if (sampling_method == "True_vs_Pilot_Order") next
@@ -174,6 +170,7 @@ for (rho_idx in seq(length(rhos))) {
       new_order = order(as.integer(sapply(strsplit(names(list), "_(?!.*_)", perl=TRUE), "[[", 2)))
       list_new = list[new_order]
       print(names(list_new))
+      print(sampling_method)
       current_repetition_results[[sampling_method]]$repetition_1 = list_new
     }
 
