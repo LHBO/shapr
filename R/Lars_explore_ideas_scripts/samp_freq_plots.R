@@ -2,7 +2,7 @@ library(data.table)
 library(ggplot2)
 library(shapr)
 
-saveRDS(c(1,2,3), file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_test_res.rds")))
+#saveRDS(c(1,2,3), file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_test_res.rds")))
 
 
 
@@ -295,6 +295,28 @@ Repeated_sampling_coalitions = function(m, n_combinations, B = 10, weight_zero_m
 
 }
 
+# Get the name of the computer we are working on
+hostname = R.utils::System$getHostname()
+cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
+
+# Check if we are working on an UiO computer or not and define the correct folder based on system
+if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
+  # Where the files are stored
+  folder = "/Users/larsolsen/PhD/Paper3/shapr"
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  UiO = FALSE
+} else if (grepl("hpc.uio.no", hostname)) {
+  # TBA
+  folder = ""
+  UiO = TRUE
+} else if (grepl("uio.no", hostname)) {
+  folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
+  UiO = TRUE
+} else {
+  stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
+}
+
 # module load R/4.2.1-foss-2022a
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 # Rscript samp_freq_plots.R 15
@@ -325,18 +347,26 @@ for (m in M_vec) {
   } else if (m <= 12) {
     n_combinations_vec = seq(4, 2^m, 8)
   } else {
-    increase = 10*(((floor(0.9*2^m) - 10) / 1000) %/% 10)
+    increase = 100*(((floor(0.9*2^m) - 10) / 1000) %/% 10)
     if (increase == 0) increase = 10
-    n_combinations_vec = seq(10, floor(0.9*2^m), increase)
+    n_combinations_vec = seq(10, floor(0.95*2^m), increase)
   }
-  n_combinations_vec = unique(sort(c(seq(4, 250, 2), n_combinations_vec)))
-  n_combinations_vec = n_combinations_vec[n_combinations_vec < 2^m]
 
   if (m == 17) {
     n_combinations_vec = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
                              80000, 90000, 100000, 110000, 120000, 130000, 131000)
-    n_combinations_vec = n_combinations_vec[n_combinations_vec %% 2 == 0]
   }
+
+  n_combinations_vec_extra <- sapply(seq(ceiling((m - 1)/2)), choose, n = m)
+  n_combinations_vec_extra[seq(floor((m - 1)/2))] = 2*n_combinations_vec_extra[seq(floor((m - 1)/2))]
+  n_combinations_vec_extra = cumsum(n_combinations_vec_extra ) + 2
+  n_combinations_vec_extra = n_combinations_vec_extra[-length(n_combinations_vec_extra)]
+  n_combinations_vec = c(n_combinations_vec, n_combinations_vec_extra)
+
+  n_combinations_vec = unique(sort(c(seq(4, 250, 2), n_combinations_vec)))
+  n_combinations_vec = n_combinations_vec[n_combinations_vec < 2^m]
+  n_combinations_vec = n_combinations_vec[n_combinations_vec %% 2 == 0]
+
 
   # # Set up the parallel plan
   # plan(multisession, workers = 4)
@@ -353,7 +383,7 @@ for (m in M_vec) {
     n_combinations = n_combinations_vec[n_combinations_idx]
     tmp[[n_combinations_idx]] = Repeated_sampling_coalitions(m, n_combinations, B = B)
     saveRDS(list(n_combinations = n_combinations, tmp = tmp),
-            file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res_tmp.rds")))
+            file.path(folder_save, paste0("Samp_prop_M_", m, "_res_tmp_5.rds")))
   }
 
   # tmp = lapply(n_combinations_vec, function(n_combinations) {
@@ -364,7 +394,7 @@ for (m in M_vec) {
   res_list[[m]][, n_combinations := as.numeric(n_combinations)]
   res_list[[m]][, n_features := as.numeric(n_features)]
   res_list[[m]][, n_features := as.factor(n_features)]
-  saveRDS(res_list[[m]], file.path("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location", paste0("Samp_prop_M_", m, "_res_2.rds")))
+  saveRDS(res_list[[m]], file.path(folder_save, paste0("Samp_prop_M_", m, "_res_5.rds")))
 
   dt_avg = res_list[[m]]
   tmp = shapr:::shapley_weights(m = m,
@@ -501,7 +531,7 @@ if (FALSE) {
 
   # Load the data
   {
-    M_seq = c(10, 17)
+    M_seq = c(10, 11, 17)
 
     dt_res_list = lapply(M_seq, function (m) {
       dt_full = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res.rds"))
@@ -532,30 +562,47 @@ if (FALSE) {
 
 
   ## MAKE THE PLOT (change if we want ribbons and log-scale)
-  fig_samp = ggplot(data = dt_res, aes(x = n_combinations, y = mean)) +
-    geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features),
-                alpha = 0.4, linewidth = 0.1) + ylim(c(0, 0.5)) +
+  fig_samp = ggplot(data = dt_res[n_combinations > 2], aes(x = n_combinations, y = mean)) +
+    #geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features), alpha = 0.4, linewidth = 0.1) +
+    #ylim(c(0, 0.5)) +
     geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 1) +
-    facet_wrap("M ~ .", ncol = 2, scales = "free_x") +
+    facet_wrap("M ~ .", ncol = 3, scales = "free_x") +
     #facet_wrap("M ~ .", ncol = 2) +
-    geom_point(tmp_list,
-               mapping = aes(x = n_combinations, y = weight, colour = col),
-               size = 2) +
-    expand_limits(y = 0) +
-    #     scale_y_log10(
-    #   breaks = scales::trans_breaks("log10", function(x) 10^x),
-    #   labels = scales::trans_format("log10", scales::math_format(10^.x))
-    # )
+    geom_point(tmp_list, mapping = aes(x = n_combinations, y = weight, colour = col), size = 2) +
+    #expand_limits(y = 0) +
+    #scale_x_log10() +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x), labels = scales::trans_format("log10", scales::math_format(10^.x))) +
     guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
            color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
     labs(x = expression(N[S]), y = "Normalized Shapley kernel weight/sampling frequency") +
     theme(legend.position="bottom", legend.box = "horizontal") +
     theme(strip.text = element_text(size = rel(1.5)),
-          legend.title = element_text(size = rel(1.5)),
-          legend.text = element_text(size = rel(1.5)),
-          axis.title = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.4)),
+          legend.text = element_text(size = rel(1.4)),
+          axis.title.x = element_text(size = rel(1.4)),
+          axis.title.y = element_text(size = rel(1.4)),
           axis.text = element_text(size = rel(1.4)))
   fig_samp
+  fig_samp + scale_x_continuous(labels = function(x) format(x, scientific = FALSE)) + scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+
+
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_freq_M_10_11_17_V1.png",
+         plot = fig_samp,
+         width = 14.2,
+         height = 7,
+         scale = 0.85,
+         dpi = 350)
+
+  # Create the xtable object
+  library(xtable)
+  xtable_dt <- xtable::xtable(dcast(tmp_list, M + n_combinations ~ col, value.var = "weight"),
+                      caption = "Wide Format Data Table", label = "tab:wide_table",
+                      digits = 6)
+
+  # Print the LaTeX code for the table
+  print(xtable_dt, type = "latex", include.rownames = FALSE, math.style.exponents = TRUE)
+
 
 
   ## MAKE THE PLOT (change if we want ribbons and log-scale)
