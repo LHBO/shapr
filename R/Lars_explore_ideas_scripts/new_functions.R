@@ -1074,6 +1074,8 @@ pilot_estimates_coal_order = function(explanation,
                                       plot_figures = FALSE,
                                       always_empty_and_grand_coalitions_first = TRUE) {
 
+  # explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_true.rds")
+
   # Check for valid strategies
   strategies = match.arg(strategies, several.ok = TRUE)
 
@@ -1179,36 +1181,36 @@ pilot_estimates_coal_order = function(explanation,
     tmp = W[-1, alternating_indices]
     tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
     standard_weight = colMeans(abs(tmp2))
-
-    # {
-    #   tmp = W[4, alternating_indices]
-    #   par(mfrow = c(2,2))
-    #   plot(tmp)
-    #   plot(abs(tmp))
-    #   tmp2 = tmp[seq(1, 2^M - 1, 2)] - tmp[seq(2, 2^M, 2)]
-    #   plot(tmp2)
-    #   plot(abs(tmp2))
-    #   par(mfrow = c(1,1))
-    # }
-    # {
-    #   par(mfrow = c(2,2))
-    #   tmp = W[-1, alternating_indices]
-    #   matplot(t(tmp), type = "b")
-    #   matplot(t(abs(tmp)), type = "b")
-    #   tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
-    #   matplot(t(tmp2))
-    #   matplot(t(abs(tmp2)))
-    #   par(mfrow = c(1,1))
-    # }
-    # {
-    #   par(mfrow = c(2,2))
-    #   tmp = W[-1, alternating_indices]
-    #   tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
-    #   standard_weight = colMeans(abs(tmp2))
-    #   plot(colMeans(abs(tmp2)))
-    #   plot(colMeans(abs(W[-1, alternating_indices])))
-    #   plot(colMeans(abs(W[-1,])))
-    # }
+#
+#     {
+#       tmp = W[4, alternating_indices]
+#       par(mfrow = c(2,2))
+#       plot(tmp)
+#       plot(abs(tmp))
+#       tmp2 = tmp[seq(1, 2^M - 1, 2)] - tmp[seq(2, 2^M, 2)]
+#       plot(tmp2)
+#       plot(abs(tmp2))
+#       par(mfrow = c(1,1))
+#     }
+#     {
+#       par(mfrow = c(2,2))
+#       tmp = W[-1, alternating_indices]
+#       matplot(t(tmp), type = "b")
+#       matplot(t(abs(tmp)), type = "b")
+#       tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
+#       matplot(t(tmp2))
+#       matplot(t(abs(tmp2)))
+#       par(mfrow = c(1,1))
+#     }
+#     {
+#       par(mfrow = c(2,2))
+#       tmp = W[-1, alternating_indices]
+#       tmp2 = tmp[,seq(1, 2^M - 1, 2)] - tmp[,seq(2, 2^M, 2)]
+#       standard_weight = colMeans(abs(tmp2))
+#       plot(colMeans(abs(tmp2)))
+#       plot(colMeans(abs(W[-1, alternating_indices])))
+#       plot(colMeans(abs(W[-1,])))
+#     }
 
     # Change the order of the coalitions such that we have S (odd indices) and then S_bar (even indices),
     # for all possible coalitions. Note that we add 1 as we exclude the phi0.
@@ -1275,9 +1277,25 @@ pilot_estimates_coal_order = function(explanation,
                  id_combination_Sbar = seq(2^M, 2^(M-1) + 1)),
          by = id_feature]
 
-    # ggplot2::ggplot(data = R_dt, ggplot2::aes(x = id_combination_diff, y = mean_abs_Rij)) +
+
+    # library(latex2exp)
+    # tmp_fig = ggplot2::ggplot(data = R_dt, ggplot2::aes(y = id_combination_diff, x = mean_abs_Rij)) +
     #   ggplot2::geom_bar(position = "dodge", stat = "identity") +
-    #   ggplot2::facet_grid(rows = ggplot2::vars(id_feature))
+    #   ggplot2::facet_grid(cols = ggplot2::vars(id_feature), labeller = label_bquote(cols = X[.(id_feature)])) +
+    #   ggplot2::labs(y = "Coalition difference index", x = TeX(r"( $\frac{1}{N_{explain}}\sum_{i = 1}^{N_{explain}} |T^{\[i\]}_{j,k}|$ )")) +
+    #   ggplot2::scale_y_discrete(limits = rev, label = parse(text = paste("k[", seq(16,1), "]", sep = ""))) +
+    #   ggplot2::theme(strip.text = ggplot2::element_text(size = ggplot2::rel(1.25)),
+    #         legend.title = ggplot2::element_text(size = ggplot2::rel(1.4)),
+    #         legend.text = ggplot2::element_text(size = ggplot2::rel(1.4)),
+    #         axis.title = ggplot2::element_text(size = ggplot2::rel(1.25)),
+    #         axis.text = ggplot2::element_text(size = ggplot2::rel(1.15)))
+    # ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_pilot.png",
+    #        plot = tmp_fig,
+    #        width = 14.2,
+    #        height = 4.5,
+    #        scale = 0.85,
+    #        dpi = 350)
+
 
     # We aggregate the `mean_Rij` and `mean_abs_Rij` over the features, so we get a single
     # mean for each paired coalition. This is thus a value average over all features and test observations.
@@ -1302,6 +1320,34 @@ pilot_estimates_coal_order = function(explanation,
     # Merge together to only add the "id_combination_S" and "id_combination_Sbar" columns to the dt.
     R_dt_aggregated = R_dt_aggregated[unique(R_dt[,c("id_combination_diff", "id_combination_S", "id_combination_Sbar")]),
                                       on = "id_combination_diff"]
+
+    # {
+    # dt_standard_pilot = data.table(id_combination_diff = rep(R_dt_aggregated$id_combination_diff),
+    #                                weights = c(standard_weight / sum(standard_weight), mean_abs_R / sum(mean_abs_R)),
+    #                                version = rep(c("Standard", "Pilot"), each = 16))
+    # tmp_fig2 = ggplot2::ggplot(dt_standard_pilot, ggplot2::aes(y = id_combination_diff, x = weights, col = version, fill = version)) +
+    #   ggplot2::geom_bar(position = "dodge", stat = "identity", width=0.75) +
+    #   ggplot2::scale_y_discrete(limits = rev, label = parse(text = paste("k[", seq(16,1), "]", sep = ""))) +
+    #   ggplot2::labs(color = "Version", fill = "Version", y = "Coalition difference index",
+    #                 x = TeX(r"( $\frac{1}{N_{explain}}\sum_{i = 1}^{N_{explain}} \frac{1}{N_M}\sum_{i = 1}^{M} |T^{\[i\]}_{j,k}|$ )")) +
+    #   ggplot2::theme(legend.position = c(0.79, 0.1923)) +
+    #   ggplot2::theme(strip.text = ggplot2::element_text(size = ggplot2::rel(1.25)),
+    #                  legend.title = ggplot2::element_text(size = ggplot2::rel(1.0)),
+    #                  legend.text = ggplot2::element_text(size = ggplot2::rel(1.0)),
+    #                  axis.title = ggplot2::element_text(size = ggplot2::rel(1.25)),
+    #                  axis.text = ggplot2::element_text(size = ggplot2::rel(1.15))) +
+    #   ggplot2::guides(color = ggplot2::guide_legend(reverse = TRUE), fill = ggplot2::guide_legend(reverse = TRUE)) +
+    #   ggplot2::scale_fill_manual(values=c("grey35", "#999999")) +
+    #   ggplot2::scale_color_manual(values=c("grey35", "#999999"))
+    # fig_comb = gridExtra::grid.arrange(tmp_fig, tmp_fig2, ncol = 2, widths = c(2,1))
+    #
+    #  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_pilot_2.png",
+    #         plot = fig_comb,
+    #         width = 14.2,
+    #         height = 4.5,
+    #         scale = 0.85,
+    #         dpi = 350)
+    # }
 
     # {
     #   require(gridExtra)
