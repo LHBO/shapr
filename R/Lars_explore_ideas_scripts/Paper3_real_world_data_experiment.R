@@ -502,6 +502,8 @@ for (sampling_method in sampling_methods) {
           file.path("/Users/larsolsen/PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_", sampling_method_full_name, ".rds")))
 }
 saveRDS(res_dt, file.path("/Users/larsolsen/PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_only_res_dt", ".rds")))
+
+
 res_dt = readRDS(file.path("/Users/larsolsen/PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_only_res_dt", ".rds")))
 res_dt_v2 = copy(res_dt)
 res_dt_v2[, avg_MAE := mean(MAE), by = list(Strategy, n_combinations)]
@@ -691,7 +693,9 @@ index_explicands = order(sep_rf$pred_explain)[seq(1, sep_rf$internal$parameters$
 
 index_explicands
 explanation_list2
-explanation_list3 = lapply(explanation_list2, function(x) {
+explanation_list3 = lapply(seq(length(explanation_list2)), function(i) {
+  print(i)
+  x = explanation_list2[[i]]
   xx = copy(x)
   xx
   xx$shapley_values = xx$shapley_values[index_explicands,]

@@ -282,6 +282,7 @@ saveRDS(res_dt, file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0
 
 
 
+# Plots -----------------------------------------------------------------------------------------------------------
 if (FALSE) {
 
 
@@ -312,12 +313,12 @@ if (FALSE) {
                                  ),
                                  labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                             "Paired Empirical", "Paired Gompertz",
-                                            "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
-                                            "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
-                                            "Largest", "Largest Coalition",
-                                            "Largest Order Empirical", "Largest Order Coalition Empirical",
-                                            "Paired Largest", "Paired Largest Empirical",
-                                            "MAD", "MAD Empirical"
+                                            "Pilot Average", "Pilot Empirical", "Pilot Gompertz",
+                                            "Pilot Largest Kernel",  "Pilot Largest Empirical", "Pilot Order Gompertz",
+                                            "Paired Largest Order Kernel", "Largest Coalition",
+                                            "Paired Largest Order Empirical", "Paired Largest Order Coalition Empirical",
+                                            "Paired Largest Kernel", "Paired Largest Empirical",
+                                            "MAD Largest Kernel", "MAD Largest Empirical"
                                  ),
                                  ordered = FALSE)]
 
@@ -344,7 +345,7 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4)))
 
   fig_wine
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_V6.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_V7.png",
          plot = fig_wine,
          width = 14.2,
          height = 7,
@@ -354,39 +355,64 @@ if (FALSE) {
 
 
 
-  samp = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical",
+  samps = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical",
            "MAD", "MAD Empirical")
-  samp = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical")
+  samps = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical")
+  samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Paired Largest Order Empirical", "Paired Largest Order Kernel", "MAD Largest Empirical", "MAD Largest Kernel")
+  samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Pilot Empirical", "Pilot Average", "Pilot Largest Empirical", "Pilot Largest Kernel")
 
-  fig_wine_2 = ggplot(data = res_dt_v2[Strategy %in% samp], aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
+
+  dt_all2 = res_dt_v2[Strategy %in% samps]
+  dt_all2 = dt_all2[, Strategy := factor(Strategy, levels = samps, ordered = TRUE)]
+  fig_wine_2 = ggplot(data = dt_all2[Strategy %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
+    #theme_light() +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.1) +
+    #geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0) +
     geom_line(linewidth = 1) +
-    scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x), labels = scales::trans_format("log10", scales::math_format(10^.x))) +
+    scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
+                  labels = scales::trans_format("log10", scales::math_format(10^.x)),
+                  limits = c(10^(-8.3), 10^(-0.25))) +
+    # scale_x_log10(
+    #   breaks = c(10, 20, 50, 100, 200, 500, 1000, 2000)
+    #   #breaks = scales::trans_breaks("log10", function(x) 10^x),
+    #   #labels = scales::label_number()
+    # ) +
     theme(legend.position = 'bottom') +
     guides(col = guide_legend(nrow = 2)) +
     labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
-    theme(strip.text = element_text(size = rel(1.5)),
-          legend.title = element_text(size = rel(1.39)),
-          legend.text = element_text(size = rel(1.39)),
-          axis.title = element_text(size = rel(1.5)),
-          axis.text = element_text(size = rel(1.4)))
-
+    # theme(strip.text = element_text(size = rel(1.5)),
+    #       legend.title = element_text(size = rel(1.39)),
+    #       legend.text = element_text(size = rel(1.39)),
+    #       axis.title = element_text(size = rel(1.5)),
+    #       axis.text = element_text(size = rel(1.4))) +
+    theme(strip.text = element_text(size = rel(1.6)),
+          legend.title = element_text(size = rel(1.37)),
+          legend.text = element_text(size = rel(1.37)),
+          axis.title = element_text(size = rel(1.6)),
+          axis.text = element_text(size = rel(1.5))) +
+    scale_color_hue() + #added as we want ordered
+    scale_fill_hue()
   fig_wine_2
 
-
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_Appendix_Pilot.png"),
+         plot = fig_wine_2,
+         width = 14.2,
+         height = 9.98,
+         scale = 0.85,
+         dpi = 350)
 
 
 
 
   fig_wine_3 = ggplot(data = data.table(pred = sep_rf$pred_explain), aes(x = pred)) +
+    #theme_light() +
     geom_histogram(color="black", fill = "grey") +
-    geom_vline(aes(xintercept = p0), color = "red", linewidth = 1, linetype = "dashed") +
+    geom_vline(aes(xintercept = p0), color = "black", linewidth = 1, linetype = "dashed") +
     annotate('text', x = 6.15, y = 12.72,
              label = "phi[0]==5.65",
              parse = TRUE,
              size = 8,
-             color = "red") +
+             color = "black") +
     labs(color = "Strategy:", fill = "Strategy:", x = expression(f(bold(x)*"*")), y = "Count") +
     theme(strip.text = element_text(size = rel(1.5)),
           legend.title = element_text(size = rel(1.5)),
@@ -397,13 +423,35 @@ if (FALSE) {
 
 
   fig_wine_4 = gridExtra::grid.arrange(fig_wine_2, fig_wine_3, ncol = 2, widths = c(6,4))
+  fig_wine_4
 
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_and_Hist_V1.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_MAE_and_Hist_V10.png",
          plot = fig_wine_4,
          width = 14.2,
          height = 7,
          scale = 0.85,
          dpi = 350)
+
+  # Rscript Paper3_real_world_data_experiment_UIO.R 1
+  # Rscript Paper3_real_world_data_experiment_UIO.R 2
+  # Rscript Paper3_real_world_data_experiment_UIO.R 3
+  # Rscript Paper3_real_world_data_experiment_UIO.R 4
+  # Rscript Paper3_real_world_data_experiment_UIO.R 5
+  # Rscript Paper3_real_world_data_experiment_UIO.R 6
+  # Rscript Paper3_real_world_data_experiment_UIO.R 7
+  # Rscript Paper3_real_world_data_experiment_UIO.R 8
+  # Rscript Paper3_real_world_data_experiment_UIO.R 9
+  # Rscript Paper3_real_world_data_experiment_UIO.R 10
+  # Rscript Paper3_real_world_data_experiment_UIO.R 11
+  # Rscript Paper3_real_world_data_experiment_UIO.R 12
+  # Rscript Paper3_real_world_data_experiment_UIO.R 13
+  # Rscript Paper3_real_world_data_experiment_UIO.R 14
+  # Rscript Paper3_real_world_data_experiment_UIO.R 15
+  # Rscript Paper3_real_world_data_experiment_UIO.R 16
+  # Rscript Paper3_real_world_data_experiment_UIO.R 17
+  # Rscript Paper3_real_world_data_experiment_UIO.R 18
+  # Rscript Paper3_real_world_data_experiment_UIO.R 19
+  # Rscript Paper3_real_world_data_experiment_UIO.R 20
 
 
 

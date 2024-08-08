@@ -8,11 +8,12 @@ library(data.table)
 explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.7_betas_2_10_0.25_-3_-1_1.5_true.rds")
 explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_7_n_train_1000_n_test_250_rho_0.5_betas_0_1_1_1_1_1_1_1_true.rds")
 explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_VS_kernel_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.2_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_true.rds")
-explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_8_n_train_1000_n_test_1000_rho_0.5_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_true.rds")
 explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_8_n_train_1000_n_test_1000_rho_0_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_true.rds")
+explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_8_n_train_1000_n_test_1000_rho_0.5_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_true.rds")
 
-explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_8_n_train_1000_n_test_1000_rho_0.5_betas_1_1_1_1_1_1_1_1_1_true.rds")
 explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_8_n_train_1000_n_test_1000_rho_0_betas_1_1_1_1_1_1_1_1_1_true.rds")
+explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_8_n_train_1000_n_test_1000_rho_0.5_betas_1_1_1_1_1_1_1_1_1_true.rds")
+explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_8_n_train_1000_n_test_1000_rho_0.9_betas_1_1_1_1_1_1_1_1_1_true.rds")
 explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_8_n_train_1000_n_test_1000_rho_0.5_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_true.rds")
 explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_8_n_train_1000_n_test_1000_rho_0_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_true.rds")
 
@@ -54,7 +55,12 @@ explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_E
 
   # Plot the weights
   matplot(seq(2, length(MAD_weights) + 1),
-          cbind(shapley_kernel_weight, MAD_weights, MAD_weights_paired, MAD_scaled_weights, MAD_scaled_weights_paired),
+          cbind(shapley_kernel_weight,
+                MAD_weights,
+                MAD_weights_paired,
+                MAD_scaled_weights,
+                MAD_scaled_weights_paired
+                ),
           pch = 16,
           xlab = "Coalition index", ylab = "Normalized weight",
           log = "y")
@@ -78,8 +84,14 @@ explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_E
 }
 
 {
+
   plot(seq(2, length(MAD_weights) + 1), MAD)
   abline(v = n_cumsum, lty = 2, col = "gray50")
+
+
+  plot(seq(2, length(MAD_weights) + 1), MAD)
+  abline(v = c(1.5, 1.5 + cumsum(sapply(1:(m-1), choose, n = m))), lty = 2, col = "red")
+
 
 
   m = 8
@@ -118,6 +130,8 @@ explanation = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_E
     res_order_two = c(res_order_two, rbind(res_order[[ceiling((m - 1)/2)]]))
   }
   res_order_two = c(1, 2^m, res_order_two + 1) # add one due to empty set
+
+  # explanation$internal$objects$S[res_order[[4]] + 1,]
 
 
 

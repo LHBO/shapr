@@ -428,11 +428,31 @@ if (FALSE) {
 
   # Load the data
   {
-    M_seq = seq(6,13)
+    M_seq = c(seq(6,15), 17)
+    M_seq = 5:20
 
     dt_res_list = lapply(M_seq, function (m) {
       dt_full = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res.rds"))
       dt_full = dt_full[n_features %in% seq(1, ceiling((m-1)/2))]
+
+      # ADD THE shapley kernel weights
+      tmp = shapr:::shapley_weights(m = m,
+                                    N = sapply(seq(m - 1), choose, n = m),
+                                    n_components = seq(m - 1))
+      tmp = tmp/sum(tmp)
+      tmp = tmp[seq(1, ceiling((m-1)/2))]
+      dt_full = rbind(dt_full,
+                      data.table(n_combinations = 2^m,
+                                 n_features = factor(seq(1, ceiling((m-1)/2))),
+                                 mean = tmp,
+                                 sd = NaN,
+                                 lower = NaN,
+                                 median = tmp,
+                                 upper = NaN
+                      )
+      )
+
+
       return(dt_full)
     })
     names(dt_res_list) = M_seq
@@ -458,21 +478,27 @@ if (FALSE) {
   }
 
 
+  library(ggplot2)
   ## MAKE THE PLOT (change if we want ribbons and log-scale)
-  fig_samp = ggplot(data = dt_res, aes(x = n_combinations, y = mean)) +
-    geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features),
-                alpha = 0.4, linewidth = 0.1) + ylim(c(0, 0.5)) +
+  fig_samp = ggplot(data = dt_res[n_combinations > 2], aes(x = n_combinations, y = mean)) +
+    #geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features), alpha = 0.4, linewidth = 0.1) +
     geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 1) +
-    facet_wrap("M ~ .", ncol = 2, scales = "free_x") +
+    facet_wrap("M ~ .", ncol = 2, scales = "free") +
     #facet_wrap("M ~ .", ncol = 2) +
     geom_point(tmp_list,
                mapping = aes(x = n_combinations, y = weight, colour = col),
                size = 2) +
-    expand_limits(y = 0) +
-    #     scale_y_log10(
+    # ylim(c(0, 0.5)) +
+    #expand_limits(y = 0) +
+    # scale_y_log10(
     #   breaks = scales::trans_breaks("log10", function(x) 10^x),
     #   labels = scales::trans_format("log10", scales::math_format(10^.x))
-    # )
+    # ) +
+    scale_x_continuous(labels = scales::label_number()) +
+    # scale_x_log10(
+    #   breaks = scales::trans_breaks("log10", function(x) 10^x),
+    #   labels = scales::trans_format("log10", scales::math_format(10^.x))
+    # ) +
     guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
            color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
     labs(x = expression(N[S]), y = "Normalized Shapley kernel weight/sampling frequency") +
@@ -484,12 +510,26 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4)))
   fig_samp
 
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_freq_development_V2.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_freq_development_V5.png",
          plot = fig_samp,
          width = 14.2,
-         height = 18,
+         height = 20,
          scale = 0.85,
          dpi = 350)
+
+  # See which n_comb that |S| = 1 has the lowest sampling weight
+  dt_tmp = data[n_features == 1,]
+  dt_tmp[dt_tmp[, .I[which.min(mean)], by = M]$V1]
+  dt_tmp[dt_tmp[, .I[which.min(mean)], by = M]$V1][, n_combinations] / M_seq
+
+
+
+  # Find weights for given number of features
+  data[n_combinations == 4,]
+  n_features <- seq(m - 1)
+  n <- sapply(n_features, choose, n = m)
+  w <- shapley_weights(m = m, N = n, n_features) * n
+  p <- w / sum(w)
 
 
 
@@ -526,6 +566,47 @@ if (FALSE) {
   }
 }
 
+if (FALSE) {
+  # Modify tmp files to have the same form as the final
+  # SET M
+  m = 20
+  tmp = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res_tmp_5.rds"))$tmp
+
+  print(m)
+  if (m <= 10) {
+    n_combinations_vec = seq(4, 2^m, 2)
+  } else if (m <= 12) {
+    n_combinations_vec = seq(4, 2^m, 8)
+  } else {
+    increase = 100*(((floor(0.9*2^m) - 10) / 1000) %/% 10)
+    if (increase == 0) increase = 10
+    n_combinations_vec = seq(10, floor(0.95*2^m), increase)
+  }
+
+  if (m == 17) {
+    n_combinations_vec = c(2:200, 250, 500, 750, 1000, 2500, 5000, 10000, 20000, 30000, 40000, 50000, 60000, 70000,
+                           80000, 90000, 100000, 110000, 120000, 130000, 131000)
+  }
+
+  n_combinations_vec_extra <- sapply(seq(ceiling((m - 1)/2)), choose, n = m)
+  n_combinations_vec_extra[seq(floor((m - 1)/2))] = 2*n_combinations_vec_extra[seq(floor((m - 1)/2))]
+  n_combinations_vec_extra = cumsum(n_combinations_vec_extra ) + 2
+  n_combinations_vec_extra = n_combinations_vec_extra[-length(n_combinations_vec_extra)]
+  n_combinations_vec = c(n_combinations_vec, n_combinations_vec_extra)
+
+  n_combinations_vec = unique(sort(c(seq(4, 250, 2), n_combinations_vec)))
+  n_combinations_vec = n_combinations_vec[n_combinations_vec < 2^m]
+  n_combinations_vec = n_combinations_vec[n_combinations_vec %% 2 == 0]
+
+
+  names(tmp) = n_combinations_vec[seq(length(tmp))]
+  res_list = rbindlist(tmp, idcol = "n_combinations")
+  res_list[, n_combinations := as.numeric(n_combinations)]
+  res_list[, n_features := as.numeric(n_features)]
+  res_list[, n_features := as.factor(n_features)]
+  saveRDS(res_list, paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res.rds"))
+
+}
 
 if (FALSE) {
 
@@ -630,7 +711,33 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4)))
   fig_samp_log
 
+}
 
 
+if (FALSE) {
+  M_seq = 6:20
+  tmp_list = lapply(M_seq, function(m) {
+    tmp = shapr:::shapley_weights(m = m,
+                                  N = sapply(seq(m - 1), choose, n = m),
+                                  n_components = seq(m - 1))
+    tmp = tmp/sum(tmp)
+    data.table(n_combinations = 2^m,
+               col = factor(seq(ceiling((m-1)/2))),
+               weight = tmp[seq(1, ceiling((m-1)/2))])
+  })
+  names(tmp_list) = M_seq
+  tmp_list = data.table::rbindlist(tmp_list, idcol = "M")
+  tmp_list[, M := factor(M, levels = M_seq, labels = paste0("M = ", M_seq))]
+
+
+
+  # Create the xtable object
+  library(xtable)
+  xtable_dt <- xtable::xtable(dcast(tmp_list, M + n_combinations ~ col, value.var = "weight")[,-"n_combinations"],
+                              caption = "Wide Format Data Table", label = "tab:wide_table",
+                              digits = 6)
+
+  # Print the LaTeX code for the table
+  print(xtable_dt, type = "latex", include.rownames = FALSE, math.style.exponents = TRUE)
 
 }

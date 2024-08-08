@@ -671,6 +671,27 @@ if (FALSE) {
                                     "unique_paired_equal_weights",
                                     "unique_paired_SW")
 
+    only_these_sampling_methods = sampling_methods = c("largest_weights_random",
+                                                       "largest_weights_random_new_weights_empirical",
+                                                       "MAD",
+                                                       "MAD_new_weights_empirical",
+                                                       "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                                       "unique_paired_new_weights_gompertz",
+                                                       "paired_coalitions_new_weights_gompertz",
+                                                       "unique_paired_new_weights_empirical",
+                                                       "paired_coalitions_new_weights_empirical",
+                                                       "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                                       "unique",
+                                                       "unique_paired",
+                                                       "unique_paired_equal_weights",
+                                                       "unique_paired_SW",
+                                                       "paired_coalitions",
+                                                       "paired_coalitions_weights_direct_equal_weights",
+                                                       "largest_weights",
+                                                       "largest_weights_combination_size",
+                                                       "largest_weights_new_weights_empirical",
+                                                       "largest_weights_combination_size_new_weights_empirical")
+
     # Pilot linear regression
     # Load the results and make the figures
     figs = list()
@@ -694,7 +715,8 @@ if (FALSE) {
                                      scale_y_log10 = TRUE,
                                      scale_x_log10 = FALSE,
                                      n.dodge = 2,
-                                     plot_figures = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
+                                     plot_figures = FALSE,
+                                     remove_last_value = FALSE)$figure_mean + ggplot2::ggtitle(paste0("rho = ", rho, " (equi = ", rho_equi, ")"))
       if (rho_idx != length(rhos)) {
         figs[[rho_idx]] = figs[[rho_idx]] + ggplot2::guides(color = "none") + ggplot2::guides(fill = "none")
       }
@@ -705,11 +727,33 @@ if (FALSE) {
     dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
 
     dt_all[, sampling := factor(sampling,
-                                levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW", "paired_coalitions_weights_direct_equal_weights", "paired_coalitions"),
-                                labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel", "Pilot Average", "Pilot Kernel"),
+                                levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
+                                           "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
+                                           "paired_coalitions_weights_direct_equal_weights",
+                                           "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                           "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                           "paired_coalitions",
+                                           "paired_coalitions_new_weights_empirical",
+                                           "paired_coalitions_new_weights_gompertz",
+                                           "largest_weights",
+                                           "largest_weights_combination_size",
+                                           "largest_weights_new_weights_empirical",
+                                           "largest_weights_combination_size_new_weights_empirical",
+                                           "largest_weights_random", "largest_weights_random_new_weights_empirical",
+                                           "MAD", "MAD_new_weights_empirical"
+                                ),
+                                labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
+                                           "Paired Empirical", "Paired Gompertz",
+                                           "Pilot Average", "Pilot Empirical", "Pilot Gompertz",
+                                           "Pilot Largest Kernel",  "Pilot Largest Empirical", "Pilot Order Gompertz",
+                                           "Paired Largest Order Kernel", "Largest Coalition",
+                                           "Paired Largest Order Empirical", "Paired Largest Order Coalition Empirical",
+                                           "Paired Largest Kernel", "Paired Largest Empirical",
+                                           "MAD Largest Kernel", "MAD Largest Empirical"
+                                ),
                                 ordered = FALSE)]
 
-    fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+    fig2 = ggplot(dt_all[n_combinations %% 2 ==0], aes(x = n_combinations, y = median, col = sampling, fill = sampling)) +
       #geom_smooth(method = "loess", se = FALSE) +
       #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
       ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
@@ -721,25 +765,100 @@ if (FALSE) {
         labels = scales::trans_format("log10", scales::math_format(10^.x))
       ) +
       theme(legend.position = 'bottom') +
-      guides(col = guide_legend(nrow = 1), fill = guide_legend(nrow = 1)) +
+      guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
       #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
       labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
       theme(strip.text = element_text(size = rel(1.6)),
             legend.title = element_text(size = rel(1.6)),
             legend.text = element_text(size = rel(1.6)),
             axis.title = element_text(size = rel(1.6)),
-            axis.text = element_text(size = rel(1.5))) +
-      scale_color_manual(values = scales::hue_pal()(6)[1:4]) +
-      scale_fill_manual(values = scales::hue_pal()(6)[1:4])
+            axis.text = element_text(size = rel(1.5)))
+    #   scale_color_manual(values = scales::hue_pal()(6)[1:4]) +
+    #   scale_fill_manual(values = scales::hue_pal()(6)[1:4])
     fig2
 
-    fig2
     ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5.png",
            plot = fig2,
            width = 14.2,
            height = 9.98,
            scale = 0.85,
            dpi = 350)
+
+
+
+    m = 17
+    n_features <- seq(ceiling((m - 1)/2))
+    n <- sapply(n_features, choose, n = m)
+    n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+    n_cumsum = (cumsum(n) + 2)
+    n_cumsum = n_cumsum[-length(n_cumsum)] + 0.5
+
+    m = 17
+    n_features <- seq(ceiling((m - 1)/2))
+    n <- sapply(n_features, choose, n = m)
+    n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+    n_cumsum = (cumsum(n) + 2) + 0.5
+
+
+
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest")
+    samps = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical")
+
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Kernel", "Paired Largest Empirical")
+    samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Paired Largest Order Empirical", "Paired Largest Order Kernel", "MAD Largest Empirical", "MAD Largest Kernel")
+    samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Pilot Empirical", "Pilot Average", "Pilot Largest Empirical", "Pilot Largest Kernel")
+
+
+    dt_all2 = dt_all[sampling %in% samps]
+    dt_all2 = dt_all2[, sampling := factor(sampling, levels = samps, ordered = TRUE)]
+    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+      #geom_vline(xintercept = 131000, col = "red") +
+      #geom_smooth(method = "loess", se = FALSE) +
+      #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
+      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.0) +
+      geom_line(linewidth = 0.65) +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+      ) +
+      scale_x_continuous(labels = scales::label_number()) +
+      # scale_x_log10(
+      #   breaks = scales::trans_breaks("log10", function(x) 10^x),
+      #   labels = scales::trans_format("log10", scales::math_format(10^.x))
+      # ) +
+      theme(legend.position = 'bottom') +
+      guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      theme(strip.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.4)),
+            legend.text = element_text(size = rel(1.4)),
+            axis.title = element_text(size = rel(1.6)),
+            axis.text = element_text(size = rel(1.5))) +
+      scale_color_hue() + #added as we want ordered
+      scale_fill_hue()
+
+    fig3
+
+
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_Appendix_MAD.png",
+           plot = fig3,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+
+
+
+    plot(dt_all[sampling == "Paired Average" & n_combinations %% 2 == 0 & rho == 0.5, mean] -
+      dt_all[sampling == "Paired Empirical" & n_combinations %% 2 == 0 & rho == 0.5, mean])
+
+    # Rscript Analyse_linear_experiment.R TRUE FALSE 17 0.2 FALSE 1000 500 NULL MAE FALSE NULL NULL
+    # Rscript Analyse_linear_experiment.R TRUE FALSE 17 0.9 FALSE 1000 500 NULL MAE FALSE NULL NULL
+    # Rscript Analyse_linear_experiment.R TRUE FALSE 17 0 FALSE 1000 500 NULL MAE FALSE NULL NULL
 
 
   }
@@ -1444,7 +1563,7 @@ if (FALSE) {
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
       #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
-      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("MAE("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
       theme(strip.text = element_text(size = rel(1.6)),
             legend.title = element_text(size = rel(1.6)),
             legend.text = element_text(size = rel(1.6)),
@@ -1468,21 +1587,29 @@ if (FALSE) {
     # Parameters
     rhos = c(0,0.2,0.5,0.9)
     rho_equi = TRUE # Can NOT change this
-    pilot = TRUE
+    pilot = FALSE
     ext_str = ifelse(pilot, "_pilot_separate_linear_reg", "")
 
-    only_these_sampling_methods = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
-                                    "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
-                                    "paired_coalitions_weights_direct_equal_weights",
-                                    "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
-                                    "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
-                                    "paired_coalitions",
-                                    "paired_coalitions_new_weights_empirical",
-                                    "paired_coalitions_new_weights_gompertz",
-                                    "largest_weights",
-                                    "largest_weights_combination_size",
-                                    "largest_weights_new_weights_empirical",
-                                    "largest_weights_combination_size_new_weights_empirical")
+    only_these_sampling_methods = sampling_methods = c("largest_weights_random",
+                                                       "largest_weights_random_new_weights_empirical",
+                                                       "MAD",
+                                                       "MAD_new_weights_empirical",
+                                                       "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                                       "unique_paired_new_weights_gompertz",
+                                                       "paired_coalitions_new_weights_gompertz",
+                                                       "unique_paired_new_weights_empirical",
+                                                       "paired_coalitions_new_weights_empirical",
+                                                       "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                                       "unique",
+                                                       "unique_paired",
+                                                       "unique_paired_equal_weights",
+                                                       "unique_paired_SW",
+                                                       "paired_coalitions",
+                                                       "paired_coalitions_weights_direct_equal_weights",
+                                                       "largest_weights",
+                                                       "largest_weights_combination_size",
+                                                       "largest_weights_new_weights_empirical",
+                                                       "largest_weights_combination_size_new_weights_empirical")
 
 
     # Pilot linear regression
@@ -1535,24 +1662,29 @@ if (FALSE) {
                                            "largest_weights",
                                            "largest_weights_combination_size",
                                            "largest_weights_new_weights_empirical",
-                                           "largest_weights_combination_size_new_weights_empirical"),
+                                           "largest_weights_combination_size_new_weights_empirical",
+                                           "largest_weights_random", "largest_weights_random_new_weights_empirical",
+                                           "MAD", "MAD_new_weights_empirical"
+                                ),
                                 labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                            "Paired Empirical", "Paired Gompertz",
-                                           "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
-                                           "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
-                                           "Largest Weights", "Largest Weights Coalition",
-                                           "Largest Weights Empirical", "Largest Weights Coalition Empirical"),
+                                           "Pilot Average", "Pilot Empirical", "Pilot Gompertz",
+                                           "Pilot Largest Kernel",  "Pilot Largest Empirical", "Pilot Order Gompertz",
+                                           "Paired Largest Order Kernel", "Largest Coalition",
+                                           "Paired Largest Order Empirical", "Paired Largest Order Coalition Empirical",
+                                           "Paired Largest Kernel", "Paired Largest Empirical",
+                                           "MAD Largest Kernel", "MAD Largest Empirical"
+                                ),
                                 ordered = FALSE)]
 
     m = 10
     n_features <- seq(ceiling((m - 1)/2))
     n <- sapply(n_features, choose, n = m)
     n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
-    n_cumsum = (cumsum(n) + 2)
-    n_cumsum = n_cumsum[-length(n_cumsum)]
+    n_cumsum = (cumsum(n) + 2) + 0.5
 
-    fig2 = ggplot(dt_all, aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
-      geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+    fig2 = ggplot(dt_all[n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+      geom_vline(xintercept = n_cumsum, col = "gray60", linetype = "dashed", linewidth = 0.4) +
       #geom_smooth(method = "loess", se = FALSE) +
       #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
       #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
@@ -1586,17 +1718,35 @@ if (FALSE) {
     samps = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Pilot Average", "Pilot Kernel")
     samps = c("Paired Average", "Paired Kernel", "Paired Empirical", "Paired Gompertz")
 
-    samps = c("Paired Average", "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz")
+    samps = c("Paired Average", "Pilot Average", "Pilot Empirical", "Pilot Gompertz")
 
-    samps = c("Paired Average", "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz")
-    samps = c("Paired Average", "Pilot Order Empirical", "Paired Empirical", "Largest Weights",  "Largest Weights Coalition",
-              "Largest Weights Empirical", "Largest Weights Coalition Empirical")
-    fig3 = ggplot(dt_all[sampling %in% samps], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+    samps = c("Paired Average", "Pilot Kernel",  "Pilot Largest Empirical", "Pilot Order Gompertz")
+
+    samps = c("Paired Average", "Pilot Largest Empirical", "Paired Empirical", "Largest", "Largest Order",  "Largest Order Coalition",
+              "Largest Order Empirical", "Largest Order Coalition Empirical", "Largest Empirical", "Paired Largest Empirical")
+
+    samps = c("Paired Average", "Largest Weights Random Empirical")
+
+
+
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Kernel", "Paired Largest Empirical")
+
+
+
+    samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Paired Largest Order Empirical", "Paired Largest Order Kernel", "MAD Largest Empirical", "MAD Largest Kernel")
+    samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Pilot Empirical", "Pilot Average", "Pilot Largest Empirical", "Pilot Largest Kernel")
+
+
+
+
+    dt_all2 = dt_all[sampling %in% samps]
+    dt_all2 = dt_all2[, sampling := factor(sampling, levels = samps, ordered = TRUE)]
+    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
       geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
       #geom_smooth(method = "loess", se = FALSE) +
       #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
-      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.1) +
-      geom_line(linewidth = 0.6) +
+      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0) +
+      geom_line(linewidth = 0.65) +
       facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
       #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
       scale_y_log10(
@@ -1604,19 +1754,27 @@ if (FALSE) {
         labels = scales::trans_format("log10", scales::math_format(10^.x))
       ) +
       theme(legend.position = 'bottom') +
-      guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+      guides(col = guide_legend(nrow = 2, theme = theme(legend.byrow = FALSE)),
+             fill = guide_legend(nrow = 2, theme = theme(legend.byrow = FALSE))) +
       #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
       labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
       theme(strip.text = element_text(size = rel(1.6)),
-            legend.title = element_text(size = rel(1.6)),
-            legend.text = element_text(size = rel(1.6)),
+            legend.title = element_text(size = rel(1.37)),
+            legend.text = element_text(size = rel(1.37)),
             axis.title = element_text(size = rel(1.6)),
-            axis.text = element_text(size = rel(1.5)))
+            axis.text = element_text(size = rel(1.5))) +
+      scale_color_hue() + #added as we want ordered
+      scale_fill_hue()
 
     fig3
 
 
-    fig2
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_appendix_Pilot.png"),
+           plot = fig3,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
 
   }
 
@@ -1637,12 +1795,17 @@ X_true = true$internal$objects$X
 ll = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1.rds")
 X_tmp = ll$unique$repetition_1$n_combinations_75$only_save$X
 S_tmp = ll$unique$repetition_1$n_combinations_1020$only_save$S
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
 
 version = "Paper3"
 if (version == "NSM") {
   sampling_methods = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights", "paired_coalitions_weights_direct_equal_weights")
 } else if (version == "Paper3") {
-  sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights")
+  ll = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1.rds")
+  sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "unique_paired_new_weights_empirical", "largest_weights_random_new_weights_empirical")
 } else {
   stop("Unknown version.")
 }
@@ -1696,7 +1859,6 @@ if (version == "NSM") {
                       levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights", "kernel", "paired_coalitions_weights_direct_equal_weights"),
                       labels = c("Uniform", "Unique", "Paired", "Paired Avg.", "Kernel", "Pilot"))]
 
-
   fig = ggplot(dt, aes(x = id, y = weight, col = type)) +
     geom_point(alpha = 0.75) +
     scale_y_log10(
@@ -1723,9 +1885,32 @@ if (version == "NSM") {
 
 } else if (version == "paper3") {
   dt[, type := factor(type,
-                      levels = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_kernel", "kernel"),
-                      labels = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Shapley Kernel Weights"))]
-
+                              levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
+                                         "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
+                                         "paired_coalitions_weights_direct_equal_weights",
+                                         "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                                         "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                                         "paired_coalitions",
+                                         "paired_coalitions_new_weights_empirical",
+                                         "paired_coalitions_new_weights_gompertz",
+                                         "largest_weights",
+                                         "largest_weights_combination_size",
+                                         "largest_weights_new_weights_empirical",
+                                         "largest_weights_combination_size_new_weights_empirical",
+                                         "largest_weights_random", "largest_weights_random_new_weights_empirical",
+                                         "MAD", "MAD_new_weights_empirical", "kernel"
+                              ),
+                              labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
+                                         "Paired Empirical", "Paired Gompertz",
+                                         "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
+                                         "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
+                                         "Largest", "Largest Coalition",
+                                         "Largest Order Empirical", "Largest Order Coalition Empirical",
+                                         "Paired Largest", "Paired Largest Empirical",
+                                         "MAD", "MAD Empirical",
+                                         "Shapley Kernel Weights"
+                              ),
+                              ordered = FALSE)]
 
   fig = ggplot(dt[type != "Shapley Kernel Weights"], aes(x = id, y = weight, col = type)) +
     geom_vline(xintercept = 512.5, color = "darkgrey", linetype = "dashed", linewidth = 0.9) +
@@ -1740,16 +1925,16 @@ if (version == "NSM") {
     guides(col = guide_legend(nrow = 1)) +
     labs(color = "Strategy:", x = "Coalition index", y = "Normalized Shapley kernel weight/sampling frequency") +
     theme(strip.text = element_text(size = rel(1.6)),
-          legend.title = element_text(size = rel(1.6)),
-          legend.text = element_text(size = rel(1.6)),
-          axis.title = element_text(size = rel(1.6)),
+          legend.title = element_text(size = rel(1.4)),
+          legend.text = element_text(size = rel(1.4)),
+          axis.title = element_text(size = rel(1.4)),
           axis.title.y = element_text(size = rel(1.1)),
-          axis.text = element_text(size = rel(1.5))) +
-    geom_step(data = dt[type == "Shapley Kernel Weights"]) +
-    scale_color_manual(values = c(gg_color_hue(3), "#000000", "#000000"))
+          axis.text = element_text(size = rel(1.5)))
+    #geom_step(data = dt[type == "Shapley Kernel Weights"]) +
+    #scale_color_manual(values = c(gg_color_hue(3), "#000000", "#000000"))
 
   fig
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights_3.png", # Saving 14.2 x 9.98 in image
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights_4.png", # Saving 14.2 x 9.98 in image
          plot = fig,
          width = 14.2,
          height = 9.98,

@@ -1279,7 +1279,8 @@ pilot_estimates_coal_order = function(explanation,
 
 
     # library(latex2exp)
-    # tmp_fig = ggplot2::ggplot(data = R_dt, ggplot2::aes(y = id_combination_diff, x = mean_abs_Rij)) +
+    # R_dt[, normalized_mean_abs_Rij := mean_abs_Rij / sum(mean_abs_Rij), by = list(id_feature)]
+    # tmp_fig = ggplot2::ggplot(data = R_dt, ggplot2::aes(y = id_combination_diff, x = normalized_mean_abs_Rij)) +
     #   ggplot2::geom_bar(position = "dodge", stat = "identity") +
     #   ggplot2::facet_grid(cols = ggplot2::vars(id_feature), labeller = label_bquote(cols = X[.(id_feature)])) +
     #   ggplot2::labs(y = "Coalition difference index", x = TeX(r"( $\frac{1}{N_{explain}}\sum_{i = 1}^{N_{explain}} |T^{\[i\]}_{j,k}|$ )")) +
@@ -1322,14 +1323,16 @@ pilot_estimates_coal_order = function(explanation,
                                       on = "id_combination_diff"]
 
     # {
+    #   mean_abs_R = R_dt_aggregated$mean_abs_R
     # dt_standard_pilot = data.table(id_combination_diff = rep(R_dt_aggregated$id_combination_diff),
-    #                                weights = c(standard_weight / sum(standard_weight), mean_abs_R / sum(mean_abs_R)),
+    #                                weights = c(standard_weight / sum(standard_weight),
+    #                                            mean_abs_R / sum(mean_abs_R)),
     #                                version = rep(c("Standard", "Pilot"), each = 16))
     # tmp_fig2 = ggplot2::ggplot(dt_standard_pilot, ggplot2::aes(y = id_combination_diff, x = weights, col = version, fill = version)) +
     #   ggplot2::geom_bar(position = "dodge", stat = "identity", width=0.75) +
     #   ggplot2::scale_y_discrete(limits = rev, label = parse(text = paste("k[", seq(16,1), "]", sep = ""))) +
     #   ggplot2::labs(color = "Version", fill = "Version", y = "Coalition difference index",
-    #                 x = TeX(r"( $\frac{1}{N_{explain}}\sum_{i = 1}^{N_{explain}} \frac{1}{N_M}\sum_{i = 1}^{M} |T^{\[i\]}_{j,k}|$ )")) +
+    #                 x = TeX(r"( $\frac{1}{N_{explain}}\sum_{i = 1}^{N_{explain}} \frac{1}{M}\sum_{i = 1}^{M} |T^{\[i\]}_{j,k}|$ )")) +
     #   ggplot2::theme(legend.position = c(0.79, 0.1923)) +
     #   ggplot2::theme(strip.text = ggplot2::element_text(size = ggplot2::rel(1.25)),
     #                  legend.title = ggplot2::element_text(size = ggplot2::rel(1.0)),
@@ -1339,9 +1342,9 @@ pilot_estimates_coal_order = function(explanation,
     #   ggplot2::guides(color = ggplot2::guide_legend(reverse = TRUE), fill = ggplot2::guide_legend(reverse = TRUE)) +
     #   ggplot2::scale_fill_manual(values=c("grey35", "#999999")) +
     #   ggplot2::scale_color_manual(values=c("grey35", "#999999"))
-    # fig_comb = gridExtra::grid.arrange(tmp_fig, tmp_fig2, ncol = 2, widths = c(2,1))
+    # fig_comb = gridExtra::grid.arrange(tmp_fig + ggplot2::scale_x_continuous(breaks = c(0.1, 0.2)), tmp_fig2, ncol = 2, widths = c(2,1))
     #
-    #  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_rds_saves/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_pilot_2.png",
+    #  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Experiment_M_5_n_train_1000_n_test_250_rho_0.5_betas_2_10_0.25_-3_-1_1.5_pilot_3.png",
     #         plot = fig_comb,
     #         width = 14.2,
     #         height = 4.5,

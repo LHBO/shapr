@@ -590,16 +590,18 @@ make_beeswarm_plot <- function(dt_plot, col, index_x_explain, x, factor_cols) {
   dt_plot[type == "factor", feature_value_scaled := NA]
 
   gg <- ggplot2::ggplot(dt_plot, ggplot2::aes(x = variable, y = phi, color = feature_value_scaled)) +
-    ggplot2::geom_hline(yintercept = 0, color = "grey70", linewidth = 0.5) +
-    ggbeeswarm::geom_beeswarm(priority = "random", cex = 0.4) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey60", linewidth = 0.5) +
+    #ggbeeswarm::geom_beeswarm(priority = "random", cex = 0.1) +
+    ggbeeswarm::geom_beeswarm(corral = "wrap", priority = "random", corral.width = 0.75) +
     # the cex-parameter doesnt generalize well, should use corral but not available yet....
     ggplot2::coord_flip() +
-    ggplot2::theme_classic() +
-    ggplot2::theme(panel.grid.major.y = ggplot2::element_line(colour = "grey90", linetype = "dashed")) +
+    #ggplot2::theme_classic() +
+    ggplot2::theme(panel.grid.major.y = ggplot2::element_line(colour = "grey75", linetype = "dashed")) +
     ggplot2::labs(x = "", y = "Shapley value") +
     ggplot2::guides(color = ggplot2::guide_colourbar(
       ticks = FALSE,
-      barwidth = 0.5, barheight = 10
+      #barwidth = 0.5, barheight = 10
+      barwidth = 10, barheight = 0.5
     ))
 
   if (length(col) == 3) { # check is col-parameter is the default
@@ -609,9 +611,11 @@ make_beeswarm_plot <- function(dt_plot, col, index_x_explain, x, factor_cols) {
         midpoint = 0.5,
         breaks = c(0, 1),
         limits = c(0, 1),
-        labels = c("Low", "High"),
-        name = "Feature \n value"
-      )
+        labels = c("       Low", "High       "),
+        name = "Feature value: "
+      ) +
+      theme(legend.position = 'bottom') +
+      guides(fill = guide_legend(nrow = 1))
   } else if (length(col) == 2) { # allow user to specify three colors
     gg <- gg +
       ggplot2::scale_color_gradient(
@@ -1578,7 +1582,7 @@ plot_SV_several_approaches <- function(explanation_list,
 
   # Check that all explanation objects use the same test observations
   entries_using_diff_x_explain <- sapply(explanation_list, function(explanation) {
-    !identical(explanation_list[[1]]$internal$data$x_explain, explanation$internal$data$x_explain)
+    isFALSE(all.equal(explanation_list[[1]]$internal$data$x_explain, explanation$internal$data$x_explain))
   })
   if (any(entries_using_diff_x_explain)) {
     methods_with_diff_comb_str <-
@@ -1679,6 +1683,27 @@ plot_SV_several_approaches <- function(explanation_list,
     )
   }
   if (horizontal_bars) figure <- figure + ggplot2::coord_flip()
+
+  figure_now = figure + ggplot2::scale_fill_discrete(
+    breaks = breaks,
+    direction = direction,
+    name = expression(N[S]*":")
+  ) + theme(legend.position = 'bottom') +
+    guides(fill = guide_legend(nrow = 1)) +
+    ggplot2::coord_flip() +
+    theme(strip.text = element_text(size = rel(1.3)),
+        legend.title = element_text(size = rel(1.5)),
+        legend.text = element_text(size = rel(1.5)),
+        axis.title = element_text(size = rel(1.5)),
+        axis.text = element_text(size = rel(1.1))) +
+    ggplot2::labs(title = NULL)
+
+  # ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_SV_7.png",
+  #        plot = figure_now,
+  #        width = 14.2,
+  #        height = 15,
+  #        scale = 0.85,
+  #        dpi = 350)
 
   # Return the figure
   return(figure)

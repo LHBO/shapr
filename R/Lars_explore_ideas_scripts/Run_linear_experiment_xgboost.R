@@ -146,6 +146,7 @@
 # Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE TRUE 26:50 6 10000 10000 1000 1000 10 0.9 TRUE NULL regression_separate NULL
 
 
+# Rscript Run_linear_experiment_xgboost.R FALSE FALSE TRUE FALSE 1:50 6 10000 10000 1000 1000 10 0.5,0.2,0.9,0 TRUE NULL NULL NULL
 
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)

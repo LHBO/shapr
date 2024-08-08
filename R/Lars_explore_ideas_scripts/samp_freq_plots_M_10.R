@@ -4,7 +4,7 @@ library(shapr)
 
 # Load the M = 10 dim file
 m = 17
-dt_avg = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res.rds"))
+dt_avg = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res_2.rds"))
 
 # Get the Shapley kernel weights
 Shapley_kernel_weights_aux = shapr:::shapley_weights(m = m,
@@ -25,6 +25,9 @@ fig = ggplot(data = dt_avg[n_features %in% relevant_n_features], aes(x = n_combi
              mapping = aes(x = n_combinations, y = weight, colour = col),
   ) + expand_limits(y = 0)
 fig
+
+
+
 
 # Just look at potential starting values (either the mean, or the accumulated Shapley kernel
 # weights for each coalition size times the number of coalitions of said size.
@@ -155,14 +158,34 @@ dt_gompertz = rbindlist(lapply(relevant_n_features, function (i) {
   # [1] 1.935 0.956
   # [1] 1.609 0.931
   # M = 17
-  # [1] 118.356   0.861
-  # [1] 3123.998    1.523
-  # [1] 175.31   1.22
-  # [1] 74.770  1.149
-  # [1] 46.114  1.108
-  # [1] 31.130  1.065
-  # [1] 26.892  1.054
-  # [1] 26.148  1.056
+  # [1] 118.371   0.861
+  # [1] 3142.709    1.524
+  # [1] 175.404   1.221
+  # [1] 75.183  1.150
+  # [1] 46.556  1.109
+  # [1] 31.465  1.066
+  # [1] 27.179  1.056
+  # [1] 26.402  1.057
+
+  # M = 17 V2
+  # [1] 118.245   0.861
+  # [1] 3116.863    1.522
+  # [1] 175.345   1.221
+  # [1] 75.164  1.150
+  # [1] 46.579  1.109
+  # [1] 31.486  1.066
+  # [1] 27.189  1.056
+  # [1] 26.404  1.057
+
+  # V3 with the splines added
+  # [1] 722.389   0.211
+  # [1] 2350.922    1.477
+  # [1] 38.301  0.929
+  # [1] 13.499  0.811
+  # [1] 8.236 0.762
+  # [1] 6.294 0.738
+  # [1] 5.437 0.726
+  # [1] 5.112 0.722
   values = gompertz_model(n_combinations_arr_all, a = end_val, b = log(end_val/start_val), c = optim_res$par[1], d = optim_res$par[2], x_max = n_combinations_max)
   data.table(n_features = n_features_now, n_combinations = n_combinations_arr_all, values = values, paired = if (m %% 2 == 0 && i == relevant_n_features[length(relevant_n_features)]) 1 else 2)
 }))
@@ -204,7 +227,175 @@ dt_final
 saveRDS(dt_final, paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_", m, ".rds"))
 
 
+# tmp_w = colMeans(rbind(dt_final[n_combinations == 120000, empirical], Shapley_kernel_weights))
+# dt_final = rbind(dt_final,
+#                  data.table(n_combinations = 130000, n_features = seq(16), empirical = tmp_w, gompertz = tmp_w))
+#
+#
+# Shapley_kernel_weights
+
+
+
+dt_final = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_", m, ".rds"))
+dt_final_old = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_17_org.rds")
 
 if (m == 10) dt_final[n_combinations %in% c(4, 1020)]
 if (m == 11) dt_final[n_combinations %in% c(4, 2044)]
+
+
+
+if (FALSE) {
+  # Compare empirical values with splines
+
+  # Load the M = 10 dim file
+  m = 17
+  dt_avg = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res.rds"))
+
+  # Get the Shapley kernel weights
+  Shapley_kernel_weights_aux = shapr:::shapley_weights(m = m,
+                                                       N = sapply(seq(m - 1), choose, n = m),
+                                                       n_components = seq(m - 1))
+  Shapley_kernel_weights = Shapley_kernel_weights_aux / sum(Shapley_kernel_weights_aux)
+
+  # Get the relevant coalition sizes
+  relevant_n_features = seq(ceiling((m-1)/2))
+
+  # Create the figure
+  fig = ggplot(data = dt_avg[n_features %in% relevant_n_features], aes(x = n_combinations, y = mean)) +
+    # geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features), alpha = 0.4, linewidth = 0.1) +
+    geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 1) +
+    geom_point(data.table(n_combinations = 2^m,
+                          col = factor(relevant_n_features),
+                          weight = Shapley_kernel_weights[relevant_n_features]),
+               mapping = aes(x = n_combinations, y = weight, colour = col),
+    ) + expand_limits(y = 0) +
+    ggplot2::scale_y_log10()
+  fig
+
+
+
+  dt_now = dt_avg[n_features %in% relevant_n_features, .SD, .SDcols = c("n_combinations", "n_features", "mean")]
+
+  dt_now = rbind(dt_now,
+                  data.table(n_combinations = 2^m,
+                             n_features = factor(relevant_n_features),
+                             mean = Shapley_kernel_weights[relevant_n_features]))
+
+
+  dt_now
+  n_combinations_vec = unique(dt_now$n_combinations)
+  #n_combinations_vec = n_combinations_vec[unique(c(seq(1, length(n_combinations_vec), 5), length(n_combinations_vec)))]
+  dt_now = dt_now[n_combinations %in% n_combinations_vec]
+
+  res_splines = data.table::rbindlist(lapply(relevant_n_features, function(x) {
+    as.data.table(spline(x = n_combinations_vec, y = dt_now[n_features == x, mean], xout = seq(2, 2^m, 2)))
+  }), use.names = TRUE, idcol = "n_features")
+  res_splines
+  res_splines[, n_features := factor(n_features)]
+
+  ggplot(data = dt_now[n_combinations != 2, ], aes(x = n_combinations, y = mean)) +
+    # geom_ribbon(aes(x = n_combinations, ymin = lower, ymax = upper, group = n_features,  col = n_features, fill = n_features), alpha = 0.4, linewidth = 0.1) +
+    geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 0.5, lty = 1) +
+    geom_line(data = res_splines[x != 2, ], aes(x = x, y = y, group = n_features, col = n_features), linewidth = 1.1, lty = 3) +
+    geom_point(data.table(n_combinations = 2^m,
+                          col = factor(relevant_n_features),
+                          weight = Shapley_kernel_weights[relevant_n_features]),
+               mapping = aes(x = n_combinations, y = weight, colour = col)) +
+    expand_limits(y = 0) +
+    ggplot2::scale_y_log10()
+    #scale_x_log10()
+
+
+  # Save the splines
+  dt_now2 = copy(res_splines)
+  setnames(dt_now2, old = c("x", "y"), new = c("n_combinations", "mean"))
+  setcolorder(dt_now2, c("n_combinations", "n_features", "mean"))
+  data.table::setorderv(dt_now2, "n_combinations")
+  dt_now2
+
+
+}
+
+if (FALSE) {
+  dt_now2 = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_17.rds")[n_features %in% relevant_n_features]
+  dt_now2[,n_features := as.factor(n_features)]
+
+  ggplot(data = dt_now2, aes(x = n_combinations, y = empirical)) +
+    geom_line(aes(x = n_combinations, y = empirical, group = n_features, col = n_features), linewidth = 0.5, lty = 1) +
+    #geom_line(data = res_splines, aes(x = x, y = y, group = n_features, col = n_features), linewidth = 1.1, lty = 3) +
+    geom_point(data.table(n_combinations = 2^m,
+                          col = factor(relevant_n_features),
+                          weight = Shapley_kernel_weights[relevant_n_features]),
+               mapping = aes(x = n_combinations, y = weight, colour = col)) +
+    expand_limits(y = 0) +
+    ggplot2::scale_y_log10()
+
+  dt_avg = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_M_", m, "_res_2.rds"))[n_features %in% relevant_n_features]
+  ggplot(data = dt_avg, aes(x = n_combinations, y = mean)) +
+    geom_line(aes(x = n_combinations, y = mean, group = n_features, col = n_features), linewidth = 0.5, lty = 1) +
+    #geom_line(data = res_splines, aes(x = x, y = y, group = n_features, col = n_features), linewidth = 1.1, lty = 3) +
+    geom_point(data.table(n_combinations = 2^m,
+                          col = factor(relevant_n_features),
+                          weight = Shapley_kernel_weights[relevant_n_features]),
+               mapping = aes(x = n_combinations, y = weight, colour = col)) +
+    expand_limits(y = 0) +
+    ggplot2::scale_y_log10()
+
+
+
+  # COMPARE NEW WITH OLD
+  m = 17
+  dt_final = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_", m, ".rds"))[n_features %in% relevant_n_features]
+  dt_final[,n_features := as.factor(n_features)]
+  dt_final_old = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_17_org.rds")[n_features %in% relevant_n_features]
+  dt_final_old[,n_features := as.factor(n_features)]
+
+  ggplot(data = dt_final_old, aes(x = n_combinations, y = empirical)) +
+    geom_line(aes(x = n_combinations, y = empirical, group = n_features, col = n_features), linewidth = 0.5, lty = 1) +
+    #geom_line(data = res_splines, aes(x = x, y = y, group = n_features, col = n_features), linewidth = 1.1, lty = 3) +
+    geom_point(data.table(n_combinations = 2^m,
+                          col = factor(relevant_n_features),
+                          weight = Shapley_kernel_weights[relevant_n_features]),
+               mapping = aes(x = n_combinations, y = weight, colour = col)) +
+    expand_limits(y = 0) +
+    ggplot2::scale_y_log10()
+
+  ggplot(data = dt_final, aes(x = n_combinations, y = empirical)) +
+    geom_line(aes(x = n_combinations, y = empirical, group = n_features, col = n_features), linewidth = 0.5, lty = 1) +
+    #geom_line(data = res_splines, aes(x = x, y = y, group = n_features, col = n_features), linewidth = 1.1, lty = 3) +
+    geom_point(data.table(n_combinations = 2^m,
+                          col = factor(relevant_n_features),
+                          weight = Shapley_kernel_weights[relevant_n_features]),
+               mapping = aes(x = n_combinations, y = weight, colour = col)) +
+    expand_limits(y = 0) +
+    ggplot2::scale_y_log10()
+
+  dt_final[n_combinations == 130000, empirical] - dt_final_old[n_combinations == 130000, empirical]
+  dt_final[n_combinations == 130000, empirical] - dt_final_old[n_combinations == 130000, empirical]
+
+}
+
+
+
+if (FALSE) {
+# Fix that gompertz were missing tha values for the larger n_features sizes
+  dt_avg = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_17_wrong.rds")
+  M = 17
+  tmp = copy(dt_avg)
+  tmp[, n_features := as.integer(n_features)]
+
+  dt_updated = data.table::rbindlist(lapply(unique(tmp$n_combinations), function(n_comb_now) {
+    print(n_comb_now)
+    current = tmp[n_combinations == n_comb_now]
+    reversed = copy(current)[, `:=` (n_features = rev(M - n_features), empirical= rev(empirical), gompertz = rev(gompertz))]
+    rbind(current, reversed)
+  }))
+  #dt_updated[, n_features := as.integer(n_features)]
+
+
+  dt_updated
+  saveRDS(dt_updated, "/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_prop_and_gompertz_M_17.rds")
+
+
+}
 
