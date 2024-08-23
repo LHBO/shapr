@@ -61,15 +61,19 @@ new_strategies = c("on_all_cond", "on_all_cond_paired")
 # Iterate over the dependencies
 rho = 0
 for (rho in rhos) {
+  message("Reading TRUE")
   true = readRDS(paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_", rho, "_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_true.rds"))
   precomputed_vS = true$internal$output # Extract only the precomputed_vS list
+  message("DONE Reading TRUE")
 
   # Iterate over the repetitions
   repetition = 1
   for (repetition in seq(repetitions)) {
+    message("Reading FILE")
     file_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_", rho, "_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_estimated_repetition_", repetition ,".rds")
     if (!file.exists(file_name)) next
     file = readRDS(file_name)
+    message("DONE Reading FILE")
 
     # Get the relevant files
     file_relevant = file$unique_paired$repetition_1
