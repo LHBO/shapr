@@ -1965,7 +1965,7 @@ aggregate_results = function(repeated_explanations_list,
   # (different seed values) with different sampling methods and number of used coalitions.
   print("call 1")
     results_list =
-      future.apply::future_lapply(repeated_explanations_list, function (ith_method) {
+      lapply(repeated_explanations_list, function (ith_method) {
         sapply(ith_method, function(ith_method_jth_repetition) {
           sapply(ith_method_jth_repetition, function(ith_method_jth_repetition_kth_coalition) {
             compute_MAE_MSE_fast(
