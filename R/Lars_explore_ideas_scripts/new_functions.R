@@ -1830,13 +1830,10 @@ combine_explanation_results = function(M,
         current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond)
       }
 
-      print(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired.rds")))
-      print(file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired.rds"))))
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired.rds")))) {
         current_repetition_results_on_all_cond_paired =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired.rds")))
         current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired)
-        print("Loading the on_all_cond_paired")
       }
 
       # We remove all non-essential stuff from the list
@@ -1879,6 +1876,7 @@ combine_explanation_results = function(M,
     cat(sprintf("Aggregating the results.\n"))
 
     valid_methods = names(repeated_explanations_list[[rho_idx]])[names(repeated_explanations_list[[rho_idx]]) != "True_vs_Pilot_Order"]
+    print(valid_methods)
 
     # Aggregate the results
     aggregated_results_list[[paste0("rho_", rho)]] =
@@ -1887,6 +1885,8 @@ combine_explanation_results = function(M,
                         evaluation_criterion = evaluation_criterion,
                         level = level,
                         n_workers = n_workers)
+
+    print("done aggreagating")
 
     if (save_results) {
       if (rho_idx == 1) return_list[["save_files"]] = list()
@@ -1963,6 +1963,7 @@ aggregate_results = function(repeated_explanations_list,
   # the overall evaluation criterion (MAE or MSE) between the true Shapley values
   # (using all coalitions and a high value of `n_combinations`) and the repeated runs
   # (different seed values) with different sampling methods and number of used coalitions.
+  print("call 1")
   system.time({
     results_list =
       future.apply::future_lapply(repeated_explanations_list, function (ith_method) {
@@ -1977,6 +1978,7 @@ aggregate_results = function(repeated_explanations_list,
       })
   })
 
+  print("call 2")
   # For each method and `n_combination` value, compute the median and the quantile confidence interval
   # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
   results =
@@ -2000,6 +2002,7 @@ aggregate_results = function(repeated_explanations_list,
   # does not support odd number of combinations, while the other sampling methods do.
   results = results[!is.na(results$median)]
 
+  print("call 3")
   # We also compute some alternative aggregated versions of the data not needed to make the figure.
   # Create an alternative aggregated results data.table
   result_dt_alternative =
