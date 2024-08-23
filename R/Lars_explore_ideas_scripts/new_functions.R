@@ -1829,6 +1829,8 @@ combine_explanation_results = function(M,
         current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond)
       }
 
+      print(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond_paired.rds")))
+      print(file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond_paired.rds"))))
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond_paired.rds")))) {
         current_repetition_results_on_all_cond_paired =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond_paired.rds")))
