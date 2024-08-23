@@ -1823,6 +1823,18 @@ combine_explanation_results = function(M,
       # Load the rds file
       current_repetition_results = readRDS(save_file_name_rep)
 
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond.rds")))) {
+        current_repetition_results_on_all_cond =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond.rds")))
+        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond)
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond_paired.rds")))) {
+        current_repetition_results_on_all_cond_paired =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "on_all_cond_paired.rds")))
+        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired)
+      }
+
       # We remove all non-essential stuff from the list
       if (memory_efficient) {
         cat(sprintf("Using memory efficient version: %s \U2192 ",
