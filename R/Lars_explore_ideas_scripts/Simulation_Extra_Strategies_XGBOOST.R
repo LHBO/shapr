@@ -92,7 +92,7 @@ for (rho in rhos) {
 
         if (n_combinations[n_comb_now_idx] == 2) {
           # Only empty and grand coalition so just copy
-          save_list[[strategy]][[file_relevant_names[n_comb_now_idx]]] = file_relevant$n_combinations_2
+          save_list[[strategy]][[1]][[file_relevant_names[n_comb_now_idx]]] = file_relevant$n_combinations_2
         } else {
           #
           file_now = file_relevant[[n_comb_now_idx]]

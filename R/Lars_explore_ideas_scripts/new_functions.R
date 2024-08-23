@@ -1964,7 +1964,6 @@ aggregate_results = function(repeated_explanations_list,
   # (using all coalitions and a high value of `n_combinations`) and the repeated runs
   # (different seed values) with different sampling methods and number of used coalitions.
   print("call 1")
-  system.time({
     results_list =
       future.apply::future_lapply(repeated_explanations_list, function (ith_method) {
         sapply(ith_method, function(ith_method_jth_repetition) {
@@ -1976,7 +1975,6 @@ aggregate_results = function(repeated_explanations_list,
           })
         })
       })
-  })
 
   print("call 2")
   # For each method and `n_combination` value, compute the median and the quantile confidence interval
