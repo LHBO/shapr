@@ -24,7 +24,7 @@ shapley_reweighting <- function(X, reweight = "on_N") {
     X[-c(1,.N), shapley_weight := shapley_weight/cond]
   } else if (reweight == "on_all_cond_paired") {
     X[, shapley_weight := as.numeric(shapley_weight)]
-    m <- X[.N, n_features]S
+    m <- X[.N, n_features]
     K <- X[-c(1,.N), sum(shapley_weight)]
     X[-c(1,.N), shapley_weight := shapr:::shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m = 10^6)/sum_shapley_weights(m)]
     X[-c(1,.N), cond := 1-(1-2*shapley_weight)^(K/2)]
