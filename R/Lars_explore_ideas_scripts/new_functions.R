@@ -1849,7 +1849,6 @@ combine_explanation_results = function(M,
           for (rep in names(current_repetition_results[[met]])) {
             for (comb in names(current_repetition_results[[met]][[rep]])) {
               tmp_res = current_repetition_results[[met]][[rep]][[comb]]
-              print(tmp_res)
               tmp_res$only_save = NULL
               if (!is.null(tmp_res$internal)) tmp_res$internal = NULL
               if (!is.null(tmp_res$timing)) tmp_res$timing = NULL
