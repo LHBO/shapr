@@ -1787,6 +1787,7 @@ combine_explanation_results = function(M,
     files_in_dir = list.files(folder_save)
     relevant_files_in_dir = files_in_dir[grepl(paste0(file_name_updated, "_estimated_repetition_"), files_in_dir)]
     relevant_files_in_dir = relevant_files_in_dir[!grepl("tmp", relevant_files_in_dir)] # remove any tmp files
+    relevant_files_in_dir = relevant_files_in_dir[!grepl("on_all_cond", relevant_files_in_dir)] # remove the cond files
     if (length(relevant_files_in_dir) == 0) {
       stop(paste0("Cannot find any files for the provided paremeters. ",
                   "Looking for file name structures '", file_name, "'."))
@@ -1848,10 +1849,10 @@ combine_explanation_results = function(M,
           for (rep in names(current_repetition_results[[met]])) {
             for (comb in names(current_repetition_results[[met]][[rep]])) {
               tmp_res = current_repetition_results[[met]][[rep]][[comb]]
-              tmp_res[["only_save"]] = NULL
-              tmp_res$internal = NULL
-              tmp_res$timing = NULL
-              tmp_res$pred_explain = NULL
+              if (!is.null(tmp_res[["only_save"]])) tmp_res[["only_save"]] = NULL
+              if (!is.null(tmp_res$internal)) tmp_res$internal = NULL
+              if (!is.null(tmp_res$timing)) tmp_res$timing = NULL
+              if (!is.null(tmp_res$pred_explain)) tmp_res$pred_explain = NULL
               current_repetition_results[[met]][[rep]][[comb]] = tmp_res
             }
           }
