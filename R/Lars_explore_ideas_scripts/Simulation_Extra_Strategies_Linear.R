@@ -95,11 +95,7 @@ for (rho in rhos) {
       for (n_comb_now_idx in seq_along(n_combinations)) {
         message(sprintf("rho = %.1f \t repetition = %d \t strategy = %s \t n_comb = %d", rho, repetition, strategy, n_combinations[n_comb_now_idx]))
 
-        if (n_combinations[n_comb_now_idx] == 2) {
-          # Only empty and grand coalition so just copy
-          save_list[[strategy]][[1]][[file_relevant_names[n_comb_now_idx]]] = file_relevant$n_combinations_2
-        } else {
-          #
+
           file_now = file_relevant[[n_comb_now_idx]]
 
           this_X = data.table::copy(file_now$only_save$X)
@@ -147,7 +143,7 @@ for (rho in rhos) {
                                                                                    only_save = list(X = this_X,
                                                                                                     W = this_W,
                                                                                                     S = S_sampled))
-        }
+
       }
 
       # Save to disk
