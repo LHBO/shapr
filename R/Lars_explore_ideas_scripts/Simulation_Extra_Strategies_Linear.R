@@ -54,7 +54,7 @@ sum_shapley_weights <- function(m){
 
 # Code starts -----------------------------------------------------------------------------------------------------
 repetitions = 50
-rhos = c(0, 0.2, 0.5, 0.9)
+rhos = rev(c(0, 0.2, 0.5, 0.9))
 new_strategies = c("on_all_cond", "on_all_cond_paired")
 
 
