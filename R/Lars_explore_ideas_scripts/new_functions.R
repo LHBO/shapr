@@ -1981,7 +1981,7 @@ aggregate_results = function(repeated_explanations_list,
   # based on the user provided `level`. The default is a 95% confidence interval. Convert to a data.table.
   results =
     data.table::rbindlist(
-      future.apply::future_lapply(results_list, function(ith_method) {
+      lapply(results_list, function(ith_method) {
         median_and_ci = apply(ith_method, 1, quantile, probs = c((1 - level)/2, 0.5, 1 - (1 - level)/2), na.rm = TRUE)
         tmp_dt = data.table::data.table(n_combinations = as.numeric(sapply(strsplit(rownames(ith_method),
                                                                                     "_(?!.*_)", perl=TRUE), "[[", 2)),
@@ -2005,7 +2005,7 @@ aggregate_results = function(repeated_explanations_list,
   # Create an alternative aggregated results data.table
   result_dt_alternative =
     data.table::rbindlist(
-      future.apply::future_lapply(results_list, function(ith_method) {
+      lapply(results_list, function(ith_method) {
         data.table::data.table(n_combinations =
                                  as.numeric(sapply(strsplit(rownames(ith_method), "_(?!.*_)", perl=TRUE), "[[", 2)),
                                ith_method)
