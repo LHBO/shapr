@@ -95,22 +95,22 @@ for (rho in rhos) {
           #
           file_now = file_relevant[[n_comb_now_idx]]
 
-          this_X = copy(file_now$only_save$X)
+          this_X = data.table::copy(file_now$only_save$X)
 
           # Re weight the shapely weights
           shapley_reweighting(this_X, reweight = strategy)
 
           # Get the weight matrix
-          this_W <- weight_matrix(X = this_X, normalize_W_weights = TRUE)
+          this_W <- shapr:::weight_matrix(X = this_X, normalize_W_weights = TRUE)
 
           # Get the number of features
           m = this_X[.N, n_features]
 
           ## Get feature matrix ---------
-          S_sampled <- feature_matrix_cpp(features = this_X[["features"]], m = m)
+          S_sampled <- shapr:::feature_matrix_cpp(features = this_X[["features"]], m = m)
 
           # Create the S matrix if we had used all combinations
-          S_all = shapr::feature_matrix_cpp(
+          S_all = shapr:::feature_matrix_cpp(
             features = unlist(lapply(0:m, utils::combn, x = m, simplify = FALSE), recursive = FALSE), m = m
           )
           S_all_list = as.list(seq(nrow(S_all)))
