@@ -88,7 +88,7 @@ for (rho in rhos) {
       # Interate over the different number of coalitions
       n_comb_now_idx = 2
       for (n_comb_now_idx in seq_along(n_combinations)) {
-        message(sprintf("rho = %2.f \t repetition = %d \t strategy = %s \t n_comb = %d", rho, repetition, strategy, n_combinations[n_comb_now_idx]))
+        message(sprintf("rho = %.1f \t repetition = %d \t strategy = %s \t n_comb = %d", rho, repetition, strategy, n_combinations[n_comb_now_idx]))
 
         if (n_combinations[n_comb_now_idx] == 2) {
           # Only empty and grand coalition so just copy
