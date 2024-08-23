@@ -85,7 +85,7 @@ for (rho in rhos) {
       save_list = list()
       save_list[[strategy]] = list(repetition_1 = list())
 
-      # Interate over the different number of coalitions
+      # Iterate over the different number of coalitions
       n_comb_now_idx = 2
       for (n_comb_now_idx in seq_along(n_combinations)) {
         message(sprintf("rho = %.1f \t repetition = %d \t strategy = %s \t n_comb = %d", rho, repetition, strategy, n_combinations[n_comb_now_idx]))
