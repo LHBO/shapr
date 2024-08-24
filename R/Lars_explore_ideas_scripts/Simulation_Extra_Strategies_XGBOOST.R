@@ -57,6 +57,8 @@ repetitions = 50
 rhos = c(0, 0.2, 0.5, 0.9)
 new_strategies = c("on_all_cond", "on_all_cond_paired")
 
+version = "largest_weights_random" # "unique_paired"
+
 
 # Iterate over the dependencies
 rho = 0
@@ -71,7 +73,9 @@ for (rho in rhos) {
     file = readRDS(file_name)
 
     # Get the relevant files
-    file_relevant = file$unique_paired$repetition_1
+    #file_relevant = file$unique_paired$repetition_1
+    file_relevant = file[[version]]$repetition_1
+
     file_relevant_names = names(file_relevant)
     n_combinations = as.integer(sub(".*_", "", names(file_relevant)))
 
@@ -79,7 +83,7 @@ for (rho in rhos) {
     strategy = new_strategies[1]
     for (strategy in new_strategies) {
       # Get the strategy specific save name
-      save_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_", repetition ,"_", strategy, ".rds")
+      save_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_", repetition ,"_", strategy, "_", version, ".rds")
 
       # List to store the results for each new strategy
       save_list = list()
@@ -98,6 +102,10 @@ for (rho in rhos) {
           file_now = file_relevant[[n_comb_now_idx]]
 
           this_X = data.table::copy(file_now$only_save$X)
+
+          if (version == "largest_weights_random") { # Set weights to 1 as the coals are not sampled with replacement
+            this_X[-c(1,.N), shapley_weight := 1.0]
+          }
 
           # Re weight the shapely weights
           shapley_reweighting(this_X, reweight = strategy)

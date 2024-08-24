@@ -1851,10 +1851,7 @@ combine_explanation_results = function(M,
           }
         }
         cat(sprintf("%s.\n", format(object.size(current_repetition_results), units = "auto")))
-
         saveRDS(current_repetition_results, save_file_name_rep)
-
-
       }
 
       # We remove all non-essential stuff from the list
