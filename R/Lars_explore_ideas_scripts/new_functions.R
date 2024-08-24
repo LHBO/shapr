@@ -1842,6 +1842,7 @@ combine_explanation_results = function(M,
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random.rds")))
         names(current_repetition_results_on_all_cond) = paste0(names(current_repetition_results_on_all_cond), "_largest_weights_random")
         current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond)
+        print("FOund file")
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random.rds")))) {
