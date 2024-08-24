@@ -1737,7 +1737,8 @@ combine_explanation_results = function(M,
                                        evaluation_criterion = c("MAE", "MSE"),
                                        level = 0.95,
                                        n_workers = 1,
-                                       objects_to_return = "aggregated_results") {
+                                       objects_to_return = "aggregated_results",
+                                       resave = FALSE) {
 
   # Check some of the inputs
   if (length(betas) != M + 1) stop("Incorrect number of `betas` compared to `M`.")
@@ -1834,6 +1835,26 @@ combine_explanation_results = function(M,
         current_repetition_results_on_all_cond_paired =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired.rds")))
         current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired)
+      }
+
+      if (resave) {
+        # Resave the file but without the precomputed v(S) values
+        cat(sprintf("Resaving: Using memory efficient version: %s \U2192 ",
+                    format(object.size(current_repetition_results), units = "auto")))
+
+        for (met in names(current_repetition_results)) {
+          if (met == "True_vs_Pilot_Order") next
+          for (rep in names(current_repetition_results[[met]])) {
+            for (comb in names(current_repetition_results[[met]][[rep]])) {
+              current_repetition_results[[met]][[rep]][[comb]]$internal$parameters$precomputed_vS = NULL
+            }
+          }
+        }
+        cat(sprintf("%s.\n", format(object.size(current_repetition_results), units = "auto")))
+
+        saveRDS(current_repetition_results, save_file_name_rep)
+
+
       }
 
       # We remove all non-essential stuff from the list
