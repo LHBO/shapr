@@ -186,7 +186,8 @@ if (do_dt) {
     level = 0.95,
     n_workers = 1,
     objects_to_return = "aggregated_results",
-    name_prefix = "Gompertz_Xgboost",# "Samp_VS_kernel_Xgboost" # "NSM2024_Xgboost"
+    name_prefix = "Gompertz_Xgboost",# "Samp_VS_kernel_Xgboost" # "NSM2024_Xgboost",
+    resave = TRUE
     )
 }
 
