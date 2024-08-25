@@ -1857,6 +1857,7 @@ combine_explanation_results = function(M,
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random_analytical.rds")))
         if (length(current_repetition_results_extra) == 2){
           current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          names(current_repetition_results_extra) = rev(names(current_repetition_results_extra))
           current_repetition_results_extra[[2]] = NULL
         }
         current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
@@ -1868,6 +1869,7 @@ combine_explanation_results = function(M,
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_analytical.rds")))
         if (length(current_repetition_results_extra) == 2){
           current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          names(current_repetition_results_extra) = rev(names(current_repetition_results_extra))
           current_repetition_results_extra[[2]] = NULL
         }
         current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
@@ -1878,6 +1880,7 @@ combine_explanation_results = function(M,
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_unique_paired_analytical.rds")))
         if (length(current_repetition_results_extra) == 2){
           current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          names(current_repetition_results_extra) = rev(names(current_repetition_results_extra))
           current_repetition_results_extra[[2]] = NULL
         }
         current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
@@ -1889,6 +1892,7 @@ combine_explanation_results = function(M,
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_analytical.rds")))
         if (length(current_repetition_results_extra) == 2){
           current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          names(current_repetition_results_extra) = rev(names(current_repetition_results_extra))
           current_repetition_results_extra[[2]] = NULL
         }
         current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
