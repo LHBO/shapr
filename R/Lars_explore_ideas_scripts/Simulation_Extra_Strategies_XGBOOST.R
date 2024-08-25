@@ -61,6 +61,7 @@ versions = c("largest_weights_random", "unique_paired")
 
 weight_version = "analytical"
 
+resave = TRUE
 
 version = "unique_paired"
 for(version in versions) {
@@ -75,6 +76,23 @@ for(version in versions) {
     for (repetition in seq(repetitions)) {
       file_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_", repetition ,".rds")
       file = readRDS(file_name)
+
+      if (resave) {
+        # Resave the file but without the precomputed v(S) values
+        cat(sprintf("Resaving: Using memory efficient version: %s \U2192 ",
+                    format(object.size(file), units = "auto")))
+        for (met in names(file)) {
+          if (met == "True_vs_Pilot_Order") next
+          for (rep in names(file[[met]])) {
+            for (comb in names(file[[met]][[rep]])) {
+              file[[met]][[rep]][[comb]]$internal$parameters$precomputed_vS = NULL
+            }
+          }
+        }
+        cat(sprintf("%s.\n", format(object.size(file), units = "auto")))
+        saveRDS(file, file_name )
+      }
+
 
       # Get the relevant files
       #file_relevant = file$unique_paired$repetition_1
@@ -118,7 +136,7 @@ for(version in versions) {
             shapley_reweighting(this_X, reweight = strategy)
 
             if (weight_version == "analytical") {
-              dt_new_weights = readRDS(paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Analytical_prop_M_", M, "_res.rds"))
+              dt_new_weights = readRDS(paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Analytical_prop_M_", 10, "_res.rds"))
 
               # Find the weights of the combination closest to n_combinations
               n_comb_use = dt_new_weights$n_combinations[which.min(abs(dt_new_weights$n_combinations - n_combinations[n_comb_now_idx]))]
