@@ -1826,57 +1826,76 @@ combine_explanation_results = function(M,
       current_repetition_results = readRDS(save_file_name_rep)
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond.rds")))) {
-        current_repetition_results_on_all_cond =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond.rds")))
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond)
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired.rds")))) {
-        current_repetition_results_on_all_cond_paired =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired.rds")))
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired)
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random.rds")))) {
-        current_repetition_results_on_all_cond =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random.rds")))
-        names(current_repetition_results_on_all_cond) = paste0(names(current_repetition_results_on_all_cond), "_largest_weights_random")
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond)
+        names(current_repetition_results_extra) = paste0(names(current_repetition_results_extra), "_largest_weights_random")
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
         print("FOund file")
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random.rds")))) {
-        current_repetition_results_on_all_cond_paired =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random.rds")))
-        names(current_repetition_results_on_all_cond_paired) = paste0(names(current_repetition_results_on_all_cond_paired), "_largest_weights_random")
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired)
+        names(current_repetition_results_extra) = paste0(names(current_repetition_results_extra), "_largest_weights_random")
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random_analytical.rds")))) {
-        current_repetition_results_on_all_cond_analytical =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random_analytical.rds")))
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_analytical)
+        if (length(current_repetition_results_extra) == 2){
+          current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          current_repetition_results_extra[[2]] = NULL
+        }
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
         print("FOund file 2")
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_analytical.rds")))) {
-        current_repetition_results_on_all_cond_paired_analytical =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_analytical.rds")))
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired_analytical)
+        if (length(current_repetition_results_extra) == 2){
+          current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          current_repetition_results_extra[[2]] = NULL
+        }
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_unique_paired_analytical.rds")))) {
-        current_repetition_results_on_all_cond_analytical =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_unique_paired_analytical.rds")))
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_analytical)
+        if (length(current_repetition_results_extra) == 2){
+          current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          current_repetition_results_extra[[2]] = NULL
+        }
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
         print("FOund file 2")
       }
 
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_analytical.rds")))) {
-        current_repetition_results_on_all_cond_paired_analytical =
+        current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_analytical.rds")))
-        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired_analytical)
+        if (length(current_repetition_results_extra) == 2){
+          current_repetition_results_extra[[1]]$repetition_1 = c(current_repetition_results_extra[[1]]$repetition_1, current_repetition_results_extra[[2]][[1]])
+          current_repetition_results_extra[[2]] = NULL
+        }
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
       }
+
+
+
 
 
 
