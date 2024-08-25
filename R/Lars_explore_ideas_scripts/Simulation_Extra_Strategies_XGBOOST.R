@@ -63,21 +63,23 @@ weight_version = "analytical"
 
 resave = TRUE
 
-version = "unique_paired"
-for(version in versions) {
-  # Iterate over the dependencies
-  rho = 0
-  for (rho in rhos) {
-    true = readRDS(paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_true.rds"))
-    precomputed_vS = true$internal$output # Extract only the precomputed_vS list
 
-    # Iterate over the repetitions
-    repetition = 1
-    for (repetition in seq(repetitions)) {
-      file_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_", repetition ,".rds")
-      file = readRDS(file_name)
 
-      if (resave) {
+# Iterate over the dependencies
+rho = 0
+for (rho in rhos) {
+  true = readRDS(paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_true.rds"))
+  precomputed_vS = true$internal$output # Extract only the precomputed_vS list
+
+  # Iterate over the repetitions
+  repetition = 1
+  for (repetition in seq(repetitions)) {
+    file_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_", repetition ,".rds")
+    file = readRDS(file_name)
+
+    version = "unique_paired"
+    for(version in versions) {
+      if (resave && !is.null(file[[1]][[1]][[1]]$internal$parameters$precomputed_vS) {
         # Resave the file but without the precomputed v(S) values
         cat(sprintf("Resaving: Using memory efficient version: %s \U2192 ",
                     format(object.size(file), units = "auto")))
