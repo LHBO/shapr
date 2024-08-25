@@ -78,8 +78,8 @@ for (rho in rhos) {
     file = readRDS(file_name)
 
     version = "unique_paired"
-    for(version in versions) {
-      if (resave && !is.null(file[[1]][[1]][[1]]$internal$parameters$precomputed_vS) {
+    for (version in versions) {
+      if (resave && !is.null(file[[1]][[1]][[1]]$internal$parameters$precomputed_vS)) {
         # Resave the file but without the precomputed v(S) values
         cat(sprintf("Resaving: Using memory efficient version: %s \U2192 ",
                     format(object.size(file), units = "auto")))
