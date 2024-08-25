@@ -1852,6 +1852,35 @@ combine_explanation_results = function(M,
         current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired)
       }
 
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random_analytical.rds")))) {
+        current_repetition_results_on_all_cond_analytical =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_largest_weights_random_analytical.rds")))
+        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_analytical)
+        print("FOund file 2")
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_analytical.rds")))) {
+        current_repetition_results_on_all_cond_paired_analytical =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_analytical.rds")))
+        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired_analytical)
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_unique_paired_analytical.rds")))) {
+        current_repetition_results_on_all_cond_analytical =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_unique_paired_analytical.rds")))
+        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_analytical)
+        print("FOund file 2")
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_analytical.rds")))) {
+        current_repetition_results_on_all_cond_paired_analytical =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_analytical.rds")))
+        current_repetition_results = c(current_repetition_results, current_repetition_results_on_all_cond_paired_analytical)
+      }
+
+
+
+
       if (resave) {
         # Resave the file but without the precomputed v(S) values
         cat(sprintf("Resaving: Using memory efficient version: %s \U2192 ",
