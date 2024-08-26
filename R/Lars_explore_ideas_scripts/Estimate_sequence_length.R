@@ -141,14 +141,20 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 
 # Code starts here ------------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
-m_vec = unlist(strsplit(args[1], ","))
-if (length(M_vec) > 1) {
-  m_vec = unname(sapply(m_vec, function(i) as.numeric(i)))
+
+m_vec = as.character(args[1])
+if (grepl(",", m_vec)) {
+  m_vec = as.numeric(unlist(strsplit(m_vec, ",")))
 } else {
-  m_vec = as.numeric(m_vec)
+  m_vec = unlist(strsplit(m_vec, ":"))
+  if (length(m_vec) > 1) {
+    m_vec = seq(as.numeric(m_vec[1]), as.numeric(m_vec[2]))
+  } else {
+    m_vec = as.numeric(m_vec)
+  }
 }
-repetitions = as.integer(args[2])
-n_sample_scale = as.numeric(args[3])
+repetitions = as.integer(args[2]) # 250
+n_sample_scale = as.numeric(args[3]) # 10
 
 # Iterate over the number
 for (m in m_vec) {
