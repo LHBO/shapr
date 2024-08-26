@@ -233,7 +233,7 @@ if (do_dt) {
     n_workers = 1,
     objects_to_return = "aggregated_results",
     name_prefix = "",
-    resave = TRUE
+    resave = FALSE
     )
 }
 
