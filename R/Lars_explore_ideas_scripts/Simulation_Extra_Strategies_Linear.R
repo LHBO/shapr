@@ -115,7 +115,7 @@ for (rho in rhos) {
 
           # List to store the results for each new strategy
           save_list = list()
-          save_list[[strategy]] = list(repetition_1 = list())
+          save_list[[strategy_name]] = list(repetition_1 = list())
 
           # Iterate over the different number of coalitions
           n_comb_now_idx = 2
