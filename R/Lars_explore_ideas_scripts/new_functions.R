@@ -1825,6 +1825,9 @@ combine_explanation_results = function(M,
       # Load the rds file
       current_repetition_results = readRDS(save_file_name_rep)
 
+      if (!is.null(current_repetition_results$on_all_cond)) current_repetition_results$on_all_cond = NULL
+      if (!is.null(current_repetition_results$on_all_cond_paired)) current_repetition_results$on_all_cond_paired = NULL
+
       if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond.rds")))) {
         current_repetition_results_extra =
           readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond.rds")))
