@@ -96,7 +96,7 @@ coalition_sampling = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, 
 }
 
 
-repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m,  n_sample_scale = 5, verbose = TRUE) {
+repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m - 2, n_sample_scale = 5, verbose = TRUE) {
   dt = data.table::rbindlist(
     lapply(seq(repetitions), function(repetition) {
       if (verbose) message(paste0("Working on repetition ", repetition, " of ", repetitions ,"."))
