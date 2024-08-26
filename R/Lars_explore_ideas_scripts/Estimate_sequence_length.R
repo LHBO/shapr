@@ -96,10 +96,14 @@ coalition_sampling = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, 
 }
 
 
-repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m - 2, n_sample_scale = 5, verbose = TRUE) {
+repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m - 2, n_sample_scale = 5, verbose = TRUE, verbose_extra = NULL) {
   dt = data.table::rbindlist(
     lapply(seq(repetitions), function(repetition) {
-      if (verbose) message(paste0("Working on repetition ", repetition, " of ", repetitions ,"."))
+      if (verbose){
+        string = paste0("Working on repetition ", repetition, " of ", repetitions ,".")
+        if (!is.null(verbose_extra)) string = paste(verbose_extra, string)
+        message(string)
+      }
       coalition_sampling(m = m,
                          n_combinations = n_combinations,
                          n_sample_scale = n_sample_scale,
@@ -158,15 +162,53 @@ n_sample_scale = as.numeric(args[3]) # 10
 
 # Iterate over the number
 for (m in m_vec) {
-  dt = repeated_coalition_sampling(m = m, repetitions = repetitions, n_sample_scale = n_sample_scale)
+  dt = repeated_coalition_sampling(m = m, repetitions = repetitions, n_sample_scale = n_sample_scale,
+                                   verbose_extra = paste0("M = ", m, "."))
   dt_avg = dt[, list(L_avg = mean(L)), by = N_S]
   saveRDS(list(dt = dt, dt_avg = dt_avg), file.path(folder_save, paste0("Sequence_length_M_", m, ".rds")))
 }
 
 
 
+#
+if (FALSE) {
+  plot(dt_avg[,N_S], dt_avg[,L_avg])
+  pp = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_10.rds")
+  dt = copy(pp$dt)
+  dt_avg = copy(pp$dt_avg)
+  dt = dt[Repetition <= 100,]
+
+  dt[, Repetition := as.factor(Repetition)]
+
+  library(ggplot2)
+  ggplot(dt, aes(x = N_S, y = L, colour = Repetition)) +
+    geom_line()
+}
 
 
+if (FALSE) {
+  #sammenlign
+  vv = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_n_train_1000_n_test_1000_rho_0.92_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_2.rds")
+
+  L_values = sapply(vv$unique_paired$repetition_1[-c(1, length(vv$unique_paired$repetition_1))], function(x) {
+    x$only_save$X[-c(1,.N), sum(shapley_weight)]
+  })
+
+  dt_extra = data.table(N_S = as.integer(sub(".*_", "", names(values))), L = L_values)
+
+  ggplot(dt, aes(x = N_S, y = L)) +
+    geom_line(aes(colour = Repetition)) +
+    geom_point(data = dt_extra, mapping = aes(x = N_S, y = L), colour = "black")
+
+  plot(values)
+
+  ggplot(dt_avg, aes(x = N_S, y = L_avg)) +
+    geom_line() +
+    geom_point(data = dt_extra, mapping = aes(x = N_S, y = L), colour = "black")
+
+
+  vv$unique_paired$repetition_1$n_combinations_6$only_save$X[-c(1,.N), sum(shapley_weight)]
+}
 
 
 
