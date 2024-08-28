@@ -211,7 +211,7 @@ for (rho in rhos) {
 
                 # Update the weights with the provided weights for each coalition size
                 this_X[dt_new_weights_now, on = "n_features", shapley_weight := get("mean")]
-              } else if (weight_version == "mean_L") {
+              } else if (weight_version %in% c("mean_L", "mean_ps")) {
 
                 # Get the weights
                 dt_new_weights = copy(dt_new_weights_sequence)
@@ -225,26 +225,7 @@ for (rho in rhos) {
                 setnames(dt_new_weights_now, "Size", "n_features")
 
                 # Update the weights with the provided weights for each coalition size
-                this_X[dt_new_weights_now, on = "n_features", shapley_weight := get("mean L")]
-
-              } else if (weight_version == "mean_ps") {
-
-                # Get the weights
-                dt_new_weights = copy(dt_new_weights_sequence)
-
-                # Find the weights of the combination closest to n_combinations
-                n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combinations[n_comb_now_idx]))]
-                dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-                dt_new_weights_now = dcast(dt_new_weights_now[type == "mean"], M + N_S + Size ~ version, value.var = "Ps_tilde")
-                dt_new_weights_now
-
-
-                dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(n_row %% 2 == 1, 1, 0)):1])
-                dt_new_weights_now[, Size := seq(.N)]
-                setnames(dt_new_weights_now, "Size", "n_features")
-
-                # Update the weights with the provided weights for each coalition size
-                this_X[dt_new_weights_now, on = "n_features", shapley_weight := get("mean ps")]
+                this_X[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", weight_version))]
 
               } else {
                 stop("Unknown weight_version")
