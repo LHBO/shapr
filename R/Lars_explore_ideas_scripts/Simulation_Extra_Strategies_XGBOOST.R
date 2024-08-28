@@ -164,8 +164,11 @@ for (rho in rhos) {
           # Iterate over the different number of coalitions
           n_comb_now_idx = 20
           for (n_comb_now_idx in seq_along(n_combinations)) {
-            message(sprintf("version = %s \t weight_version = %s \t rho = %.1f \t repetition = %d \t strategy = %s \t n_comb = %d",
-                            version, weight_version, rho, repetition, strategy, n_combinations[n_comb_now_idx]))
+            if (n_comb_now_idx %% round(length(n_combinations) / 10) == 0) {
+              message(sprintf("version = %s \t weight_version = %s \t rho = %.1f \t repetition = %d \t strategy = %s \t n_comb = %d",
+                              version, weight_version, rho, repetition, strategy, n_combinations[n_comb_now_idx]))
+            }
+
 
             if (n_combinations[n_comb_now_idx] == 2) {
               # Only empty and grand coalition so just copy
