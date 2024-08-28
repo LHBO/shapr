@@ -690,7 +690,19 @@ if (FALSE) {
                                                        "largest_weights",
                                                        "largest_weights_combination_size",
                                                        "largest_weights_new_weights_empirical",
-                                                       "largest_weights_combination_size_new_weights_empirical")
+                                                       "largest_weights_combination_size_new_weights_empirical",
+                                                       "on_all_cond",
+                                                       "on_all_cond_paired",
+                                                       "on_all_cond_largest_weights_random",
+                                                       "on_all_cond_largest_weights_random_analytical",
+                                                       "on_all_cond_largest_weights_random_non_analytical",
+                                                       "on_all_cond_paired_largest_weights_random",
+                                                       "on_all_cond_paired_largest_weights_random_analytical",
+                                                       "on_all_cond_paired_largest_weights_random_non_analytical",
+                                                       "on_all_cond_unique_paired_analytical",
+                                                       "on_all_cond_unique_paired_non_analytical",
+                                                       "on_all_cond_paired_unique_paired_analytical",
+                                                       "on_all_cond_paired_unique_paired_non_analytical")
 
     # Pilot linear regression
     # Load the results and make the figures
@@ -740,7 +752,19 @@ if (FALSE) {
                                            "largest_weights_new_weights_empirical",
                                            "largest_weights_combination_size_new_weights_empirical",
                                            "largest_weights_random", "largest_weights_random_new_weights_empirical",
-                                           "MAD", "MAD_new_weights_empirical"
+                                           "MAD", "MAD_new_weights_empirical",
+                                           "on_all_cond",
+                                           "on_all_cond_unique_paired_non_analytical",
+                                           "on_all_cond_unique_paired_analytical",
+                                           "on_all_cond_largest_weights_random",
+                                           "on_all_cond_largest_weights_random_non_analytical",
+                                           "on_all_cond_largest_weights_random_analytical",
+                                           "on_all_cond_paired",
+                                           "on_all_cond_paired_unique_paired_non_analytical",
+                                           "on_all_cond_paired_unique_paired_analytical",
+                                           "on_all_cond_paired_largest_weights_random",
+                                           "on_all_cond_paired_largest_weights_random_non_analytical",
+                                           "on_all_cond_paired_largest_weights_random_analytical"
                                 ),
                                 labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                            "Paired Empirical", "Paired Gompertz",
@@ -749,7 +773,19 @@ if (FALSE) {
                                            "Paired Largest Order Kernel", "Largest Coalition",
                                            "Paired Largest Order Empirical", "Paired Largest Order Coalition Empirical",
                                            "Paired Largest Kernel", "Paired Largest Empirical",
-                                           "MAD Largest Kernel", "MAD Largest Empirical"
+                                           "MAD Largest Kernel", "MAD Largest Empirical",
+                                           "Cond",
+                                           "Cond",
+                                           "Cond Empirical",
+                                           "Cond Largest",
+                                           "Cond Largest",
+                                           "Cond Largest Empirical",
+                                           "Paired Cond",
+                                           "Paired Cond",
+                                           "Paired Cond Empirical",
+                                           "Paired Cond Largest",
+                                           "Paired Cond Largest",
+                                           "Paired Cond Largest Empirical"
                                 ),
                                 ordered = FALSE)]
 
@@ -809,9 +845,42 @@ if (FALSE) {
     samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Pilot Empirical", "Pilot Average", "Pilot Largest Empirical", "Pilot Largest Kernel")
 
 
+    samps = c("Unique", "Paired", "Paired Average", "Paired Kernel", "Paired Empirical", "Paired Largest Empirical")
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Cond", "Paired Cond Largest")
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Kernel", "Paired Largest Empirical",
+              "Paired Cond", "Paired Cond Empirical", "Paired Cond Largest", "Paired Cond Largest Empirical")
+
+    plot(dt_all[sampling == "Paired Cond", mean] - dt_all[sampling == "Paired Empirical", mean])
+
+    {
+      par(mfrow = c(2,2))
+      plot(dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+           dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.0, mean] -
+             dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.0, mean],
+           type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical", ylim = c(-0.000001, 0.000001))
+      abline(h = 0, col = "red")
+      plot(dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+           dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.2, mean] -
+             dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.2, mean],
+           type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical", ylim = c(-0.00005, 0.00005))
+      abline(h = 0, col = "red")
+      plot(dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+           dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.5, mean] -
+             dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.5, mean],
+           type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical", ylim = c(-0.0001, 0.0001))
+      abline(h = 0, col = "red")
+      plot(dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+           dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, mean] -
+             dt_all[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.9, mean],
+           type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical", ylim = c(-0.0005, 0.0005))
+      abline(h = 0, col = "red")
+    }
+
+
+
     dt_all2 = dt_all[sampling %in% samps]
     dt_all2 = dt_all2[, sampling := factor(sampling, levels = samps, ordered = TRUE)]
-    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling, linetype = sampling)) +
       geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
       #geom_vline(xintercept = 131000, col = "red") +
       #geom_smooth(method = "loess", se = FALSE) +
@@ -832,7 +901,7 @@ if (FALSE) {
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
       #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
-      labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+      labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
       theme(strip.text = element_text(size = rel(1.6)),
             legend.title = element_text(size = rel(1.4)),
             legend.text = element_text(size = rel(1.4)),
@@ -844,7 +913,7 @@ if (FALSE) {
     fig3
 
 
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_Appendix_MAD.png",
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_NEW_STRAT.png",
            plot = fig3,
            width = 14.2,
            height = 9.98,
@@ -1609,7 +1678,15 @@ if (FALSE) {
                                                        "largest_weights",
                                                        "largest_weights_combination_size",
                                                        "largest_weights_new_weights_empirical",
-                                                       "largest_weights_combination_size_new_weights_empirical")
+                                                       "largest_weights_combination_size_new_weights_empirical",
+                                                       "on_all_cond",
+                                                       "on_all_cond_paired",
+                                                       "on_all_cond_largest_weights_random",
+                                                       "on_all_cond_paired_largest_weights_random",
+                                                       "on_all_cond_largest_weights_random_analytical",
+                                                       "on_all_cond_paired_largest_weights_random_analytical",
+                                                       "on_all_cond_unique_paired_analytical",
+                                                       "on_all_cond_paired_unique_paired_analytical")
 
 
     # Pilot linear regression
@@ -1664,7 +1741,15 @@ if (FALSE) {
                                            "largest_weights_new_weights_empirical",
                                            "largest_weights_combination_size_new_weights_empirical",
                                            "largest_weights_random", "largest_weights_random_new_weights_empirical",
-                                           "MAD", "MAD_new_weights_empirical"
+                                           "MAD", "MAD_new_weights_empirical",
+                                           "on_all_cond",
+                                           "on_all_cond_paired",
+                                           "on_all_cond_largest_weights_random",
+                                           "on_all_cond_paired_largest_weights_random",
+                                           "on_all_cond_largest_weights_random_analytical",
+                                           "on_all_cond_paired_largest_weights_random_analytical",
+                                           "on_all_cond_unique_paired_analytical",
+                                           "on_all_cond_paired_unique_paired_analytical"
                                 ),
                                 labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                            "Paired Empirical", "Paired Gompertz",
@@ -1673,7 +1758,15 @@ if (FALSE) {
                                            "Paired Largest Order Kernel", "Largest Coalition",
                                            "Paired Largest Order Empirical", "Paired Largest Order Coalition Empirical",
                                            "Paired Largest Kernel", "Paired Largest Empirical",
-                                           "MAD Largest Kernel", "MAD Largest Empirical"
+                                           "MAD Largest Kernel", "MAD Largest Empirical",
+                                           "Cond",
+                                           "Paired Cond",
+                                           "Cond Largest",
+                                           "Paired Cond Largest",
+                                           "Cond Largest Empirical",
+                                           "Paired Cond Largest Empirical",
+                                           "Cond Empirical",
+                                           "Paired Cond Empirical"
                                 ),
                                 ordered = FALSE)]
 
@@ -1736,9 +1829,80 @@ if (FALSE) {
     samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Paired Largest Order Empirical", "Paired Largest Order Kernel", "MAD Largest Empirical", "MAD Largest Kernel")
     samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Pilot Empirical", "Pilot Average", "Pilot Largest Empirical", "Pilot Largest Kernel")
 
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Cond")
+
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Cond")
+    samps = c("Unique", "Paired", "Paired Cond")
+
+
+    samps = c("Unique", "Paired", "Paired Average", "Paired Empirical", "Paired Kernel", "Paired Largest Empirical",
+              "Paired Cond", "Paired Cond Empirical", "Paired Cond Largest", "Paired Cond Largest Empirical")
 
 
 
+    {
+      par(mfrow = c(2,2))
+        plot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+             dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.0, mean] -
+               dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.0, mean],
+             type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical")
+        abline(h = 0, col = "red")
+        plot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+             dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.2, mean] -
+               dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.2, mean],
+             type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical")
+        abline(h = 0, col = "red")
+        plot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+             dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.5, mean] -
+               dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.5, mean],
+             type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical")
+        abline(h = 0, col = "red")
+        plot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, n_combinations],
+             dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond" & rho == 0.9, mean] -
+               dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.9, mean],
+             type = "l", xlab = "n_combinations", ylab = "Paired Cond - Paired Empirical")
+        abline(h = 0, col = "red")
+    }
+
+    {
+      par(mfrow = c(2,2))
+      plot(dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.9, n_combinations],
+           dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.0, mean] -
+             dt_all[n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.0, mean],
+           type = "l", xlab = "n_combinations", ylab = "on_all_cond_paired_unique_paired_analytical - Paired Empirical")
+      abline(h = 0, col = "red")
+      plot(dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.9, n_combinations],
+           dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.2, mean] -
+             dt_all[n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.2, mean],
+           type = "l", xlab = "n_combinations", ylab = "on_all_cond_paired_unique_paired_analytical - Paired Empirical")
+      abline(h = 0, col = "red")
+      plot(dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.9, n_combinations],
+           dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.5, mean] -
+             dt_all[n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.5, mean],
+           type = "l", xlab = "n_combinations", ylab = "on_all_cond_paired_unique_paired_analytical - Paired Empirical")
+      abline(h = 0, col = "red")
+      plot(dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.9, n_combinations],
+           dt_all[n_combinations %% 2 == 0][sampling == "on_all_cond_paired_unique_paired_analytical" & rho == 0.9, mean] -
+             dt_all[n_combinations %% 2 == 0][sampling == "Paired Empirical" & rho == 0.9, mean],
+           type = "l", xlab = "n_combinations", ylab = "on_all_cond_paired_unique_paired_analytical - Paired Empirical")
+      abline(h = 0, col = "red")
+    }
+
+    plot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond", mean] - dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical", mean])
+    dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond", mean] - dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Average", mean]
+
+
+
+    samps = c("Paired Empirical",
+      "Paired Cond",
+      "on_all_cond_paired_unique_paired_analytical"
+      #"Paired Largest Empirical",
+              # "Paired Cond Largest",
+              # #"on_all_cond_largest_weights_random_analytical",
+              # "on_all_cond_paired_largest_weights_random_analytical",
+              # #"on_all_cond_unique_paired_analytical"
+              # "on_all_cond_paired_unique_paired_analytical"
+              )
     dt_all2 = dt_all[sampling %in% samps]
     dt_all2 = dt_all2[, sampling := factor(sampling, levels = samps, ordered = TRUE)]
     fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
@@ -1769,7 +1933,7 @@ if (FALSE) {
     fig3
 
 
-    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_appendix_Pilot.png"),
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_FINAL.png"),
            plot = fig3,
            width = 14.2,
            height = 9.98,
