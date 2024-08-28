@@ -220,7 +220,7 @@ for (rho in rhos) {
                 n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combinations[n_comb_now_idx]))]
                 dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
 
-                dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(n_row %% 2 == 1, 1, 0)):1])
+                dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
                 dt_new_weights_now[, Size := seq(.N)]
                 setnames(dt_new_weights_now, "Size", "n_features")
 
