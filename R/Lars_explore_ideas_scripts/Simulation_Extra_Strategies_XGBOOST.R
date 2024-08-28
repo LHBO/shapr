@@ -53,7 +53,6 @@ sum_shapley_weights <- function(m){
 
 
 # Code starts -----------------------------------------------------------------------------------------------------
-# Code starts here ------------------------------------------------------------------------------------------------
 # Get the name of the computer we are working on
 hostname = R.utils::System$getHostname()
 cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))

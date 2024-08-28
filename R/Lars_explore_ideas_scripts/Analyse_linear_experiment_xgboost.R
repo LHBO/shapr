@@ -15,8 +15,8 @@
 # Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 8 0,0.05,0.1,0.2,0.5,0.7,0.9 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 
 
-# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 # Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.2 TRUE 1000 1000 NULL MAE FALSE NULL NULL
+# Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 # Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.5 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 # Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0.9 TRUE 1000 1000 NULL MAE FALSE NULL NULL
 # Rscript Analyse_linear_experiment_xgboost.R TRUE FALSE 10 0 TRUE 1000 1000 NULL MAE TRUE regression_separate NULL
