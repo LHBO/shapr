@@ -119,7 +119,7 @@ for (rho in rhos) {
 
   # Iterate over the repetitions
   repetition = 1
-  for (repetition in seq(repetitions)) {
+  for (repetition in 10:1) {
     file_name = paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_", rho, "_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_estimated_repetition_", repetition ,".rds")
     if (!file.exists(file_name)) next
     message("Reading FILE")
