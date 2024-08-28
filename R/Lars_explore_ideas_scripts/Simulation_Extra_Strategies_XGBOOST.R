@@ -84,7 +84,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 args = commandArgs(trailingOnly = TRUE)
 
 rhos = as.character(args[1])
-if (grepl(",", m_vec)) {
+if (grepl(",", rhos)) {
   rhos = as.numeric(unlist(strsplit(rhos, ",")))
 } else {
   rhos = as.numeric(rhos)
