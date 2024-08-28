@@ -53,8 +53,45 @@ sum_shapley_weights <- function(m){
 
 
 # Code starts -----------------------------------------------------------------------------------------------------
+# Code starts here ------------------------------------------------------------------------------------------------
+# Get the name of the computer we are working on
+hostname = R.utils::System$getHostname()
+cat(sprintf("We are working on '%s'.\n", R.utils::System$getHostname()))
+
+# Check if we are working on an UiO computer or not and define the correct folder based on system
+if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
+  # Where the files are stored
+  folder = "/Users/larsolsen/PhD/Paper3/shapr"
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  UiO = FALSE
+} else if (grepl("hpc.uio.no", hostname)) {
+  # TBA
+  folder = ""
+  UiO = TRUE
+} else if (grepl("uio.no", hostname)) {
+  folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
+  UiO = TRUE
+} else {
+  stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
+}
+
+# module load R/4.2.1-foss-2022a
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+# Rscript samp_freq_plots.R 15
+
+
+args = commandArgs(trailingOnly = TRUE)
+
+rhos = as.character(args[1])
+if (grepl(",", m_vec)) {
+  rhos = as.numeric(unlist(strsplit(rhos, ",")))
+} else {
+  rhos = as.numeric(rhos)
+}
+
 repetitions = 50
-rhos = c(0, 0.2, 0.5, 0.9)
+# rhos = c(0, 0.2, 0.5, 0.9)
 new_strategies = c("on_all_cond", "on_all_cond_paired")
 new_strategies = c("on_all_cond_paired")
 
@@ -63,11 +100,9 @@ versions = c("largest_weights_random", "unique_paired")
 weight_versions = c("analytical", "non_analytical", "mean_L", "mean_ps")
 weight_versions = c("mean_L", "mean_ps")
 
-resave = TRUE
+resave = FALSE
 
-dt_new_weights
-
-folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
+folder = folder_save # = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
 
 # Get the weights
 dt_new_weights_analytical = readRDS(file.path(folder, paste0("Analytical_prop_M_", 10, "_res.rds")))
