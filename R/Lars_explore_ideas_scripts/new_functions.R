@@ -1933,6 +1933,55 @@ combine_explanation_results = function(M,
       }
 
 
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_non_analytical.rds")))) {
+        # DONE
+        current_repetition_results_extra =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_non_analytical.rds")))
+        current_repetition_results_extra = fix_current_repetition_results_extra(current_repetition_results_extra)
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
+        print("Found on_all_cond_paired_unique_paired_non_analytical")
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_mean_L.rds")))) {
+        # DONE
+        current_repetition_results_extra =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_mean_L.rds")))
+        current_repetition_results_extra = fix_current_repetition_results_extra(current_repetition_results_extra)
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
+        print("Found on_all_cond_paired_unique_paired_mean_L")
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_mean_ps.rds")))) {
+        # DONE
+        current_repetition_results_extra =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_unique_paired_mean_ps.rds")))
+        current_repetition_results_extra = fix_current_repetition_results_extra(current_repetition_results_extra)
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
+        print("Found on_all_cond_paired_unique_paired_mean_ps")
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_mean_L.rds")))) {
+        # DONE
+        current_repetition_results_extra =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_mean_L.rds")))
+        current_repetition_results_extra = fix_current_repetition_results_extra(current_repetition_results_extra)
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
+        print("Found on_all_cond_paired_largest_weights_random_mean_L")
+      }
+
+      if (file.exists(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_mean_ps.rds")))) {
+        # DONE
+        current_repetition_results_extra =
+          readRDS(file.path(folder_save, paste0(file_name_updated, "_estimated_repetition_", repetition, "_on_all_cond_paired_largest_weights_random_mean_ps.rds")))
+        current_repetition_results_extra = fix_current_repetition_results_extra(current_repetition_results_extra)
+        current_repetition_results = c(current_repetition_results, current_repetition_results_extra)
+        print("Found on_all_cond_paired_largest_weights_random_mean_ps")
+      }
+
+      print(names(current_repetition_results_extra))
+
+
       if (resave) {
         # Resave the file but without the precomputed v(S) values
         cat(sprintf("Resaving: Using memory efficient version: %s \U2192 ",
