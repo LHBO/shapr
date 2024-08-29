@@ -141,6 +141,7 @@ for (version in versions) {
 
       # Get the strategy specific save name
       save_name = file.path(folder_save, paste0("NEW_Wine_data_res_", strategy_name, ".rds"))
+      save_name_dt = file.path(folder_save, paste0("NEW_Wine_data_res_dt_only_", strategy_name, ".rds"))
 
       # List to store the results for each new strategy
       save_list = list(res = list())
@@ -275,10 +276,34 @@ for (version in versions) {
 
       # Save to disk
       saveRDS(object = save_list, file = save_name)
-      compute_MAE_MSE_fast(as.matrix(dt_kshap), true_SV, "MAE")
+      saveRDS(object = res_dt, file = save_name_dt)
     } # Weight_version
   } # Strategy
 } # Version
 
+
+
+
+# Fix to create the dt only files
+if (FALSE) {
+  new_strategies = c("on_all_cond_paired")
+  versions = c("largest_weights_random", "unique_paired")
+  weight_versions = c("analytical", "non_analytical", "mean_L", "mean_ps")
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
+
+  for (version in versions) {
+    for (strategy in new_strategies) {
+      for (weight_version in weight_versions) {
+        strategy_name = paste(strategy, version, weight_version, sep = "_")
+        save_name = file.path(folder_save, paste0("NEW_Wine_data_res_", strategy_name, ".rds"))
+        save_name_dt = file.path(folder_save, paste0("NEW_Wine_data_res_dt_only_", strategy_name, ".rds"))
+        if (!file.exists(save_name)) next
+        message(sprintf("version = %s \t weight_version = %s \t strategy = %s", version, weight_version, strategy))
+        file = readRDS(save_name)
+        saveRDS(object = file$res_dt, file = save_name_dt)
+      }
+    }
+  }
+}
 
 

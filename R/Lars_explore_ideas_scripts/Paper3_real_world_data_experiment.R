@@ -191,6 +191,7 @@ xgboost::xgb.save(predictive_model,
 
 
 
+set.seed(2024)
 regression.workflow_rf = workflows::add_recipe(
   workflows::add_model(
     workflows::workflow(),

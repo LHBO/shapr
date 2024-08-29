@@ -140,7 +140,7 @@ n_combinations_vec = c(1600, 1700, 1800, 1900)
 n_combinations_vec  = c(2, 10, 100, 500)
 n_combinations_vec = c(2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 200, 300, 400,
                        430, 440, 450, 460, 470, 480, 490, 500, 600, 700, 800, 900, 1000, 1070, 1100, 1110, 1120, 1130, 1140, 1200,
-                       1250, 1500, 1750, 1800, 1900, 2000, 2010, 2020, 2030, 2040, 2044)
+                       1250, 1500, 1750, 1800, 1900, 2000, 2010, 2020, 2030, 2040, 2042, 2044)
 
 m = 11
 n_features <- seq(ceiling((m - 1)/2))
@@ -309,7 +309,23 @@ if (FALSE) {
                                             "largest_weights_new_weights_empirical",
                                             "largest_weights_combination_size_new_weights_empirical",
                                             "largest_weights_random", "largest_weights_random_new_weights_empirical",
-                                            "MAD", "MAD_new_weights_empirical"
+                                            "MAD", "MAD_new_weights_empirical",
+                                            "on_all_cond",
+                                            "on_all_cond_paired",
+                                            "on_all_cond_largest_weights_random",
+                                            "on_all_cond_paired_largest_weights_random",
+                                            "on_all_cond_largest_weights_random_analytical",
+                                            "on_all_cond_paired_largest_weights_random_analytical",
+                                            "on_all_cond_unique_paired_analytical",
+                                            "on_all_cond_paired_unique_paired_analytical",
+                                            "on_all_cond_paired_unique_paired_mean_L",
+                                            "on_all_cond_paired_unique_paired_mean_ps",
+                                            "on_all_cond_paired_largest_weights_random_mean_L",
+                                            "on_all_cond_paired_largest_weights_random_mean_ps",
+                                            "on_all_cond_paired_largest_weights_random_non_analytical",
+                                            "on_all_cond_largest_weights_random_non_analytical",
+                                            "on_all_cond_unique_paired_non_analytical",
+                                            "on_all_cond_paired_unique_paired_non_analytical"
                                  ),
                                  labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                             "Paired Empirical", "Paired Gompertz",
@@ -318,7 +334,23 @@ if (FALSE) {
                                             "Paired Largest Order Kernel", "Largest Coalition",
                                             "Paired Largest Order Empirical", "Paired Largest Order Coalition Empirical",
                                             "Paired Largest Kernel", "Paired Largest Empirical",
-                                            "MAD Largest Kernel", "MAD Largest Empirical"
+                                            "MAD Largest Kernel", "MAD Largest Empirical",
+                                            "Cond",
+                                            "Paired Cond",
+                                            "Cond Largest",
+                                            "Paired Cond Largest",
+                                            "Cond Largest Empirical",
+                                            "Paired Cond Largest Empirical",
+                                            "Cond Empirical",
+                                            "Paired Cond Empirical",
+                                            "Paired Cond L",
+                                            "Paired Cond pS",
+                                            "Paired Cond Largest L",
+                                            "Paired Cond Largest pS",
+                                            "Paired Cond Largest",
+                                            "Cond Largest",
+                                            "Cond",
+                                            "Paired Cond"
                                  ),
                                  ordered = FALSE)]
 
@@ -361,6 +393,14 @@ if (FALSE) {
   samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Paired Largest Order Empirical", "Paired Largest Order Kernel", "MAD Largest Empirical", "MAD Largest Kernel")
   samps = c("Paired Empirical", "Paired Kernel", "Paired Largest Empirical", "Paired Largest Kernel", "Pilot Empirical", "Pilot Average", "Pilot Largest Empirical", "Pilot Largest Kernel")
 
+  samps = c("Unique",
+            "Paired",
+            "Paired Average",
+            "Paired Kernel",
+            "Paired Cond",
+            "Paired Cond L",
+            "Paired Cond Largest",
+            "Paired Cond Largest L")
 
   dt_all2 = res_dt_v2[Strategy %in% samps]
   dt_all2 = dt_all2[, Strategy := factor(Strategy, levels = samps, ordered = TRUE)]
