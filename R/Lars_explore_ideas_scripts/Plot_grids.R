@@ -702,7 +702,11 @@ if (FALSE) {
                                                        "on_all_cond_unique_paired_analytical",
                                                        "on_all_cond_unique_paired_non_analytical",
                                                        "on_all_cond_paired_unique_paired_analytical",
-                                                       "on_all_cond_paired_unique_paired_non_analytical")
+                                                       "on_all_cond_paired_unique_paired_non_analytical",
+                                                       "on_all_cond_paired_unique_paired_mean_L",
+                                                       "on_all_cond_paired_unique_paired_mean_ps",
+                                                       "on_all_cond_paired_largest_weights_random_mean_L",
+                                                       "on_all_cond_paired_largest_weights_random_mean_ps")
 
     # Pilot linear regression
     # Load the results and make the figures
@@ -738,6 +742,7 @@ if (FALSE) {
 
     dt_all = rbindlist(lapply(figs, "[[", 1), idcol = "rho")[, rho := rhos[rho]]
 
+    unique(dt_all$sampling)
     dt_all[, sampling := factor(sampling,
                                 levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
                                            "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
@@ -754,17 +759,22 @@ if (FALSE) {
                                            "largest_weights_random", "largest_weights_random_new_weights_empirical",
                                            "MAD", "MAD_new_weights_empirical",
                                            "on_all_cond",
-                                           "on_all_cond_unique_paired_non_analytical",
-                                           "on_all_cond_unique_paired_analytical",
-                                           "on_all_cond_largest_weights_random",
-                                           "on_all_cond_largest_weights_random_non_analytical",
-                                           "on_all_cond_largest_weights_random_analytical",
                                            "on_all_cond_paired",
-                                           "on_all_cond_paired_unique_paired_non_analytical",
-                                           "on_all_cond_paired_unique_paired_analytical",
+                                           "on_all_cond_largest_weights_random",
                                            "on_all_cond_paired_largest_weights_random",
+                                           "on_all_cond_largest_weights_random_analytical",
+                                           "on_all_cond_paired_largest_weights_random_analytical",
+                                           "on_all_cond_unique_paired_analytical",
+                                           "on_all_cond_paired_unique_paired_analytical",
+                                           "on_all_cond_paired_unique_paired_mean_L",
+                                           "on_all_cond_paired_unique_paired_mean_ps",
+                                           "on_all_cond_paired_largest_weights_random_mean_L",
+                                           "on_all_cond_paired_largest_weights_random_mean_ps",
+
                                            "on_all_cond_paired_largest_weights_random_non_analytical",
-                                           "on_all_cond_paired_largest_weights_random_analytical"
+                                           "on_all_cond_largest_weights_random_non_analytical",
+                                           "on_all_cond_unique_paired_non_analytical",
+                                           "on_all_cond_paired_unique_paired_non_analytical"
                                 ),
                                 labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                            "Paired Empirical", "Paired Gompertz",
@@ -775,19 +785,25 @@ if (FALSE) {
                                            "Paired Largest Kernel", "Paired Largest Empirical",
                                            "MAD Largest Kernel", "MAD Largest Empirical",
                                            "Cond",
-                                           "Cond",
-                                           "Cond Empirical",
+                                           "Paired Cond OLD",
                                            "Cond Largest",
-                                           "Cond Largest",
+                                           "Paired Cond Largest",
                                            "Cond Largest Empirical",
-                                           "Paired Cond",
-                                           "Paired Cond",
+                                           "Paired Cond Largest Empirical",
+                                           "Cond Empirical",
                                            "Paired Cond Empirical",
+                                           "Paired Cond L",
+                                           "Paired Cond pS",
+                                           "Paired Cond Largest L",
+                                           "Paired Cond Largest pS",
                                            "Paired Cond Largest",
-                                           "Paired Cond Largest",
-                                           "Paired Cond Largest Empirical"
+                                           "Cond Largest",
+                                           "Cond",
+                                           "Paired Cond"
+
                                 ),
                                 ordered = FALSE)]
+    unique(dt_all$sampling)
 
     fig2 = ggplot(dt_all[n_combinations %% 2 ==0], aes(x = n_combinations, y = median, col = sampling, fill = sampling)) +
       #geom_smooth(method = "loess", se = FALSE) +
@@ -877,15 +893,24 @@ if (FALSE) {
     }
 
 
+    samps = c("Unique",
+              "Paired",
+              "Paired Average",
+              "Paired Kernel",
+              "Paired Cond",
+              "Paired Cond L",
+              "Paired Cond Largest",
+              "Paired Cond Largest L")
 
     dt_all2 = dt_all[sampling %in% samps]
     dt_all2 = dt_all2[, sampling := factor(sampling, levels = samps, ordered = TRUE)]
-    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling, linetype = sampling)) +
+    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0],
+                  aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
       geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
       #geom_vline(xintercept = 131000, col = "red") +
       #geom_smooth(method = "loess", se = FALSE) +
       #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
-      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.0) +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0.0) +
       geom_line(linewidth = 0.65) +
       facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
       #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
@@ -900,7 +925,6 @@ if (FALSE) {
       # ) +
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
-      #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
       labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
       theme(strip.text = element_text(size = rel(1.6)),
             legend.title = element_text(size = rel(1.4)),
@@ -913,7 +937,7 @@ if (FALSE) {
     fig3
 
 
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_NEW_STRAT.png",
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_NEW_STRAT_3.png",
            plot = fig3,
            width = 14.2,
            height = 9.98,
@@ -925,9 +949,72 @@ if (FALSE) {
     plot(dt_all[sampling == "Paired Average" & n_combinations %% 2 == 0 & rho == 0.5, mean] -
       dt_all[sampling == "Paired Empirical" & n_combinations %% 2 == 0 & rho == 0.5, mean])
 
-    # Rscript Analyse_linear_experiment.R TRUE FALSE 17 0.2 FALSE 1000 500 NULL MAE FALSE NULL NULL
-    # Rscript Analyse_linear_experiment.R TRUE FALSE 17 0.9 FALSE 1000 500 NULL MAE FALSE NULL NULL
-    # Rscript Analyse_linear_experiment.R TRUE FALSE 17 0 FALSE 1000 500 NULL MAE FALSE NULL NULL
+
+    fig = relative_difference(dt = dt_all,
+                              m = 17,
+                              strat_ref = "Paired Cond",
+                              strat_other = c("Unique",
+                                              "Paired",
+                                              "Paired Average",
+                                              "Paired Kernel",
+                                              "Paired Cond",
+                                              "Paired Cond L",
+                                              "Paired Cond Largest",
+                                              "Paired Cond Largest L"),
+                              y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4, 1, 2, 4, 8, 12, 16, 20),
+                              y_limits = c(-1, 22),
+                              include_coal_size_lines = TRUE)
+    fig
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_Relative_difference.png"),
+           plot = fig,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+
+    fig2 = relative_difference(dt = dt_all,
+                              m = 17,
+                              strat_ref = "Paired Cond",
+                              strat_other = c("Unique",
+                                              "Paired",
+                                              "Paired Average",
+                                              "Paired Kernel",
+                                              "Paired Cond",
+                                              "Paired Cond L",
+                                              "Paired Cond Largest",
+                                              "Paired Cond Largest L"),
+                              y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4),
+                              y_limits = c(-1, 5.1),
+                              include_coal_size_lines = TRUE)
+    fig2
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_Relative_difference_zoom.png"),
+           plot = fig2,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+
+    fig3 = relative_difference(dt = dt_all,
+                        m = 17,
+                        strat_ref = "Paired Cond",
+                        strat_other = c("Paired",
+                                        "Paired Average",
+                                        "Paired Cond",
+                                        "Paired Cond L"),
+                        y_limits = c(-0.05, 0.15),
+                        scale = FALSE,
+                        legend_n_row = 1,
+                        hue_length = 8,
+                        hue_indices = c(2,3,5,6))
+
+    fig3
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_17_n_train_1000_n_test_500_rho_4_equi_FALSE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_3_-1_-5_4_-10_2_5_Relative_difference_paired.png"),
+           plot = fig3,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+
 
 
   }
@@ -1686,7 +1773,11 @@ if (FALSE) {
                                                        "on_all_cond_largest_weights_random_analytical",
                                                        "on_all_cond_paired_largest_weights_random_analytical",
                                                        "on_all_cond_unique_paired_analytical",
-                                                       "on_all_cond_paired_unique_paired_analytical")
+                                                       "on_all_cond_paired_unique_paired_analytical",
+                                                       "on_all_cond_paired_unique_paired_mean_L",
+                                                       "on_all_cond_paired_unique_paired_mean_ps",
+                                                       "on_all_cond_paired_largest_weights_random_mean_L",
+                                                       "on_all_cond_paired_largest_weights_random_mean_ps")
 
 
     # Pilot linear regression
@@ -1749,7 +1840,11 @@ if (FALSE) {
                                            "on_all_cond_largest_weights_random_analytical",
                                            "on_all_cond_paired_largest_weights_random_analytical",
                                            "on_all_cond_unique_paired_analytical",
-                                           "on_all_cond_paired_unique_paired_analytical"
+                                           "on_all_cond_paired_unique_paired_analytical",
+                                           "on_all_cond_paired_unique_paired_mean_L",
+                                           "on_all_cond_paired_unique_paired_mean_ps",
+                                           "on_all_cond_paired_largest_weights_random_mean_L",
+                                           "on_all_cond_paired_largest_weights_random_mean_ps"
                                 ),
                                 labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
                                            "Paired Empirical", "Paired Gompertz",
@@ -1766,7 +1861,11 @@ if (FALSE) {
                                            "Cond Largest Empirical",
                                            "Paired Cond Largest Empirical",
                                            "Cond Empirical",
-                                           "Paired Cond Empirical"
+                                           "Paired Cond Empirical",
+                                           "Paired Cond L",
+                                           "Paired Cond pS",
+                                           "Paired Cond Largest L",
+                                           "Paired Cond Largest pS"
                                 ),
                                 ordered = FALSE)]
 
@@ -1891,6 +1990,35 @@ if (FALSE) {
     plot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond", mean] - dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Empirical", mean])
     dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Cond", mean] - dt_all2[sampling %in% samps & n_combinations %% 2 == 0][sampling == "Paired Average", mean]
 
+    samps = c("Paired Average",
+              "Paired Empirical",
+              "Paired Cond",
+      "Paired Cond L",
+      "Paired Cond pS",
+      "Paired Cond Largest L",
+      "Paired Cond Largest pS")
+
+
+    samps = c("Paired Average",
+              "Paired Empirical",
+              "Paired Cond",
+              "Paired Cond L",
+              "Paired Cond pS",
+              "Paired Cond Largest L",
+              "Paired Cond Largest pS")
+
+
+    samps = c("Unique",
+              "Paired",
+              "Paired Average",
+              "Paired Kernel",
+              "Paired Cond",
+              "Paired Largest Empirical",
+              "Paired Cond Empirical",
+              "Paired Cond Largest",
+              "Paired Cond Largest Empirical",
+              "Paired Cond Largest L",
+              "Paired Cond L")
 
 
     samps = c("Paired Empirical",
@@ -1905,11 +2033,14 @@ if (FALSE) {
               )
     dt_all2 = dt_all[sampling %in% samps]
     dt_all2 = dt_all2[, sampling := factor(sampling, levels = samps, ordered = TRUE)]
-    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0], aes(x = n_combinations, y = mean, col = sampling, fill = sampling)) +
+
+
+    fig3 = ggplot(dt_all2[sampling %in% samps & n_combinations %% 2 == 0],
+                  aes(x = n_combinations, y = mean, col = sampling, fill = sampling, linetype = sampling)) +
       geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
       #geom_smooth(method = "loess", se = FALSE) +
       #stat_smooth(formula = y ~ s(x, k = 24), method = "gam", se = FALSE) +
-      #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0) +
+      ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0) +
       geom_line(linewidth = 0.65) +
       facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
       #geom_ma(ma_fun = SMA, n = 10, linetype = "solid") +
@@ -1919,7 +2050,8 @@ if (FALSE) {
       ) +
       theme(legend.position = 'bottom') +
       guides(col = guide_legend(nrow = 2, theme = theme(legend.byrow = FALSE)),
-             fill = guide_legend(nrow = 2, theme = theme(legend.byrow = FALSE))) +
+             fill = guide_legend(nrow = 2, theme = theme(legend.byrow = FALSE)),
+             linetype = "none") +
       #labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote("Mean absolute error between"~bold(phi)~"and"~bold(phi)[italic(D)])) +
       labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
       theme(strip.text = element_text(size = rel(1.6)),
@@ -1939,6 +2071,141 @@ if (FALSE) {
            height = 9.98,
            scale = 0.85,
            dpi = 350)
+
+
+    dt3 = dcast(dt_all2[n_combinations %% 2 == 0], rho + n_combinations ~ sampling, value.var = "mean")
+    dt3
+
+
+    dt3[, diff := (`Paired Cond` - `Paired Average`) / `Paired Average`]
+    dt3[, diff := (`Paired Cond` - `Paired Cond L`) / `Paired Cond L`]
+    dt3[, diff := (`Paired Cond` - `Paired Cond pS`) / `Paired Cond pS`]
+    dt3[, diff := (`Paired Cond Largest L` - `Paired Cond pS`) / `Paired Cond pS`]
+
+    ggplot(dt3, aes(x = n_combinations, y = diff)) +
+      geom_hline(yintercept = 0, col = "gray") +
+      geom_line() +
+      facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+      labs(y = "Relative difference")
+
+
+
+
+    fig = relative_difference(dt = dt_all,
+                              m = 10,
+                        strat_ref = "Paired Cond",
+                        strat_other = c("Unique",
+                                        "Paired",
+                                        "Paired Average",
+                                        "Paired Kernel",
+                                        "Paired Cond",
+                                        "Paired Cond L",
+                                        "Paired Cond Largest",
+                                        "Paired Cond Largest L"),
+                        y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4, 1, 2, 4),
+                        y_limits = c(-1, 5.1),
+                        include_coal_size_lines = TRUE)
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_relative_difference.png"),
+           plot = fig,
+           width = 14.2,
+           height = 9.98,
+           scale = 0.85,
+           dpi = 350)
+
+    relative_difference(dt = dt_all,
+                        m = 10,
+                        strat_ref = "Paired Cond",
+                        strat_other = c("Paired",
+                                        "Paired Average",
+                                        "Paired Cond",
+                                        "Paired Cond L"),
+                        y_limits = c(-0.11, 0.15),
+                        scale = FALSE,
+                        legend_n_row = 1,
+                        hue_length = 8,
+                        hue_indices = c(2,3,5,6))
+
+    scale_color_manual(values = gg_color_hue(7)[-7])
+
+    relative_difference = function(dt, m, strat_ref,
+                                   strat_other = NULL,
+                                   y_breaks = waiver(),
+                                   y_limits = NULL,
+                                   scale = TRUE,
+                                   legend_n_row = 2,
+                                   include_coal_size_lines = FALSE,
+                                   hue_indices = NULL,
+                                   hue_length = NULL) {
+      if (xor(is.null(hue_indices), is.null(hue_length))) stop("Both `hue_indices` and `hue_length` must be provided.")
+      if (!is.null(hue_indices) && !is.null(hue_length)) {
+        hues = seq(15, 375, length = hue_length + 1)
+        colors = grDevices::hcl(h = hues, l = 65, c = 100)[1:hue_length][hue_indices]
+      }
+
+      library(latex2exp)
+      library(ggallin)
+      library(data.table)
+
+      # Get all the names from the data table
+      if (is.null(strat_other)) strat_other = levels(dt$sampling)
+
+      # Extract the needed columns
+      dt = dt[, c("rho", "sampling", "n_combinations", "mean")]
+
+      # Only even n_combinations
+      dt = dt[n_combinations %% 2 == 0]
+
+      # Only get the wanted strategies
+      dt = dt[sampling %in% strat_other,]
+
+      # Compute the relative error for each rho and n_combination
+      dt[, rel_error := (mean - mean[sampling == strat_ref]) / mean[sampling == strat_ref],
+           by = list(rho, n_combinations)]
+
+      # Convert sampling to a ordered factor
+      dt = dt[, sampling := factor(sampling, levels = strat_other, ordered = TRUE)]
+
+
+
+      #
+      n_features <- seq(ceiling((m - 1)/2))
+      n <- sapply(n_features, choose, n = m)
+      n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+      n_cumsum = (cumsum(n) + 2) + 0.5
+
+      # Make the plot
+      fig = ggplot(dt, aes(x = n_combinations, y = rel_error, col = sampling)) +
+        {if (include_coal_size_lines) geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4)} +
+        geom_hline(yintercept = 0, col = "gray") +
+        geom_line(linewidth = 0.65) +
+        facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+        labs(y = "Relative difference") +
+        {if (scale) scale_y_log10(trans = ggallin:::ssqrt_trans, breaks = y_breaks)} +
+        {if (!scale) scale_y_continuous(breaks = y_breaks)} +
+        coord_cartesian(ylim = y_limits) +
+        scale_x_continuous(labels = scales::label_number()) +
+        # scale_y_continuous(limits = c(-1, 2.5)) +
+        theme(legend.position = 'bottom') +
+        guides(col = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
+               fill = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
+               linetype = "none") +
+        labs(color = "Strategy:",
+             fill = "Strategy:",
+             x = expression(N[S]),
+             y = TeX(r'($\frac{MAE_{Strategy} - MAE_{Paired~Cond}}{MAE_{Paired~Cond}}$)')) +
+        theme(strip.text = element_text(size = rel(1.6)),
+              legend.title = element_text(size = rel(1.37)),
+              legend.text = element_text(size = rel(1.37)),
+              axis.title = element_text(size = rel(1.6)),
+              axis.text = element_text(size = rel(1.5))) +
+        {if (!is.null(hue_length)) scale_color_manual(values = colors)} +
+        {if (is.null(hue_length))  scale_color_hue()} #added as we want ordered}
+
+
+      return(fig)
+
+      # The relative difference on signed square root scale.
+    }
 
   }
 

@@ -51,3 +51,76 @@ dt[, shapley_weight := shapley_weight / sum(shapley_weight), by = c("M", "n_comb
   data.table::setorderv(dt2, c("M", "n_combinations", "n_features"))
   saveRDS(dt2, paste0("/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location/Analytical_prop_M_", M, "_res.rds"))
 }
+
+
+
+
+
+if (FALSE) {
+
+  # WINE
+  dt_res = NULL
+  M = 11
+  M_seq = 11
+
+
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  file = readRDS(file.path(folder_save, "NEW_Wine_data_res_unique_paired.rds"))
+
+  repetition = 1
+  for (repetition in seq_along(file$res$n_combinations_2)) {
+    message(paste0("Working on repetition ", repetition ," of ", length(file$res$n_combinations_2) ,"."))
+
+    # Get the values
+    dt_res = rbind(dt_res,
+                   data.table::rbindlist(
+                     lapply(seq_along(file$res),
+                            function(idx) {
+                              if (idx <= 1) return(NULL)
+                              tmp2 = copy(file$res[[idx]][[repetition]]$internal$objects$X)
+                              if (nrow(tmp2) == 2^M) return(NULL)
+                              # Re weight the shapely weights
+                              tmp2[, shapley_weight := as.numeric(shapley_weight)]
+                              m <- tmp2[.N, n_features]
+                              K <- tmp2[-c(1,.N), sum(shapley_weight)]
+                              tmp2[-c(1,.N), shapley_weight := shapr:::shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m = 10^6)/sum_shapley_weights(m)]
+                              tmp2[-c(1,.N), cond := 1-(1-2*shapley_weight)^(K/2)]
+                              tmp2[-c(1,.N), shapley_weight := 2*shapley_weight/cond]
+                              tmp3 = tmp2[-c(1,.N), c("n_features", "N", "shapley_weight", "cond")][,`:=` (n_combinations = nrow(tmp2), rep = repetition)]
+                              return(unique(tmp3))
+                            })))
+  }
+
+  dt_res[, M := as.integer(M)]
+  dt_res[, M := factor(M, levels = M_seq, labels = paste0("M = ", M_seq))]
+
+  dt = copy(dt_res)
+
+  # Set order
+  setkeyv(dt, c("M", "n_combinations", "rep", "n_features"))
+  setcolorder(dt, c("M", "n_combinations", "rep", "n_features", "N", "shapley_weight", "cond"))
+
+  # Normalize
+  dt[, shapley_weight := shapley_weight / sum(shapley_weight), by = c("M", "n_combinations", "rep")]
+
+  {
+    # To make the file containnt the values
+    dt_copy = copy(dt)
+    repetitions = length(file$res$n_combinations_2)
+    # Compute the mean shapley weight over the repetitions
+    dt2 = dt_copy[, as.list(c(mean = sum(shapley_weight)/repetitions,
+                              sd = sqrt(sum(shapley_weight - sum(shapley_weight)/repetitions)^2 / repetitions),
+                              #sd2 = sd(shapley_weight),
+                              quantile(shapley_weight, c(0.025, 0.5, 0.975)))), by = c("M", "n_combinations", "n_features")]
+    data.table::setnames(dt2, old = c("2.5%", "50%", "97.5%"), new = c("lower", "median", "upper"))
+    data.table::setorderv(dt2, c("M", "n_combinations", "n_features"))
+    saveRDS(dt2, paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Analytical_prop_M_", M, "_res.rds"))
+  }
+
+
+
+
+
+
+
+}
