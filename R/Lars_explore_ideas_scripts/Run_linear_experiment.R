@@ -215,6 +215,12 @@
 
 
 
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 2:3 4 1000000 1000000 1000 500 20 0,0.2,0.5,0.9 FALSE NULL NULL NULL
+
+
+
+
+
 # Input From Command Line ----------------------------------------------------------------------------------------------
 args = commandArgs(trailingOnly = TRUE)
 # test if there is at least one argument: if not, return an error
@@ -411,6 +417,8 @@ library(progressr)
 library(cli)
 library(future)
 
+
+options(future.globals.maxSize = 5000*1024^2)
 
 
 # Small variable check --------------------------------------------------------------------------------------------
