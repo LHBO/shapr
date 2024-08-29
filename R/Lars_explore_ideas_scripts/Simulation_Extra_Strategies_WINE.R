@@ -87,6 +87,7 @@ new_strategies = c("on_all_cond", "on_all_cond_paired")
 new_strategies = c("on_all_cond_paired")
 versions = c("largest_weights_random", "unique_paired")
 weight_versions = c("analytical", "non_analytical", "mean_L", "mean_ps")
+weight_versions = c("non_analytical", "mean_L", "mean_ps")
 
 resave = FALSE
 
@@ -208,7 +209,7 @@ for (version in versions) {
               this_X[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", weight_version))]
 
             } else {
-              stop("Unknown weight_version")
+              # Non-analytical
             }
 
             # Get the weight matrix
