@@ -50,6 +50,11 @@ sum_shapley_weights <- function(m){
   return(sum(w))
 }
 
+compute_MAE_MSE_fast = function(mat_1, mat_2, evaluation_criterion = c("MSE", "MAE")) {
+  evaluation_criterion = match.arg(evaluation_criterion)
+  if (evaluation_criterion == "MSE") mean((mat_1[,-1] - mat_2[,-1])^2) else mean(abs(mat_1[,-1] - mat_2[,-1]))
+}
+
 
 
 # Code starts -----------------------------------------------------------------------------------------------------
@@ -88,6 +93,8 @@ resave = FALSE
 args = commandArgs(trailingOnly = TRUE)
 version_cmd = as.character(args[1])
 if (!is.null(version_cmd)) versions = version_cmd
+
+print(versions)
 
 
 message("Reading TRUE")
