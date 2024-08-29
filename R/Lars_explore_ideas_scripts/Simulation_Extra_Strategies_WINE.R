@@ -93,7 +93,7 @@ resave = FALSE
 
 args = commandArgs(trailingOnly = TRUE)
 version_cmd = as.character(args[1])
-if (!is.null(version_cmd)) versions = version_cmd
+if (!is.null(version_cmd) && version_cmd != "NULL") versions = version_cmd
 
 print(versions)
 
@@ -117,7 +117,7 @@ for (version in versions) {
   if (version == "unique_paired") {
     file_name = file.path(folder_save, "NEW_Wine_data_res_unique_paired.rds")
   } else if (version == "largest_weights_random") {
-    file_name = file.path(folder_save, "NEW_Wine_data_res_largest_weights_random_new_weights_empirical.rds")
+    file_name = file.path(folder_save, "NEW_Wine_data_res_largest_weights_random.rds")
   } else {
     stop("Unknown version")
   }

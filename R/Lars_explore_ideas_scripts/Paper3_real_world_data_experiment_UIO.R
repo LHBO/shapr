@@ -103,6 +103,7 @@ source(file.path(path_source, "PhD/Paper3/shapr/R/Lars_explore_ideas_scripts/new
 specific_coalition_set = pilot_estimates_coal_order(sep_rf)
 specific_coalition_set_weights = lapply(seq_along(specific_coalition_set), function(x) NULL)
 names(specific_coalition_set_weights) = names(specific_coalition_set)
+
 specific_coalition_set$paired_coalitions_weights = specific_coalition_set$paired_coalitions_weights
 specific_coalition_set$paired_coalitions_weights_equal_weights = specific_coalition_set$paired_coalitions_weights
 specific_coalition_set$paired_coalitions_weights_direct = specific_coalition_set$paired_coalitions_weights
@@ -182,6 +183,8 @@ sampling_methods = c("largest_weights_random",
 if (!is.null(samp_app)) sampling_methods = sampling_methods[samp_app]
 
 
+
+
 sampling_method = sampling_methods[1]
 for (sampling_method in sampling_methods) {
   sampling_method_full_name = sampling_method
@@ -204,7 +207,7 @@ for (sampling_method in sampling_methods) {
         if (!file.exists(file_name)) stop("There are no Samp_prop_and_gompertz file for this dimension.")
         dt_new_weights = readRDS(file_name)
       } else {
-        new_weights_string = NULL
+        new_weights_string = NULnL
         dt_new_weights = NULL
         sampling_method_updated = gsub("_new_weights", "", sampling_method)
       }
@@ -481,17 +484,18 @@ if (FALSE) {
   # Rscript Paper3_real_world_data_experiment_UIO.R 7
   # Rscript Paper3_real_world_data_experiment_UIO.R 8
   # Rscript Paper3_real_world_data_experiment_UIO.R 9
-  # Rscript Paper3_real_world_data_experiment_UIO.R 10
-  # Rscript Paper3_real_world_data_experiment_UIO.R 11
-  # Rscript Paper3_real_world_data_experiment_UIO.R 12
-  # Rscript Paper3_real_world_data_experiment_UIO.R 13
-  # Rscript Paper3_real_world_data_experiment_UIO.R 14
-  # Rscript Paper3_real_world_data_experiment_UIO.R 15
-  # Rscript Paper3_real_world_data_experiment_UIO.R 16
+  Rscript Paper3_real_world_data_experiment_UIO.R 10
+  Rscript Paper3_real_world_data_experiment_UIO.R 11
+  Rscript Paper3_real_world_data_experiment_UIO.R 12
+  Rscript Paper3_real_world_data_experiment_UIO.R 13
+  Rscript Paper3_real_world_data_experiment_UIO.R 14
+  Rscript Paper3_real_world_data_experiment_UIO.R 15
+  Rscript Paper3_real_world_data_experiment_UIO.R 16
   # Rscript Paper3_real_world_data_experiment_UIO.R 17
   # Rscript Paper3_real_world_data_experiment_UIO.R 18
   # Rscript Paper3_real_world_data_experiment_UIO.R 19
   # Rscript Paper3_real_world_data_experiment_UIO.R 20
+
 
 
 
