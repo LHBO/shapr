@@ -206,7 +206,7 @@ for (version in versions) {
               n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combinations[n_comb_now_idx]))]
               dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
 
-              dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
+              dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
               dt_new_weights_now[, Size := seq(.N)]
               setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -311,7 +311,7 @@ if (FALSE) {
 }
 
 
-#
+# Fix from MSE to MAE
 if (FALSE) {
   path_source = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
   true = readRDS(file.path(path_source, "Wine_data_sep_rf.rds"))

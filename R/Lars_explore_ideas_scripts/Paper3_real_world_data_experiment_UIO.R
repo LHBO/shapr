@@ -3,6 +3,83 @@ library(ranger)
 library(data.table)
 devtools::load_all(".")
 
+relative_difference_wine = function(dt, m, strat_ref,
+                               strat_other = NULL,
+                               y_breaks = waiver(),
+                               y_limits = NULL,
+                               scale = TRUE,
+                               legend_n_row = 2,
+                               include_coal_size_lines = FALSE,
+                               hue_indices = NULL,
+                               hue_length = NULL) {
+  if (xor(is.null(hue_indices), is.null(hue_length))) stop("Both `hue_indices` and `hue_length` must be provided.")
+  if (!is.null(hue_indices) && !is.null(hue_length)) {
+    hues = seq(15, 375, length = hue_length + 1)
+    colors = grDevices::hcl(h = hues, l = 65, c = 100)[1:hue_length][hue_indices]
+  }
+
+  library(latex2exp)
+  library(ggallin)
+  library(data.table)
+
+  # Get all the names from the data table
+  if (is.null(strat_other)) strat_other = levels(dt$sampling)
+
+  # Extract the needed columns
+  dt = dt[, c("Strategy", "n_combinations", "avg_MAE")]
+
+  # Only even n_combinations
+  dt = dt[n_combinations %% 2 == 0]
+
+  # Only get the wanted strategies
+  dt = dt[Strategy %in% strat_other,]
+
+  # Compute the relative error for each rho and n_combination
+  dt[, rel_error := (avg_MAE - avg_MAE[Strategy == strat_ref]) / avg_MAE[Strategy == strat_ref],
+     by = list(n_combinations)]
+
+  # Convert sampling to a ordered factor
+  dt = dt[, Strategy := factor(Strategy, levels = strat_other, ordered = TRUE)]
+
+  #
+  n_features <- seq(ceiling((m - 1)/2))
+  n <- sapply(n_features, choose, n = m)
+  n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+  n_cumsum = (cumsum(n) + 2) + 0.5
+
+  # Make the plot
+  fig = ggplot(dt, aes(x = n_combinations, y = rel_error, col = Strategy)) +
+    {if (include_coal_size_lines) geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4)} +
+    geom_hline(yintercept = 0, col = "gray") +
+    geom_line(linewidth = 0.65) +
+    labs(y = "Relative difference") +
+    {if (scale) scale_y_log10(trans = ggallin:::ssqrt_trans, breaks = y_breaks)} +
+    {if (!scale) scale_y_continuous(breaks = y_breaks)} +
+    coord_cartesian(ylim = y_limits) +
+    scale_x_continuous(labels = scales::label_number()) +
+    # scale_y_continuous(limits = c(-1, 2.5)) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
+           fill = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
+           linetype = "none") +
+    labs(color = "Strategy:",
+         fill = "Strategy:",
+         x = expression(N[S]),
+         y = TeX(r'($\frac{MAE_{Strategy} - MAE_{Paired~Cond}}{MAE_{Paired~Cond}}$)')) +
+    theme(strip.text = element_text(size = rel(1.6)),
+          legend.title = element_text(size = rel(1.37)),
+          legend.text = element_text(size = rel(1.37)),
+          axis.title = element_text(size = rel(1.6)),
+          axis.text = element_text(size = rel(1.5))) +
+    {if (!is.null(hue_length)) scale_color_manual(values = colors)} +
+    {if (is.null(hue_length))  scale_color_hue()} #added as we want ordered}
+
+
+  return(fig)
+
+  # The relative difference on signed square root scale.
+}
+
 
 if (R.utils::System$getHostname() == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   path_source = "/Users/larsolsen"
@@ -447,6 +524,22 @@ if (FALSE) {
          height = 9.98,
          scale = 0.85,
          dpi = 350)
+
+
+  relative_difference_wine(dt = res_dt_v2,
+                      m = 11,
+                      strat_ref = "Paired Cond",
+                      strat_other = c("Paired",
+                                      #"Paired Average",
+                                      "Paired Cond",
+                                      "Paired Cond L"),
+                      #y_limits = c(-0.11, 0.15),
+                      scale = FALSE,
+                      legend_n_row = 1
+                      #hue_length = 8,
+                      #hue_indices = c(2,3,5,6)
+                      )
+
 
 
 
