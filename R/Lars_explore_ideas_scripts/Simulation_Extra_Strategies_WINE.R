@@ -88,6 +88,7 @@ new_strategies = c("on_all_cond_paired")
 versions = c("largest_weights_random", "unique_paired")
 weight_versions = c("analytical", "non_analytical", "mean_L", "mean_ps")
 weight_versions = c("non_analytical", "mean_L", "mean_ps")
+weight_versions = "non_analytical"
 
 resave = FALSE
 
