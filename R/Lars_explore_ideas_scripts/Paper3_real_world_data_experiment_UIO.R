@@ -353,10 +353,12 @@ for (sampling_method in sampling_methods) {
         explanation_now
     }
   }
+  message("Start to save")
   saveRDS(res_dt[Strategy == sampling_method_full_name, ],
           file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_dt_only_", sampling_method_full_name, ".rds")))
   saveRDS(list(res_dt = res_dt, res = res[[sampling_method_full_name]]),
           file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_", sampling_method_full_name, ".rds")))
+  message("Done saving")
 }
 saveRDS(res_dt, file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0("NEW_Wine_data_res_only_res_dt", ".rds")))
 
@@ -478,7 +480,7 @@ if (FALSE) {
 
   samps = c("Unique",
             "Paired",
-            #"Paired Average",
+            "Paired Average",
             "Paired Kernel",
             "Paired Cond",
             "Paired Cond L",
