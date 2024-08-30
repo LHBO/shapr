@@ -56,6 +56,9 @@ compute_MAE_MSE_fast = function(mat_1, mat_2, evaluation_criterion = c("MSE", "M
 }
 
 
+# mat_1 = matrix(rnorm(25), 5, 5)
+# mat_2 = mat_1 + 2
+# compute_MAE_MSE_fast(mat_1, mat_2, evaluation_criterion = c("MAE", "MSE"))
 
 # Code starts -----------------------------------------------------------------------------------------------------
 # Get the name of the computer we are working on
@@ -307,4 +310,80 @@ if (FALSE) {
   }
 }
 
+
+#
+if (FALSE) {
+  path_source = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
+  true = readRDS(file.path(path_source, "Wine_data_sep_rf.rds"))
+  precomputed_vS = true$internal$output # Extract only the precomputed_vS list
+  true_SV = as.matrix(true$shapley_values)
+
+  sampling_methods = c("largest_weights_random",
+                       "largest_weights_random_new_weights_empirical",
+                       "MAD",
+                       "MAD_new_weights_empirical",
+                       "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
+                       "unique_paired_new_weights_gompertz",
+                       "paired_coalitions_new_weights_gompertz",
+                       "unique_paired_new_weights_empirical",
+                       "paired_coalitions_new_weights_empirical",
+                       "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+                       "unique",
+                       "unique_paired",
+                       # "unique_paired_equal_weights",
+                       "unique_paired_SW",
+                       "paired_coalitions",
+                       "paired_coalitions_weights_direct_equal_weights",
+                       "largest_weights",
+                       "largest_weights_combination_size",
+                       "largest_weights_new_weights_empirical",
+                       "largest_weights_combination_size_new_weights_empirical")
+
+  sampling_method = sampling_methods[1]
+  for (sampling_method in sampling_methods) {
+    message("reading")
+    if (!file.exists(file.path(path_source, paste0("NEW_Wine_data_res_", sampling_method, ".rds")))) next
+    file = readRDS(file.path(path_source, paste0("NEW_Wine_data_res_", sampling_method, ".rds")))
+    n_combinations_vec = as.integer(sub(".*_", "", names(file$res)))
+    B = length(file$res$n_combinations_2)
+
+    res_dt = NULL
+
+
+    n_combinations = n_combinations_vec[1]
+    for (n_combinations in n_combinations_vec) {
+
+      seed = 1
+      for (seed in seq(B)) {
+        cat(paste0("Strategy = ", sampling_method, ", n_combinations = ", n_combinations, ", seed = ", seed, ".\n"))
+
+        # Compute the MAE
+        SV_now = file$res[[paste0("n_combinations_", n_combinations)]][[paste0("repetition_", seed)]]$shapley_values
+
+
+        # update the results dt
+        res_dt = rbind(res_dt, data.table(Strategy = sampling_method,
+                                          n_combinations = n_combinations,
+                                          repetition = seed,
+                                          MAE = compute_MAE_MSE_fast(true_SV,
+                                                                     as.matrix(SV_now),
+                                                                     evaluation_criterion = "MAE")))
+      }
+    }
+    # Order the rows
+    setorderv(res_dt, c("n_combinations", "repetition"))
+    file$res_dt = res_dt
+
+    # Save to disk
+    # Do not want to save the full objects
+    # saveRDS(object = file, file = file.path(path_source, paste0("NEW_Wine_data_res_", sampling_method, ".rds")))
+    saveRDS(object = res_dt, file = file.path(path_source, paste0("NEW_Wine_data_res_dt_only_", sampling_method, ".rds")))
+  }
+
+
+
+
+
+
+}
 
