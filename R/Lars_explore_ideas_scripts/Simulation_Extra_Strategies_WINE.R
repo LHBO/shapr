@@ -140,6 +140,7 @@ for (version in versions) {
   # Iterate over the strategies
   strategy = new_strategies[1]
   for (strategy in new_strategies) {
+    weight_version = weight_versions[1]
     for (weight_version in weight_versions) {
       strategy_name = paste(strategy, version, weight_version, sep = "_")
 
@@ -154,6 +155,7 @@ for (version in versions) {
       res_dt = data.table(Strategy = character(), n_combinations = numeric(), repetition = integer(), MAE = numeric())
 
       # Iterate over the repetitions
+      repetition = repetitions_seq[1]
       for (repetition in repetitions_seq) {
         rep_now = rep_names[repetition]
 
@@ -270,17 +272,18 @@ for (version in versions) {
                 MAE = compute_MAE_MSE_fast(as.matrix(dt_kshap), true_SV, "MAE")
               )
             )
+            print(nrow(res_dt))
           }
         } # End combinations
       } # End repetitions
 
       # Order the rows
       setorderv(res_dt, c("n_combinations", "repetition"))
+      saveRDS(object = res_dt, file = save_name_dt)
       save_list$res_dt = res_dt
 
       # Save to disk
       saveRDS(object = save_list, file = save_name)
-      saveRDS(object = res_dt, file = save_name_dt)
     } # Weight_version
   } # Strategy
 } # Version
