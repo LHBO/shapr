@@ -207,7 +207,7 @@ for (sampling_method in sampling_methods) {
         if (!file.exists(file_name)) stop("There are no Samp_prop_and_gompertz file for this dimension.")
         dt_new_weights = readRDS(file_name)
       } else {
-        new_weights_string = NULnL
+        new_weights_string = NULL
         dt_new_weights = NULL
         sampling_method_updated = gsub("_new_weights", "", sampling_method)
       }
@@ -263,7 +263,8 @@ for (sampling_method in sampling_methods) {
                                 n_combinations = n_combinations,
                                 repetition = seed,
                                 MAE = compute_MAE_MSE_fast(as.matrix(sep_rf$shapley_values),
-                                                           as.matrix(explanation_now$shapley_values))))
+                                                           as.matrix(explanation_now$shapley_values),
+                                                           evaluation_criterion = "MAE")))
 
       # DELTE THE BIGGEST UNNECESSARY OBJECTS
       explanation_now$internal$data$x_train = NULL
@@ -287,6 +288,8 @@ saveRDS(res_dt, file.path(path_source, "PhD/Paper3/Paper3_save_location", paste0
 
 # Plots -----------------------------------------------------------------------------------------------------------
 if (FALSE) {
+  library(data.table)
+  library(ggplot2)
 
 
   folder_name = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
@@ -398,12 +401,13 @@ if (FALSE) {
 
   samps = c("Unique",
             "Paired",
-            "Paired Average",
+            #"Paired Average",
             "Paired Kernel",
             "Paired Cond",
             "Paired Cond L",
             "Paired Cond Largest",
-            "Paired Cond Largest L")
+            "Paired Cond Largest L",
+            "Paired Largest Kernel")
 
   dt_all2 = res_dt_v2[Strategy %in% samps]
   dt_all2 = dt_all2[, Strategy := factor(Strategy, levels = samps, ordered = TRUE)]
@@ -414,7 +418,7 @@ if (FALSE) {
     geom_line(linewidth = 1) +
     scale_y_log10(breaks = scales::trans_breaks("log10", function(x) 10^x),
                   labels = scales::trans_format("log10", scales::math_format(10^.x)),
-                  limits = c(10^(-8.3), 10^(-0.25))) +
+                  limits = c(10^(-5), 10^(-0.5))) +
     # scale_x_log10(
     #   breaks = c(10, 20, 50, 100, 200, 500, 1000, 2000)
     #   #breaks = scales::trans_breaks("log10", function(x) 10^x),
@@ -484,18 +488,20 @@ if (FALSE) {
   # Rscript Paper3_real_world_data_experiment_UIO.R 7
   # Rscript Paper3_real_world_data_experiment_UIO.R 8
   # Rscript Paper3_real_world_data_experiment_UIO.R 9
-  Rscript Paper3_real_world_data_experiment_UIO.R 10
-  Rscript Paper3_real_world_data_experiment_UIO.R 11
-  Rscript Paper3_real_world_data_experiment_UIO.R 12
-  Rscript Paper3_real_world_data_experiment_UIO.R 13
-  Rscript Paper3_real_world_data_experiment_UIO.R 14
-  Rscript Paper3_real_world_data_experiment_UIO.R 15
-  Rscript Paper3_real_world_data_experiment_UIO.R 16
+  # Rscript Paper3_real_world_data_experiment_UIO.R 10
+  # Rscript Paper3_real_world_data_experiment_UIO.R 11
+  # Rscript Paper3_real_world_data_experiment_UIO.R 12
+  # Rscript Paper3_real_world_data_experiment_UIO.R 13
+  # Rscript Paper3_real_world_data_experiment_UIO.R 14
+  # Rscript Paper3_real_world_data_experiment_UIO.R 15
+  # Rscript Paper3_real_world_data_experiment_UIO.R 16
   # Rscript Paper3_real_world_data_experiment_UIO.R 17
   # Rscript Paper3_real_world_data_experiment_UIO.R 18
   # Rscript Paper3_real_world_data_experiment_UIO.R 19
   # Rscript Paper3_real_world_data_experiment_UIO.R 20
 
+  # module load R/4.2.1-foss-2022a
+  # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 
 
 
