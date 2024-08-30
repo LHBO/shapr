@@ -271,7 +271,7 @@ for (sampling_method in sampling_methods) {
     if (!is.list(res[[sampling_method]][[paste0("n_combinations_", n_combinations)]])) res[[sampling_method]][[paste0("n_combinations_", n_combinations)]] = list()
     seed = 1
     for (seed in seq(B)) {
-      cat(paste0("Strategy = ", sampling_method, ", n_combinations = ", n_combinations, ", seed = ", seed, ".\n"))
+      if (seed %% 10 == 0) cat(paste0("Strategy = ", sampling_method, ", n_combinations = ", n_combinations, ", seed = ", seed, ".\n"))
 
       sampling_method_full_name = sampling_method
 
