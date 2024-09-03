@@ -202,7 +202,7 @@ regression.workflow_rf = workflows::add_recipe(
                          mode = "regression")),
   recipes::recipe(as.formula("quality ~ ."),
                   data = data_train))
-predictive_model = regression.workflow_rf %>% fit(data = data_train)
+predictive_model = regression.workflow_rf %>% parsnip::fit(data = data_train)
 message(sprintf("Training MSE = %g and test MSE = %g.",
                 mean((predict(predictive_model, data_train)$.pred - data_train$quality)^2),
                 mean((predict(predictive_model, data_test)$.pred - data_test$quality)^2)))
@@ -268,6 +268,7 @@ sep_xgboost <- with_progress(
   )
 )
 future::plan(sequential) # To return to non-parallel computation
+
 
 sep_rf <- with_progress(
   shapr::explain(

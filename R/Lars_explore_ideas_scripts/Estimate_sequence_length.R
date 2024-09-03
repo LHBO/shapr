@@ -18,8 +18,8 @@ library(data.table)
 #' @export
 #'
 #' @examples
-coalition_sampling = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, return_coalitions = FALSE,
-                              seed = NULL, verbose = TRUE) {
+coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, return_coalitions = FALSE,
+                                     seed = NULL, verbose = TRUE) {
   if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
   if (!is.null(seed)) set.seed(seed)
 
@@ -65,7 +65,7 @@ coalition_sampling = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, 
     all_coalitions = c(all_coalitions, coalitions)
 
     # Get the cumulative number of unique coalitions for each coalition in all_coalitions
-    dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)), L = .I)[, L := .I]
+    dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)))[, L := .I]
 
     # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
     dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
@@ -83,9 +83,80 @@ coalition_sampling = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, 
     iteration = iteration + 1
   }
 
-  # Post processing: keep only the coalitions until n_combinations - 2
-  all_coalitions = all_coalitions[seq(dt_N_S_and_L[N_S == n_combinations - 2, L])]
-  if (length(unique(all_coalitions)) != n_combinations - 2) stop("Not the right number of unique coalitions")
+  # Post processing: keep only the coalitions until n_combinations
+  all_coalitions = all_coalitions[seq(dt_N_S_and_L[N_S == n_combinations, L])]
+  if (length(unique(all_coalitions)) != n_combinations) stop("Not the right number of unique coalitions")
+
+  # Return
+  if (return_coalitions) {
+    return(list(dt_N_S_and_L = dt_N_S_and_L, all_coalitions = all_coalitions))
+  } else {
+    return(dt_N_S_and_L)
+  }
+}
+
+coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, return_coalitions = FALSE,
+                                     seed = NULL, verbose = TRUE) {
+  if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
+  if (!is.null(seed)) set.seed(seed)
+
+  # Find weights for given number of features
+  n_features <- seq(m - 1)
+  n <- sapply(n_features, choose, n = m)
+  w <- shapr:::shapley_weights(m = m, N = n, n_features) * n
+  p <- w / sum(w)
+
+  # List to store all the sampled coalitions
+  all_coalitions = c()
+
+  # Variable to keep track of the number of unique coalitions
+  unique_coalitions = 0
+
+  # Variable to keep track of the iteration number
+  iteration = 1
+
+  # Loop until we have enough unique samples
+  while (unique_coalitions < n_combinations) {
+
+    # Sample the coalition sizes
+    n_features_sample <- sample(
+      x = n_features,
+      size = n_sample_scale*n_combinations,
+      replace = TRUE,
+      prob = p
+    )
+
+    # Sample the coalitions
+    coalitions <- shapr:::sample_features_cpp(m, n_features_sample)
+
+    # Convert the coalitions to strings such that we can compare them
+    coalitions = sapply(coalitions, paste, collapse = ",")
+
+    # Add the new coalitions to the previously sampled coalitions
+    all_coalitions = c(all_coalitions, coalitions)
+
+    # Get the cumulative number of unique coalitions for each coalition in all_coalitions
+    dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)))[, L := .I]
+
+    # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
+    dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
+
+    # Get the number of unique coalitions
+    unique_coalitions = dt_N_S_and_L[.N, N_S]
+
+    # Message to user
+    if (verbose) {
+      message(paste0("Iteration ", iteration, ": N_S = ", unique_coalitions,
+                     ", Sampled = ", n_sample_scale*n_combinations*iteration, "."))
+    }
+
+    # Update the iteration number
+    iteration = iteration + 1
+  }
+
+  # Post processing: keep only the coalitions until n_combinations
+  all_coalitions = all_coalitions[seq(dt_N_S_and_L[N_S == n_combinations, L])]
+  if (length(unique(all_coalitions)) != n_combinations) stop("Not the right number of unique coalitions")
 
   # Return
   if (return_coalitions) {
@@ -104,10 +175,10 @@ repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m - 2,
         if (!is.null(verbose_extra)) string = paste(verbose_extra, string)
         message(string)
       }
-      coalition_sampling(m = m,
-                         n_combinations = n_combinations,
-                         n_sample_scale = n_sample_scale,
-                         verbose = verbose)[,-"coalitions"]}
+      coalition_sampling_paired(m = m,
+                                n_combinations = n_combinations,
+                                n_sample_scale = n_sample_scale,
+                                verbose = verbose)[,-"coalitions"]}
     ), use.names = TRUE,
     idcol = "Repetition"
   )
@@ -269,11 +340,11 @@ if (FALSE) {
 
   L_max = 10000
   dt_L = data.table(L = seq(L_max),
-    t(sapply(seq(L_max), function(L) {
-      pstilde = 2*ps / (1 - (1 - 2*ps)^(L/2))
-      pstilde = pstilde / sum(pstilde)
-      pstilde
-    })))
+                    t(sapply(seq(L_max), function(L) {
+                      pstilde = 2*ps / (1 - (1 - 2*ps)^(L/2))
+                      pstilde = pstilde / sum(pstilde)
+                      pstilde
+                    })))
   setnames(dt_L, old = paste0("V", n_features), paste0("Coal_size_", n_features))
   dt_L
   ps/sum(ps)
@@ -283,11 +354,11 @@ if (FALSE) {
 
 
   dt_L_avg = data.table(N_S = dt_avg$N_S,
-                    t(sapply(dt_avg$L_avg, function(L) {
-                      pstilde = 2*ps / (1 - (1 - 2*ps)^(L/2))
-                      pstilde = pstilde / sum(pstilde)
-                      pstilde
-                    })))
+                        t(sapply(dt_avg$L_avg, function(L) {
+                          pstilde = 2*ps / (1 - (1 - 2*ps)^(L/2))
+                          pstilde = pstilde / sum(pstilde)
+                          pstilde
+                        })))
   setnames(dt_L_avg, old = paste0("V", n_features), new = paste(n_features))
 
   dt_L_avg
@@ -313,22 +384,22 @@ if (FALSE) {
 
   dt[N_S == 100, L]
   dt_ps_tilde_mean = data.table(N_S = seq(dt[, max(N_S)]),
-    t(sapply(seq(dt[, max(N_S)]), function(N_S_now) {
-    colMeans(t(sapply(dt[N_S == N_S_now, L], function(L_now) {
-      pstilde = 2*ps / (1 - (1 - 2*ps)^(L_now/2))
-      pstilde = pstilde / sum(pstilde)
-      pstilde
-    })))
-  })))
+                                t(sapply(seq(dt[, max(N_S)]), function(N_S_now) {
+                                  colMeans(t(sapply(dt[N_S == N_S_now, L], function(L_now) {
+                                    pstilde = 2*ps / (1 - (1 - 2*ps)^(L_now/2))
+                                    pstilde = pstilde / sum(pstilde)
+                                    pstilde
+                                  })))
+                                })))
   setnames(dt_ps_tilde_mean, old = paste0("V", n_features), new = paste(n_features))
 
   dt_ps_tilde_mean
 
   dt_ps_tilde_mean_long = melt.data.table(dt_ps_tilde_mean,
-                                  id.vars = "N_S",
-                                  value.name = "Ps_tilde",
-                                  variable.name = "Size",
-                                  variable.factor = FALSE)
+                                          id.vars = "N_S",
+                                          value.name = "Ps_tilde",
+                                          variable.name = "Size",
+                                          variable.factor = FALSE)
   dt_ps_tilde_mean_long[, Size := as.integer(Size)]
   dt_ps_tilde_mean_long
 
@@ -470,71 +541,71 @@ if (FALSE) {
     )
 
 
-    tmp_list_unnormalized2 = copy(tmp_list_unnormalized)
-    tmp_list_unnormalized2[, M := factor(M, levels = m_seq, labels = paste0("M = ", m_seq))]
-    tmp_list_unnormalized2
+  tmp_list_unnormalized2 = copy(tmp_list_unnormalized)
+  tmp_list_unnormalized2[, M := factor(M, levels = m_seq, labels = paste0("M = ", m_seq))]
+  tmp_list_unnormalized2
 
 
-    dt1 = dt_extended[, c("M", "N_S", "L_avg")]
-    dt2 = tmp_list_unnormalized2[, c("M", "Size", "weight2")]
-    dt3 = merge(dt1,
-          dt2,
-          by = "M",
-          all.x = TRUE,
-          allow.cartesian = TRUE)
-    dt3[, weight3 := weight2^L_avg]
-    dt3[, weight4 := 1 - weight3]
-    dt3
+  dt1 = dt_extended[, c("M", "N_S", "L_avg")]
+  dt2 = tmp_list_unnormalized2[, c("M", "Size", "weight2")]
+  dt3 = merge(dt1,
+              dt2,
+              by = "M",
+              all.x = TRUE,
+              allow.cartesian = TRUE)
+  dt3[, weight3 := weight2^L_avg]
+  dt3[, weight4 := 1 - weight3]
+  dt3
 
 
-    # Plot (1-pS)^E[L] ------------------------------------------------------------------------------------------------
-    fig_diff_exp = ggplot(dt3, aes(x = N_S, y = weight3, col = Size)) +
-      geom_line() +
-      facet_wrap("M ~ .", ncol = 2, scales = "free") +
-      labs(y = expression((1 - p[S])^{"E[L]"}), x = expression(N[S])) +
-      theme(legend.position="bottom", legend.box = "horizontal") +
-      guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
-             color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
-      theme(strip.text = element_text(size = rel(1.5)),
-            legend.title = element_text(size = rel(1.5)),
-            legend.text = element_text(size = rel(1.5)),
-            axis.title = element_text(size = rel(1.5)),
-            axis.text = element_text(size = rel(1.4))) +
-      scale_x_continuous(labels = scales::label_number()) +
-      scale_y_continuous(labels = scales::label_number())
+  # Plot (1-pS)^E[L] ------------------------------------------------------------------------------------------------
+  fig_diff_exp = ggplot(dt3, aes(x = N_S, y = weight3, col = Size)) +
+    geom_line() +
+    facet_wrap("M ~ .", ncol = 2, scales = "free") +
+    labs(y = expression((1 - p[S])^{"E[L]"}), x = expression(N[S])) +
+    theme(legend.position="bottom", legend.box = "horizontal") +
+    guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4))) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_continuous(labels = scales::label_number())
 
 
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/One_minus_PS_exp_expected_L_v2.png",
-           plot = fig_diff_exp,
-           width = 14.2,
-           height = 20,
-           scale = 0.85,
-           dpi = 350)
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/One_minus_PS_exp_expected_L_v2.png",
+         plot = fig_diff_exp,
+         width = 14.2,
+         height = 20,
+         scale = 0.85,
+         dpi = 350)
 
 
-    # Plot 1-(1-pS)^E[L] ------------------------------------------------------------------------------------------------
-    fig_diff_exp_one_minus = ggplot(dt3, aes(x = N_S, y = weight4, col = Size)) +
-      geom_line() +
-      facet_wrap("M ~ .", ncol = 2, scales = "free") +
-      labs(y = expression(1 - (1 - p[S])^{"E[L]"}), x = expression(N[S])) +
-      theme(legend.position="bottom", legend.box = "horizontal") +
-      guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
-             color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
-      theme(strip.text = element_text(size = rel(1.5)),
-            legend.title = element_text(size = rel(1.5)),
-            legend.text = element_text(size = rel(1.5)),
-            axis.title = element_text(size = rel(1.5)),
-            axis.text = element_text(size = rel(1.4))) +
-      scale_x_continuous(labels = scales::label_number()) +
-      scale_y_continuous(labels = scales::label_number())
+  # Plot 1-(1-pS)^E[L] ------------------------------------------------------------------------------------------------
+  fig_diff_exp_one_minus = ggplot(dt3, aes(x = N_S, y = weight4, col = Size)) +
+    geom_line() +
+    facet_wrap("M ~ .", ncol = 2, scales = "free") +
+    labs(y = expression(1 - (1 - p[S])^{"E[L]"}), x = expression(N[S])) +
+    theme(legend.position="bottom", legend.box = "horizontal") +
+    guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4))) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_continuous(labels = scales::label_number())
 
 
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/One_minus_One_minus_PS_exp_expected_L_v2.png",
-           plot = fig_diff_exp_one_minus,
-           width = 14.2,
-           height = 20,
-           scale = 0.85,
-           dpi = 350)
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/One_minus_One_minus_PS_exp_expected_L_v2.png",
+         plot = fig_diff_exp_one_minus,
+         width = 14.2,
+         height = 20,
+         scale = 0.85,
+         dpi = 350)
 
 
 }
@@ -692,11 +763,11 @@ if (FALSE) {
                 mapping = aes(x = N_S, ymin = lower, ymax = upper, colour = Size, fill = Size),
                 alpha = 0.4, linewidth = 0.1) +
     geom_line(data = dt_combined[type == "mean" & version == "mean ps"],
-              mapping = aes(x = N_S, y = Ps_tilde, colour = Size, group = Size, linetype = "dashed"), size = 1) +
+              mapping = aes(x = N_S, y = Ps_tilde, colour = Size, group = Size, linetype = "dashed"), linewidth = 1) +
     geom_line(data = dt_combined[type == "mean" & version == "mean L"],
               mapping = aes(x = N_S, y = Ps_tilde, group = Size, linetype = "solid"),
               color = "black",
-              size = 0.4) +
+              linewidth = 0.4) +
     geom_point(dt_exact_ps,
                mapping = aes(x = N_S, y = weight, colour = Size),
                size = 2) +
@@ -719,12 +790,62 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4))) +
     scale_x_continuous(labels = scales::label_number())
 
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_confidence_bands_v4.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_confidence_bands_v5.png",
          plot = fig_ps_bands,
          width = 14.2,
          height = 20,
          scale = 0.85,
          dpi = 350)
+
+
+  ## Only some M values ----------------------------------------------------------------------------------------------
+  M_plot_only = c(10, 11, 17)
+  M_plot_only = paste0("M = ", M_plot_only)
+  fig_ps_bands_reduced = ggplot(data = dt_combined[M %in% M_plot_only, ]) +
+    facet_wrap(M ~ .,
+               ncol = length(M_plot_only),
+               scales = "free_x") +
+    geom_ribbon(data = data_ribbon[M %in% M_plot_only, ],
+                mapping = aes(x = N_S, ymin = lower, ymax = upper, colour = Size, fill = Size),
+                alpha = 0.4, linewidth = 0.1) +
+    geom_line(data = dt_combined[type == "mean" & version == "mean ps"][M %in% M_plot_only, ],
+              mapping = aes(x = N_S, y = Ps_tilde, colour = Size, group = Size, linetype = "dashed"), linewidth = 1) +
+    geom_line(data = dt_combined[type == "mean" & version == "mean L"][M %in% M_plot_only, ],
+              mapping = aes(x = N_S, y = Ps_tilde, group = Size, linetype = "solid"),
+              color = "black",
+              linewidth = 0.4) +
+    geom_point(dt_exact_ps[M %in% M_plot_only, ],
+               mapping = aes(x = N_S, y = weight, colour = Size),
+               size = 2) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      # labels = scales::trans_format("log10", scales::math_format(10^.x))
+      labels = scales::label_number()
+    ) +
+    guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           linetype = guide_legend(title = "Version: ")) +
+    labs(x = expression(N[S]), y = "Normalized weights") +
+    scale_linetype_manual(values = c("solid", "dashed"), labels = c(expression(bar(p[S])(L)), expression(p[S](bar(L))))) +
+    theme(legend.position = "bottom",
+          legend.box = "horizontal",
+          strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4))) +
+    scale_x_continuous(labels = scales::label_number())
+
+  fig_ps_bands_reduced
+
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Samp_freq_M_10_11_17_bands_V1.png",
+         plot = fig_ps_bands_reduced,
+         width = 14.2,
+         height = 7,
+         scale = 0.85,
+         dpi = 350)
+
+
 
 
 
@@ -805,6 +926,10 @@ if (FALSE) {
 }
 
 
+
+
+
+
 if (FALSE) {
   ## Old plot --------------------------------------------------------------------------------------------------------
   # Here I just checked that the new way of sampling was correct by comparing the sequence length
@@ -830,10 +955,10 @@ if (FALSE) {
   ggplot(dt_avg, aes(x = N_S, y = L_avg)) +
     geom_line() +
     geom_point(data = dt_extra, mapping = aes(x = N_S, y = L), colour = "black")
-    scale_y_log10(
-      breaks = scales::trans_breaks("log10", function(x) 10^x),
-      labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) +
+  scale_y_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
     scale_x_continuous(labels = scales::label_number())
 
 

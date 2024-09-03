@@ -648,11 +648,13 @@ if (M == 20) {
   n_combinations_array = c(seq(10, 200, 10), 250, 500, 750, seq(1000, 9000, 1000), c(seq(10000, 1040000, 10000), seq(1040000, 1048000, 1000)))
   n_combinations_vec_extra <- sapply(seq(ceiling((M - 1)/2)), choose, n = M)
   n_combinations_vec_extra[seq(floor((M - 1)/2))] = 2*n_combinations_vec_extra[seq(floor((M - 1)/2))]
-  n_combinations_vec_extra = cumsum(n_combinations_vec_extra) + 2
+  n_combinations_vec_extra = cumsum(n_combinations_vec_extra[-length(n_combinations_vec_extra)]) + 2
   n_combinations_vec_extra = c(n_combinations_vec_extra - 50, n_combinations_vec_extra, n_combinations_vec_extra + 50)
   n_combinations_vec_extra = n_combinations_vec_extra[-length(n_combinations_vec_extra)]
   n_combinations_array = sort(unique(c(n_combinations_array, n_combinations_vec_extra)))
+  n_combinations_array = c(n_combinations_array, 1048500)
   n_combinations_array = n_combinations_array[n_combinations_array > 2]
+  n_combinations_array = n_combinations_array[n_combinations_array <= 1048500]
 }
 length(n_combinations_array)
 

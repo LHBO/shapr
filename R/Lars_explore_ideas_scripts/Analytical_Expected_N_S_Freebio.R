@@ -36,7 +36,11 @@ find_combinations <- function(target, bins, bin_sizes = rep(target, bins)) {
   return(ret_mat)
 }
 
-expected_draws_fast = function(m, N_s_vector = seq(2, 2^m - 2), paired = TRUE, n_workers = 4) {
+expected_draws_fast = function(m,
+                               N_s_vector = seq(2, 2^m - 2),
+                               paired = TRUE,
+                               n_workers = max(1, future::availableCores() - 2),
+                               return_as_character = FALSE) {
   ### Internal functions needed to get the progressr updates
   # Function to compute the sum_{q} 1 / (1 - P_j)
   internal_compute_sum_Pj_values = function(q_values, n_size, probs, N_coal_all) {
@@ -155,7 +159,7 @@ expected_draws_fast = function(m, N_s_vector = seq(2, 2^m - 2), paired = TRUE, n
     # Get paired coalition sizes
     n_features = n_features[seq(ceiling((m-1)/2))]
 
-    # Get the coalition sizes of the alowed sizes
+    # Get the coalition sizes of the allowed sizes
     n = n[seq(ceiling((m-1)/2))]
 
     # Get the number of paired coalitions in each coalition size. Half the number when |S| = |Sbar|.
@@ -178,8 +182,8 @@ expected_draws_fast = function(m, N_s_vector = seq(2, 2^m - 2), paired = TRUE, n
   # Iterate over the sizes and compute the probabilities
   if (N_s_vector[length(N_s_vector)] - 1 == 0) stop("Too low `N_s_vector` value. Only need one draw.")
 
-  # Set up future and progressr
-  future::plan(multisession, workers = n_workers)
+  # Set up future and progressr (workers should not exceede the number of independent tasks)
+  future::plan(multisession, workers = min(n_workers, N_s_vector[length(N_s_vector)] - 1))
   progressr::handlers('cli')
 
   # Compute the sum_{q} 1 / (1 - Pj) values
@@ -188,7 +192,8 @@ expected_draws_fast = function(m, N_s_vector = seq(2, 2^m - 2), paired = TRUE, n
     sum_Pj_values = internal_compute_sum_Pj_values(q_values = seq(N_s_vector[length(N_s_vector)] - 1),
                                                    n_size = n_size,
                                                    probs = probs,
-                                                   N_coal_all = N_coal_all)})
+                                                   N_coal_all = N_coal_all)
+    })#, enable = TRUE) # To get feedback in non-interactive mode
   time_diff_Pj = Sys.time() - t1
 
   # Give a printout to the user about the elapsed time
@@ -201,7 +206,7 @@ expected_draws_fast = function(m, N_s_vector = seq(2, 2^m - 2), paired = TRUE, n
     N_draws = internal_compute_N_draws(N_s_values = seq_along(N_s_vector),
                                        N_coal_all = N_coal_all,
                                        sum_Pj_values = sum_Pj_values)
-  })
+  }) #, enable = TRUE) # To get feedback in non-interactive mode
   time_diff_Ns = Sys.time() - t1
 
   # Give a printout to the user about the elapsed time
@@ -217,32 +222,50 @@ expected_draws_fast = function(m, N_s_vector = seq(2, 2^m - 2), paired = TRUE, n
     N_s_vector = 2*N_s_vector
   }
 
+  # Convert from bigq to character as ARM computers do not accept bigq in data.tables
+  if (return_as_character) {
+    N_draws = as.character(N_draws)
+    sum_Pj_values = as.character(sum_Pj_values)
+  }
+
   # Return the expected number of draws
   return(list(res_dt = data.table(N_s = N_s_vector, N_draws = N_draws),
-              Pj_dt = data.table(q = seq(length(sum_Pj_values)), sum_Pj_values = sum_Pj_values)))
+              Pj_dt = data.table(q = seq(length(sum_Pj_values)), sum_Pj_values = sum_Pj_values),
+              times = list(time_diff_Pj = time_diff_Pj, time_diff_Ns = time_diff_Ns)))
 }
 
 
 
 # Code ------------------------------------------------------------------------------------------------------------
-folder_save = "home/lholsen/Paper3/Paper3_save_location"
+folder_save = "/home/lholsen/Paper3/Paper3_save_location"
+
+args = commandArgs(trailingOnly = TRUE)
+n_workers = as.integer(args[1])
 
 # The dimensions
-m_seq = 5:11
+m_seq = unlist(strsplit(as.character(args[2]), ","))
+if (length(m_seq) > 1) {
+  m_seq = unname(sapply(m_seq, function(i) as.numeric(i)))
+} else {
+  m_seq = as.numeric(m_seq)
+}
 
 # The sampling strategies
 versions = c("paired", "unique")
 
 version = versions[1]
-m = 9
+m = 5
 for (version in versions) {
   for (m in m_seq) {
-    message(paste0("Working on version = '", version, "' and m = ", m, "."))
+    message(paste0("\nWorking on version = '", version, "' and m = ", m, "."))
 
     # Compute the expected number of draws
     t1 = Sys.time()
-    analytical = expected_draws_fast(m = m, paired = ifelse(version == "paired", TRUE, FALSE), n_workers = future::availableCores() - 2)
-    print(Sys.time() - t1)
+    analytical = expected_draws_fast(m = m, paired = ifelse(version == "paired", TRUE, FALSE), n_workers = min(future::availableCores() - 2, n_workers), return_as_character = TRUE)
+    t2 = Sys.time()
+    time_diff = t2 - t1
+    print(time_diff)
+    analytical$times[["time_total"]] = time_diff
 
     # Save the results
     saveRDS(analytical, file.path(folder_save, paste0("Sequence_length_M_", m, "_version_", version, "_analytical.rds")))
@@ -256,4 +279,13 @@ for (version in versions) {
 }
 
 
+
+if (FALSE) {
+  m = 10
+
+  analytical = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_version_paired_analytical_str.rds"))
+  simulated = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, ".rds"))
+  matplot(cbind(as.numeric(as.bigq(analytical$res_dt$N_draws)), simulated$dt_avg[N_S %% 2 == 0, L_avg]), type = "l", lwd = 2)
+  matplot(as.numeric(as.bigq(analytical$res_dt$N_draws)) - simulated$dt_avg[N_S %% 2 == 0, L_avg], type = "l", lwd = 2)
+}
 
