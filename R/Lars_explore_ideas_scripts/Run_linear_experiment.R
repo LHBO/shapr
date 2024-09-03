@@ -654,7 +654,7 @@ if (M == 20) {
   n_combinations_array = sort(unique(c(n_combinations_array, n_combinations_vec_extra)))
   n_combinations_array = c(n_combinations_array, 1048500)
   n_combinations_array = n_combinations_array[n_combinations_array > 2]
-  n_combinations_array = n_combinations_array[n_combinations_array <= 1048500]
+  n_combinations_array = n_combinations_array[n_combinations_array <= 1048501]
 }
 length(n_combinations_array)
 

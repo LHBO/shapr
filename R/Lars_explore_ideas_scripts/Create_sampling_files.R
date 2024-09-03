@@ -159,9 +159,6 @@ coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scal
 
 
 
-#cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
-#module load R/4.2.1-foss-2022a
-
 
 
 
@@ -187,7 +184,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 m = 20
 n_combinations = 1048500
-n_sample_scale = 30
+n_sample_scale = 35
 
 # Get where we are working
 hostname = R.utils::System$getHostname()
@@ -236,7 +233,7 @@ for (repetition in repetitions) {
   print(object.size(tmp$all_coalitions), units = "MB")
 
   # Save the file
-  saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, ".rds")))
+  saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", m, "_repetition_", repetition, ".rds")))
 
   # # Convert to integers
   # system.time({tmp$all_coalitions2 = lapply(stringr::str_split(tmp$all_coalitions, ','), as.integer)})
@@ -252,6 +249,36 @@ for (repetition in repetitions) {
 
 
 
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+# module load R/4.2.1-foss-2022a
+
 
 # Rscript Create_sampling_files.R paired 1
 # Rscript Create_sampling_files.R paired 3:4
+
+# Rscript Create_sampling_files.R paired 1
+# Rscript Create_sampling_files.R paired 2
+# Rscript Create_sampling_files.R paired 3
+# Rscript Create_sampling_files.R paired 4
+# Rscript Create_sampling_files.R paired 5
+# Rscript Create_sampling_files.R paired 6
+# Rscript Create_sampling_files.R paired 7
+# Rscript Create_sampling_files.R paired 8
+# Rscript Create_sampling_files.R paired 9
+# Rscript Create_sampling_files.R paired 10
+#
+# Rscript Create_sampling_files.R unique 1
+# Rscript Create_sampling_files.R unique 2
+# Rscript Create_sampling_files.R unique 3
+# Rscript Create_sampling_files.R unique 4
+# Rscript Create_sampling_files.R unique 5
+# Rscript Create_sampling_files.R unique 6
+# Rscript Create_sampling_files.R unique 7
+# Rscript Create_sampling_files.R unique 8
+# Rscript Create_sampling_files.R unique 9
+# Rscript Create_sampling_files.R unique 10
+
+
+
+
+
