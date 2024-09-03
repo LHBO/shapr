@@ -302,6 +302,7 @@ explain <- function(model,
                     MSEv_uniform_comb_weights = TRUE,
                     timing = TRUE,
                     precomputed_vS = NULL, # must be a list `precomputed_vS = list(dt_vS = data.table)` with the correct entries
+                    presampled_coalitions = NULL,
                     pilot_estimates_vS = NULL, # Similar to `precomputed_vS`
                     sampling_method = "unique", # This is the sampling method of the coalitions
                     specific_coalition_set = NULL,
@@ -338,6 +339,7 @@ explain <- function(model,
     MSEv_uniform_comb_weights = MSEv_uniform_comb_weights,
     timing = timing,
     precomputed_vS = precomputed_vS,
+    presampled_coalitions = presampled_coalitions,
     pilot_estimates_vS = pilot_estimates_vS,
     sampling_method = sampling_method,
     specific_coalition_set = specific_coalition_set,

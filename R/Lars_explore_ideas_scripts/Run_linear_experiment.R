@@ -889,6 +889,33 @@ for (rho_idx in seq_along(rhos)) {
       message(sprintf("Working on rho = %g (%d of %d) and repetition = %d (%d of %d).\n",
                   rho, rho_idx, length(rhos), repetition, repetition_idx, length(repetitions)))
 
+
+      message("Loading presampled coalitions unique")
+      presampled_coalitions_unique = file.path(folder_save, paste0("Unique_sampling_M_", m, "_repetition_", repetition, ".rds"))
+      if (file.exists(presampled_coalitions_unique)) {
+        presampled_coalitions_unique = readRDS("presampled_coalitions_unique")
+      } else {
+        presampled_coalitions_unique = NULL
+      }
+      message("Done loading presampled coalitions unique")
+      message("Converting presampled coalitions to integers unique")
+      presampled_coalitions_unique$all_coalitions = lapply(stringr::str_split(presampled_coalitions_unique$all_coalitions, ','), as.integer)
+      message("Done presampled coalitions to integers unique")
+
+
+      message("Loading presampled coalitions paired")
+      presampled_coalitions_paired = file.path(folder_save, paste0("Paired_sampling_M_", m, "_repetition_", repetition, ".rds"))
+      if (file.exists(presampled_coalitions_paired)) {
+        presampled_coalitions_paired = readRDS("presampled_coalitions_paired")
+      } else {
+        presampled_coalitions_paired = NULL
+      }
+      message("Done loading presampled coalitions paired")
+      message("Converting presampled coalitions to integers paired")
+      presampled_coalitions_paired$all_coalitions = lapply(stringr::str_split(presampled_coalitions_paired$all_coalitions, ','), as.integer)
+      message("Done presampled coalitions to integers paired")
+
+
       # Create the save file name
       file_name_update = file_name
       if (use_pilot_estimates_regression) {
@@ -939,7 +966,9 @@ for (rho_idx in seq_along(rhos)) {
         pilot_regression_model = pilot_regression_model,
         sampling_methods = sampling_methods,
         save_path = save_file_name_rep_tmp,
-        true_shapley_values_path = save_file_name_true)
+        true_shapley_values_path = save_file_name_true,
+        presampled_coalitions_unique = presampled_coalitions_unique,
+        presampled_coalitions_paired = presampled_coalitions_paired)
       #)
       # model = predictive_model
       # x_explain = data_test
