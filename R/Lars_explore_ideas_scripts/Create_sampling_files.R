@@ -33,6 +33,7 @@ coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scal
   while (unique_coalitions < n_combinations) {
 
     # Sample the coalition sizes
+    message("Getting the coalition sizes")
     n_features_sample <- sample(
       x = n_features,
       size = n_sample_scale*n_combinations,
@@ -41,24 +42,30 @@ coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scal
     )
 
     # Sample the coalitions
+    message("Getting coalitions")
     feature_sample <- shapr:::sample_features_cpp(m, n_features_sample)
 
     # Get the paired coalitions
+    message("Making the paired")
     feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
 
     # Merge the coalitions in alternating fashion as we do paired sampling (i.e., first is S and second is Sbar and so on)
     coalitions = c(rbind(feature_sample, feature_sample_paired))
 
     # Convert the coalitions to strings such that we can compare them
+    message("Converting to strings")
     coalitions = sapply(coalitions, paste, collapse = ",")
 
     # Add the new coalitions to the previously sampled coalitions
     all_coalitions = c(all_coalitions, coalitions)
 
+
     # Get the cumulative number of unique coalitions for each coalition in all_coalitions
+    message("Getting cumsum")
     dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)))[, L := .I]
 
     # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
+    message("Getting shift")
     dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
 
     # Get the number of unique coalitions
