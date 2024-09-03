@@ -234,7 +234,7 @@ for (repetition in seq(repetitions)) {
   print(object.size(tmp$all_coalitions), units = "MB")
 
   # Save the file
-  saveRDS(tmp, file.path(folder_save, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds")))
+  saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, ".rds")))
 
   # Convert to integers
   tmp$all_coalitions = lapply(stringr::str_split(tmp$all_coalitions, ','), as.integer)
