@@ -911,7 +911,9 @@ for (rho_idx in seq_along(rhos)) {
       }
 
       # Compute the repeated estimated Shapley values using the different sampling methods
-      repeated_estimated_explanations = suppressWarnings(repeated_explanations(
+      repeated_estimated_explanations =
+        # suppressWarnings(
+        repeated_explanations(
         model = predictive_model,
         x_explain = data_test,
         x_train = data_train,
@@ -934,7 +936,8 @@ for (rho_idx in seq_along(rhos)) {
         pilot_regression_model = pilot_regression_model,
         sampling_methods = sampling_methods,
         save_path = save_file_name_rep_tmp,
-        true_shapley_values_path = save_file_name_true))
+        true_shapley_values_path = save_file_name_true)
+      #)
       # model = predictive_model
       # x_explain = data_test
       # x_train = data_train

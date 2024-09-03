@@ -347,7 +347,7 @@ repeated_explanations = function(model,
         # Create the shapr object. The Shapley value output will be rubbish,
         # but we only need the object/list structure. Do not want any warnings.
         progressr::with_progress({
-          explanations_tmp = suppressMessages(suppressWarnings(
+          explanations_tmp = #suppressMessages(suppressWarnings(
             shapr::explain(
               model = model,
               x_explain = x_explain,
@@ -362,7 +362,7 @@ repeated_explanations = function(model,
               seed = seed,
               precomputed_vS = list(dt_vS = dt_vS),
               ...
-            ))
+           #))
         )},
           enable = TRUE)
 
@@ -400,7 +400,7 @@ repeated_explanations = function(model,
 
         # Do not want any warnings
         progressr::with_progress({
-          explanation_precomputed_vS = suppressMessages(suppressWarnings(
+          explanation_precomputed_vS = #suppressMessages(suppressWarnings(
             shapr::explain(
               model = model,
               x_explain = x_explain,
@@ -413,7 +413,7 @@ repeated_explanations = function(model,
               n_batches = n_batches,
               seed = seed,
               ...
-            ))
+            #))
             )}, enable = TRUE)
 
         # Extract only the precomputed_vS list
@@ -1006,7 +1006,7 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
 
   # Compute the Shapley values again, but this time with the precomputed contribution functions
   progressr::with_progress({
-    updated_explanation <- suppressMessages(suppressWarnings(
+    updated_explanation <- #suppressMessages(suppressWarnings(
       shapr::explain(
         model = linear_model,
         x_explain = explanation$internal$data$x_explain,
@@ -1022,7 +1022,8 @@ explain_linear_model_Gaussian_data = function(explanation, linear_model, only_re
         gaussian.cov_mat = explanation$internal$parameters$gaussian.cov_mat,
         seed = explanation$internal$parameters$seed,
         precomputed_vS = list(dt_vS = dt_vS) # We use dt_vS to compute the Shapley values
-      )))}, enable = TRUE)
+      #))
+  )}, enable = TRUE)
 
   # Set the number of samples to `Inf` and create a new boolean
   updated_explanation$internal$parameters$n_samples = Inf
