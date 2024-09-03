@@ -213,6 +213,8 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 
 repetition = 1
 for (repetition in seq(repetitions)) {
+  message(paste0("Working on version '", version, "' and repetition ", repetition, "."))
+
   # Generate the coalitions
   if (version == "paired") {
     tmp = coalition_sampling_paired(m = m,
@@ -250,4 +252,4 @@ for (repetition in seq(repetitions)) {
 
 
 
-Rscript Create_sampling_files.R paired
+# Rscript Create_sampling_files.R paired 1
