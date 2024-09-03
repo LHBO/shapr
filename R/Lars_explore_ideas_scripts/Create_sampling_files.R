@@ -167,7 +167,7 @@ coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scal
 
 # Code starts -----------------------------------------------------------------------------------------------------
 library(data.table)
-args = ommandArgs(trailingOnly = TRUE)
+args = commandArgs(trailingOnly = TRUE)
 version = as.character(args[1])
 repetitions = as.character(args[2])
 if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
@@ -245,3 +245,9 @@ for (repetition in seq(repetitions)) {
   # Save the file
   saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, "_integers.rds")))
 }
+
+
+
+
+
+Rscript Create_sampling_files.R paired
