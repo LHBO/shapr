@@ -791,7 +791,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         iteration = 1
 
         # How many times extra coalitions to sample each time (cheap to sample)
-        n_sample_scale = 40
+        n_sample_scale = 30
 
         # If print
         verbose_now = TRUE
@@ -883,7 +883,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         iteration = 1
 
         # How many times extra coalitions to sample each time (cheap to sample)
-        n_sample_scale = 40
+        n_sample_scale = 30
 
         # If print
         verbose_now = TRUE
