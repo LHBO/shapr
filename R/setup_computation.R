@@ -603,7 +603,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         feature_sample_all = c(feature_sample_all, features_sample)
 
         # Get the cumulative number of unique coalitions for each coalition in feature_sample_all
-        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)), L = .I)[, L := .I]
+        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)))[, L := .I]
 
         # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
         dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
@@ -790,6 +790,11 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
 
       # Loop until we have enough unique samples
       while (unique_samples < n_combinations - 2) {
+        # Message to user
+        if (verbose_now) {
+          warning(paste0("Iteration ", iteration, ": N_S = ", unique_samples,
+                         ", Sampled = ", n_sample_scale*n_combinations*iteration, "."))
+        }
 
         # Sample the coalition sizes
         n_features_sample <- sample(
@@ -809,10 +814,10 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         feature_sample_all = c(feature_sample_all, coalitions)
 
         # Get the cumulative number of unique coalitions for each coalition in feature_sample_all
-        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)), L = .I)[, L := .I]
+        dt_cumsum = data.table::data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)))[, L := .I]
 
         # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
-        dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
+        dt_N_S_and_L <- dt_cumsum[N_S != data.table::shift(N_S, type = "lag", fill = 0)]
 
         # Get the number of unique coalitions
         unique_samples = dt_N_S_and_L[.N, N_S]
@@ -832,7 +837,8 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       if (length(unique(feature_sample_all)) != n_combinations - 2) stop("Not the right number of unique coalitions")
 
       # Convert to version used below
-      feature_sample_all = lapply(strsplit(feature_sample_all, ','), as.integer)
+      feature_sample_all = lapply(stringr::str_split(feature_sample_all, ','), as.integer)
+
 
 
     } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric", "unique_paired_unif_V2") ||
@@ -896,7 +902,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
         feature_sample_all = c(feature_sample_all, coalitions)
 
         # Get the cumulative number of unique coalitions for each coalition in feature_sample_all
-        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)), L = .I)[, L := .I]
+        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)))[, L := .I]
 
         # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
         dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
@@ -919,7 +925,7 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       if (length(unique(feature_sample_all)) != n_combinations - 2) stop("Not the right number of unique coalitions")
 
       # Convert to version used below
-      feature_sample_all = lapply(strsplit(feature_sample_all, ','), as.integer)
+      feature_sample_all = lapply(stringr::str_split(feature_sample_all, ','), as.integer)
 
 
 
