@@ -218,6 +218,13 @@
 # Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 2:3 4 1000000 1000000 1000 500 20 0,0.2,0.5,0.9 FALSE NULL NULL NULL
 
 
+# Rscript Run_linear_experiment.R TRUE TRUE FALSE FALSE 1:10 16 1000000 1000000 1000 250 20 0,0.2,0.5,0.9 FALSE NULL NULL NULL
+
+
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 250 20 0.9 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 250 20 0.5 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 250 20 0.2 FALSE NULL NULL NULL
+# Rscript Run_linear_experiment.R FALSE FALSE TRUE FALSE 1 4 1000000 1000000 1000 250 20 0 FALSE NULL NULL NULL
 
 
 
@@ -529,6 +536,27 @@ sampling_methods = c(
   #"largest_weights_combination_size",
   #"largest_weights_combination_size_new_weights_empirical"
 )
+
+sampling_methods = c(
+  "unique",
+  "unique_paired",
+  "unique_paired_equal_weights",
+  "unique_paired_SW",
+  "largest_weights_random"
+  # "largest_weights_random_new_weights_empirical",
+  # "MAD",
+  # "MAD_new_weights_empirical",
+  # "paired_coalitions_new_weights_empirical",
+  # "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
+  # "paired_coalitions",
+  # "paired_coalitions_weights_direct_equal_weights",
+  # "largest_weights_new_weights_empirical",
+  # "unique_paired_new_weights_empirical",
+  # "largest_weights"
+  #"largest_weights_combination_size",
+  #"largest_weights_combination_size_new_weights_empirical"
+)
+
 
 
 # sampling_methods = c("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
