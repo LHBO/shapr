@@ -10,7 +10,7 @@
 #'
 #' @examples
 coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, return_coalitions = FALSE,
-                              seed = NULL, verbose = TRUE) {
+                                     seed = NULL, verbose = TRUE) {
   if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
   if (!is.null(seed)) set.seed(seed)
 
@@ -87,7 +87,7 @@ coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scal
 }
 
 coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, return_coalitions = FALSE,
-                              seed = NULL, verbose = TRUE) {
+                                     seed = NULL, verbose = TRUE) {
   if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
   if (!is.null(seed)) set.seed(seed)
 
@@ -166,6 +166,7 @@ coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scal
 
 
 # Code starts -----------------------------------------------------------------------------------------------------
+library(data.table)
 args = ommandArgs(trailingOnly = TRUE)
 version = as.character(args[1])
 repetitions = as.character(args[2])
@@ -215,17 +216,17 @@ for (repetition in seq(repetitions)) {
   # Generate the coalitions
   if (version == "paired") {
     tmp = coalition_sampling_paired(m = m,
-                             n_combinations = n_combinations,
-                             n_sample_scale = n_sample_scale,
-                             return_coalitions = TRUE,
-                             seed = repetition + 1)
+                                    n_combinations = n_combinations,
+                                    n_sample_scale = n_sample_scale,
+                                    return_coalitions = TRUE,
+                                    seed = repetition + 1)
 
   } else {
     tmp = coalition_sampling_unique(m = m,
-                             n_combinations = n_combinations,
-                             n_sample_scale = n_sample_scale,
-                             return_coalitions = TRUE,
-                             seed = repetition + 1)
+                                    n_combinations = n_combinations,
+                                    n_sample_scale = n_sample_scale,
+                                    return_coalitions = TRUE,
+                                    seed = repetition + 1)
   }
 
   # Print the size
