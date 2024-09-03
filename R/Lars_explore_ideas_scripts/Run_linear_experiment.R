@@ -652,6 +652,7 @@ if (M == 20) {
   n_combinations_vec_extra = c(n_combinations_vec_extra - 50, n_combinations_vec_extra, n_combinations_vec_extra + 50)
   n_combinations_vec_extra = n_combinations_vec_extra[-length(n_combinations_vec_extra)]
   n_combinations_array = sort(unique(c(n_combinations_array, n_combinations_vec_extra)))
+  n_combinations_array = n_combinations_array[n_combinations_array > 2]
 }
 length(n_combinations_array)
 
