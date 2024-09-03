@@ -557,23 +557,78 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
       # n_combinations = 200
       # weight_zero_m = 10^6
 
+      # Old code slow due to many calls to unique.
+      # #iters = 0
+      # feature_sample_all <- c()
+      # unique_samples <- 0
+      # while (unique_samples < n_combinations_pair - 1) {
+      #   # Recall that n_combinations must be a even number. subtract one which represents the pair of the empty and grand coalitions
+      #   features_sample = sample(seq(2, length(specific_coalition_set)), size = n_combinations_pair - unique_samples - 1, replace = TRUE,
+      #                            prob = specific_coalition_set[-1])
+      #   feature_sample_all = c( feature_sample_all, features_sample)
+      #   unique_samples = length(unique(feature_sample_all))
+      #   #iters = iters + 1
+      #   #print(c(iters, unique_samples))
+      # }
+
+      # NEW faster version with fewer calls to unique.
+      # Variable to keep track of the iteration number
+      iteration = 1
+
+      # How many times extra coalitions to sample each time (cheap to sample)
+      n_sample_scale = 40
+
+      # If print
+      verbose_now = TRUE
+
       # Get the number of paired combinations we need to sample (n_combinations must be an even number)
       n_combinations_pair = n_combinations/2
 
-      #iters = 0
-      feature_sample_all <- c()
+      # List to store all the sampled coalitions
+      feature_sample_all <- list()
+
+      # Variable to keep track of the number of unique coalitions
       unique_samples <- 0
+
+      # Loop until we have enough unique samples
       while (unique_samples < n_combinations_pair - 1) {
+
         # Recall that n_combinations must be a even number. subtract one which represents the pair of the empty and grand coalitions
-        features_sample = sample(seq(2, length(specific_coalition_set)), size = n_combinations_pair - unique_samples - 1, replace = TRUE,
+        features_sample = sample(seq(2, length(specific_coalition_set)), # 1 is the empty/grand coalition pair
+                                 size = n_sample_scale*n_combinations_pair, #n_combinations_pair - unique_samples - 1,
+                                 replace = TRUE,
                                  prob = specific_coalition_set[-1])
-        feature_sample_all = c( feature_sample_all, features_sample)
-        unique_samples = length(unique(feature_sample_all))
-        #iters = iters + 1
-        #print(c(iters, unique_samples))
+
+        # Add the new coalitions to the previously sampled coalitions
+        feature_sample_all = c(feature_sample_all, features_sample)
+
+        # Get the cumulative number of unique coalitions for each coalition in feature_sample_all
+        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)), L = .I)[, L := .I]
+
+        # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
+        dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
+
+        # Get the number of unique coalitions
+        unique_samples = dt_N_S_and_L[.N, N_S]
+
+        # Message to user
+        if (verbose_now) {
+          message(paste0("Iteration ", iteration, ": N_S = ", unique_samples,
+                         ", Sampled = ", n_sample_scale*n_combinations_pair*iteration, "."))
+        }
+
+        # Update the iteration number
+        iteration = iteration + 1
       }
 
-      # Crete the sampling frquences and mirror them
+      # Post processing: keep only the coalitions until n_combinations - 2
+      feature_sample_all = feature_sample_all[seq(dt_N_S_and_L[N_S == n_combinations_pair - 1, L])]
+      if (length(unique(feature_sample_all)) != n_combinations_pair - 1) stop("Not the right number of unique coalitions")
+
+      # Convert to array such that the rest of the code works
+      feature_sample_all = unlist(feature_sample_all)
+
+      # Crete the sampling frequencies and mirror them
       sampling_freq = c(weight_zero_m, unname(table(feature_sample_all)))
       sampling_freq = c(sampling_freq, rev(sampling_freq))
 
@@ -702,46 +757,173 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     # Check if any of "unique", "unique_paired", "non_unique", "unique_SW", "unique_paired_SW", "non_unique_SW"
     # This is the version that is in the Shapr master branch, except for `unique_paired`.
 
-    feature_sample_all <- list()
-    unique_samples <- 0
+    feature_sample_all <- list() # List to store all the sampled coalitions
+    unique_samples <- 0  # Variable to keep track of the number of unique coalitions
 
     if (sampling_method %in% c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")) {
       # unique ----------------------------------------------------------------------------------------------------------
+
+      # # OLD:
+      # while (unique_samples < n_combinations - 2) {
+      #   n_features_sample <- sample(
+      #     x = n_features,
+      #     size = n_combinations - unique_samples - 2, # Sample -2 as we add zero and m samples below
+      #     replace = TRUE,
+      #     prob = p
+      #   )
+      #
+      #   # Sample specific set of features
+      #   feature_sample <- sample_features_cpp(m, n_features_sample)
+      #   feature_sample_all <- c(feature_sample_all, feature_sample)
+      #   unique_samples <- length(unique(feature_sample_all))
+      # }
+
+      # NEW faster version with fewer calls to unique.
+      # Variable to keep track of the iteration number
+      iteration = 1
+
+      # How many times extra coalitions to sample each time (cheap to sample)
+      n_sample_scale = 40
+
+      # If print
+      verbose_now = TRUE
+
+      # Loop until we have enough unique samples
       while (unique_samples < n_combinations - 2) {
+
+        # Sample the coalition sizes
         n_features_sample <- sample(
           x = n_features,
-          size = n_combinations - unique_samples - 2, # Sample -2 as we add zero and m samples below
+          size = n_sample_scale*n_combinations,
           replace = TRUE,
           prob = p
         )
 
-        # Sample specific set of features
-        feature_sample <- sample_features_cpp(m, n_features_sample)
-        feature_sample_all <- c(feature_sample_all, feature_sample)
-        unique_samples <- length(unique(feature_sample_all))
+        # Sample the coalitions
+        coalitions <- shapr:::sample_features_cpp(m, n_features_sample)
+
+        # Convert the coalitions to strings such that we can compare them
+        coalitions = sapply(coalitions, paste, collapse = ",")
+
+        # Add the new coalitions to the previously sampled coalitions
+        feature_sample_all = c(feature_sample_all, coalitions)
+
+        # Get the cumulative number of unique coalitions for each coalition in feature_sample_all
+        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)), L = .I)[, L := .I]
+
+        # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
+        dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
+
+        # Get the number of unique coalitions
+        unique_samples = dt_N_S_and_L[.N, N_S]
+
+        # Message to user
+        if (verbose_now) {
+          message(paste0("Iteration ", iteration, ": N_S = ", unique_samples,
+                         ", Sampled = ", n_sample_scale*n_combinations*iteration, "."))
+        }
+
+        # Update the iteration number
+        iteration = iteration + 1
       }
+
+      # Post processing: keep only the coalitions until n_combinations - 2
+      feature_sample_all = feature_sample_all[seq(dt_N_S_and_L[N_S == n_combinations - 2, L])]
+      if (length(unique(feature_sample_all)) != n_combinations - 2) stop("Not the right number of unique coalitions")
+
+      # Convert to version used below
+      feature_sample_all = lapply(strsplit(feature_sample_all, ','), as.integer)
+
 
     } else if (sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric", "unique_paired_unif_V2") ||
                grepl("unique_paired_equal_weights_", sampling_method)) {
       # unique paired ---------------------------------------------------------------------------------------------------
-      iters = 0
+
+      # Old version. Slow due to many calls to unique. Cheaper to creat a redundant number of coalitions and then only take the needed
+      # iters = 0
+      # while (unique_samples < n_combinations - 2) {
+      #
+      #   n_features_sample <- sample(
+      #     x = n_features,
+      #     size = (n_combinations - unique_samples - 2)/2, # Sample -2 as we add zero and m samples below. Divide by two due to paired sampling
+      #     replace = TRUE,
+      #     prob = p
+      #   )
+      #
+      #   feature_sample <- sample_features_cpp(m, n_features_sample)
+      #   feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
+      #   feature_sample_all <- c(feature_sample_all, feature_sample, feature_sample_paired)
+      #   unique_samples <- length(unique(feature_sample_all))
+      #   iters = iters + 1
+      #   #print(c(iters, unique_samples))
+      #   #if (iters %% 250 == 0) message(paste0("Iter: ", iters, "\t Samples: ", length(feature_sample_all) ,"\t Unique samples:", unique_samples))
+      # }
+
+      # NEW faster version with fewer calls to unique.
+      # Variable to keep track of the iteration number
+      iteration = 1
+
+      # How many times extra coalitions to sample each time (cheap to sample)
+      n_sample_scale = 40
+
+      # If print
+      verbose_now = TRUE
+
+      # Loop until we have enough unique samples
       while (unique_samples < n_combinations - 2) {
 
+        # Sample the coalition sizes
         n_features_sample <- sample(
           x = n_features,
-          size = (n_combinations - unique_samples - 2)/2, # Sample -2 as we add zero and m samples below. Divide by two due to paired sampling
+          size = n_sample_scale*n_combinations,
           replace = TRUE,
           prob = p
         )
 
-        feature_sample <- sample_features_cpp(m, n_features_sample)
+        # Sample the coalitions
+        feature_sample <- shapr:::sample_features_cpp(m, n_features_sample)
+
+        # Get the paired coalitions
         feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
-        feature_sample_all <- c(feature_sample_all, feature_sample, feature_sample_paired)
-        unique_samples <- length(unique(feature_sample_all))
-        iters = iters + 1
-        #print(c(iters, unique_samples))
-        #if (iters %% 250 == 0) message(paste0("Iter: ", iters, "\t Samples: ", length(feature_sample_all) ,"\t Unique samples:", unique_samples))
+
+        # Merge the coalitions in alternating fashion as we do paired sampling (i.e., first is S and second is Sbar and so on)
+        coalitions = c(rbind(feature_sample, feature_sample_paired))
+
+        # Convert the coalitions to strings such that we can compare them
+        coalitions = sapply(coalitions, paste, collapse = ",")
+
+        # Add the new coalitions to the previously sampled coalitions
+        feature_sample_all = c(feature_sample_all, coalitions)
+
+        # Get the cumulative number of unique coalitions for each coalition in feature_sample_all
+        dt_cumsum = data.table(coalitions = feature_sample_all, N_S = cumsum(!duplicated(feature_sample_all)), L = .I)[, L := .I]
+
+        # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
+        dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
+
+        # Get the number of unique coalitions
+        unique_samples = dt_N_S_and_L[.N, N_S]
+
+        # Message to user
+        if (verbose_now) {
+          message(paste0("Iteration ", iteration, ": N_S = ", unique_samples,
+                         ", Sampled = ", n_sample_scale*n_combinations*iteration, "."))
+        }
+
+        # Update the iteration number
+        iteration = iteration + 1
       }
+
+      # Post processing: keep only the coalitions until n_combinations - 2
+      feature_sample_all = feature_sample_all[seq(dt_N_S_and_L[N_S == n_combinations - 2, L])]
+      if (length(unique(feature_sample_all)) != n_combinations - 2) stop("Not the right number of unique coalitions")
+
+      # Convert to version used below
+      feature_sample_all = lapply(strsplit(feature_sample_all, ','), as.integer)
+
+
+
+
 
       # Add extra samples. Cannot due it for two as there are no samples coalitions. Only empty and grand
       if (sampling_method != "unique_paired_equal_weights_symmetric" && grepl("unique_paired_equal_weights_", sampling_method) && n_combinations > 2) {

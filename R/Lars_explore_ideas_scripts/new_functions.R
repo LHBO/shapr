@@ -772,10 +772,14 @@ compute_SV_function = function(n_combinations,
 
   # Only want to save the extra stuff for the first object to save storage due to a lot of duplicates.
   if (n_combinations != used_sequence_n_combinations[1]) {
-    tmp_res[["only_save"]] = tmp_res$internal$objects[c(2,3,4)]
+    tmp_res[["only_save"]] = tmp_res$internal$objects[c(2)] #[c(2,3,4)] Only save X as we can compute the others from it
     tmp_res$internal = NULL
     tmp_res$timing = NULL
     tmp_res$pred_explain = NULL
+    tmp_res$MSEv = NULL # Do not need msev either
+  } else {
+    # Remove this from the first iteration too
+    tmp_res$internal$parameters$precomputed_vS = NULL
   }
 
   # Update the progress bar
@@ -2209,6 +2213,54 @@ fix_current_repetition_results_extra = function(current_repetition_results_extra
 
 
 ## Plot functions --------------------------------------------------------------------------------------------------
+## Mapping of strategy names ---------------------------------------------------------------------------------------
+{
+  dt_strategy_names = rbindlist(list(
+    list("unique_paired_unif_V2", "Uniform", "Uniform"),
+    list("unique", "Unique", "Unique"),
+    list("unique_paired", "Paired", "Paired"),
+    list("unique_paired_equal_weights", "Paired Average", "Paired Average"),
+    list("unique_paired_SW", "Paired Kernel", "Paired Kernel"),
+    list("unique_paired_new_weights_empirical", "Paired Empirical", "Paired Empirical"),
+    list("unique_paired_new_weights_gompertz", "Paired Gompertz", "Paired Gompertz"),
+    list("paired_coalitions_weights_direct_equal_weights", "Pilot Average", "Pilot Average"),
+    list("paired_coalitions_weights_direct_equal_weights_new_weights_empirical", "Pilot Empirical", "Pilot Empirical"),
+    list("paired_coalitions_weights_direct_equal_weights_new_weights_gompertz", "Pilot Gompertz", "Pilot Gompertz"),
+    list("paired_coalitions", "Pilot Largest Kernel", "Pilot Imp Kernel"),
+    list("paired_coalitions_new_weights_empirical", "Pilot Largest Empirical", "Pilot Imp Empirical"),
+    list("paired_coalitions_new_weights_gompertz", "Pilot Largest Gompertz", "Pilot Imp Gompertz"),
+    list("largest_weights", "Paired Largest Kernel", "Paired Imp Kernel"),
+    list("largest_weights_new_weights_empirical", "Paired Largest Empirical", "Paired Imp Empirical"),
+    list("largest_weights_combination_size", "Paired Largest Order Coalition Kernel", "Paired Imp Order Coalition Kernel"),
+    list("largest_weights_combination_size_new_weights_empirical", "Paired Largest Order Coalition Empirical", "Paired Imp Order Coalition Empirical"),
+    list("largest_weights_random", "Paired Largest Order", "Paired Imp Order"),
+    list("largest_weights_random_new_weights_empirical", "Paired Largest Order Empirical", "Paired Imp Order Empirical"),
+    list("MAD", "MAD Imp Kernel", "MAD Imp Kernel"),
+    list("MAD_new_weights_empirical", "MAD Imp. Emp.", "MAD Imp Empirical"),
+    list("on_all_cond", "Cond", "C-Kernel"),
+    list("on_all_cond_paired", "Paired Cond", "Paired C-Kernel"),
+    list("on_all_cond_largest_weights_random", "Cond Largest", "Imp C-Kernel"),
+    list("on_all_cond_paired_largest_weights_random", "Paired Cond Largest", "Paired Imp C-Kernel"),
+    list("on_all_cond_largest_weights_random_analytical", "Cond Largest Empirical", "Imp C-Kernel Empirical"),
+    list("on_all_cond_paired_largest_weights_random_analytical", "Paired Cond Largest Empirical", "Paired Imp C-Kernel Empirical"),
+    list("on_all_cond_unique_paired_analytical", "Cond Empirical", "C-Kernel Empirical"),
+    list("on_all_cond_paired_unique_paired_analytical", "Paired Cond Empirical", "Paired C-Kernel Empirical"),
+    list("on_all_cond_paired_unique_paired_mean_L", "Paired Cond L", "Paired CEL-Kernel"),
+    list("on_all_cond_paired_unique_paired_mean_ps", "Paired Cond pS", "Paired CEP-Kernel"),
+    list("on_all_cond_paired_largest_weights_random_mean_L", "Paired Imp C-Kernel", "Paired Imp CEL-Kernel"),
+    list("on_all_cond_paired_largest_weights_random_mean_ps", "Paired Cond Largest pS", "Paired Imp CEP-Kernel"),
+    list("on_all_cond_paired_largest_weights_random_non_analytical", "Paired Cond Largest", "Paired Imp C-Kernel"),
+    list("on_all_cond_largest_weights_random_non_analytical", "Cond Largest", "Imp C-Kernel"),
+    list("on_all_cond_unique_paired_non_analytical", "Cond", "C-Kernel"),
+    list("on_all_cond_paired_unique_paired_non_analytical", "Paired Cond", "Paired C-Kernel")
+  ))
+  data.table::setnames(dt_strategy_names, c("Original", "Old", "New"))
+  dt_strategy_names
+}
+
+
+
+
 #' Plot the aggregated results
 #'
 #' @param dt_CI Data.table. Returned data.table from call to the `aggregate_results()` function.
