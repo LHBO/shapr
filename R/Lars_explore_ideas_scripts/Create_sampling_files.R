@@ -238,14 +238,15 @@ for (repetition in seq(repetitions)) {
   # Save the file
   saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, ".rds")))
 
-  # Convert to integers
-  tmp$all_coalitions = lapply(stringr::str_split(tmp$all_coalitions, ','), as.integer)
-
-  # Print the size
-  print(object.size(tmp$all_coalitions), units = "MB")
-
-  # Save the file
-  saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, "_integers.rds")))
+  # # Convert to integers
+  # system.time({tmp$all_coalitions2 = lapply(stringr::str_split(tmp$all_coalitions, ','), as.integer)})
+  # tmp$all_coalitions = lapply(stringr::str_split(tmp$all_coalitions, ','), as.integer)
+  #
+  # # Print the size
+  # print(object.size(tmp$all_coalitions), units = "MB")
+  #
+  # # Save the file
+  # saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, "_integers.rds")))
 }
 
 
