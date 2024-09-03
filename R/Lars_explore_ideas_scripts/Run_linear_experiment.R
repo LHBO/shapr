@@ -656,6 +656,7 @@ if (M == 20) {
   #n_combinations_array = c(n_combinations_array, 1048500)
   n_combinations_array = n_combinations_array[n_combinations_array > 2]
   n_combinations_array = n_combinations_array[n_combinations_array <= 1048501]
+  n_combinations_array = c(100, 200)
 }
 length(n_combinations_array)
 
