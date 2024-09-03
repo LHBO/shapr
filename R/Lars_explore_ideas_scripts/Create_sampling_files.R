@@ -220,13 +220,14 @@ for (repetition in seq(repetitions)) {
                                     n_sample_scale = n_sample_scale,
                                     return_coalitions = TRUE,
                                     seed = repetition + 1)
-
+    version_name = "Paired_sampling"
   } else {
     tmp = coalition_sampling_unique(m = m,
                                     n_combinations = n_combinations,
                                     n_sample_scale = n_sample_scale,
                                     return_coalitions = TRUE,
                                     seed = repetition + 1)
+    version_name = "Unique_sampling"
   }
 
   # Print the size
@@ -242,5 +243,5 @@ for (repetition in seq(repetitions)) {
   print(object.size(tmp$all_coalitions), units = "MB")
 
   # Save the file
-  saveRDS(tmp, file.path(folder_save, paste0("Paired_sampling_M_", M, "_repetition_", repetition, "_integers.rds")))
+  saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, "_integers.rds")))
 }
