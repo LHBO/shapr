@@ -249,13 +249,12 @@ dt_all_coalitions = data.table(features = sapply(all_coalitions, function(x) pas
 # dt_exact[, shapley_weight := shapr:::shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
 
 
-dt_exact2 = dt_exact[sort(c(1, sample(999998, x = seq(2, 2^M-1)), .N)), ]
-dt_exact2 = dt_exact[c(1, sample(999998, x = seq(2, 2^M-1)), .N), ]
-dt_exact2[, id_combination_old := id_combination]
-dt_exact2[, id_combination := .I]
-dt_exact2
+# dt_exact2 = dt_exact[sort(c(1, sample(999998, x = seq(2, 2^M-1)), .N)), ]
+# dt_exact2 = dt_exact[c(1, sample(999998, x = seq(2, 2^M-1)), .N), ]
+# dt_exact2[, id_combination_old := id_combination]
+# dt_exact2[, id_combination := .I]
+# dt_exact2
 
-all_coalitions
 
 
 # for (rho in c(0.2, 0.5, 0.9)) {
