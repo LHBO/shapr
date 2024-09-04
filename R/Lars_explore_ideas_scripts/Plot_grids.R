@@ -1939,19 +1939,6 @@ if (FALSE) {
       labs(y = "Relative difference")
 
 
-    library("ggpubr")
-    fig_comb = ggarrange(fig_bands, fig_rel,
-              labels = c("A", "B"),
-              ncol = 1, nrow = 2,
-              common.legend = TRUE, legend = "bottom",
-              font.label = list(size = 25, color = "black"))
-    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_Comb_Final_V2.png"),
-           plot = fig_comb,
-           width = 14.2,
-           height = 18,
-           scale = 0.85,
-           dpi = 350)
-
 
     fig_rel = relative_difference(dt = dt_all,
                               m = 10,
@@ -1975,13 +1962,27 @@ if (FALSE) {
            scale = 0.85,
            dpi = 350)
 
+    library("ggpubr")
+    fig_comb = ggarrange(fig_bands, fig_rel,
+                         labels = c("A", "B"),
+                         ncol = 1, nrow = 2,
+                         common.legend = TRUE, legend = "bottom",
+                         font.label = list(size = 25, color = "black"))
+    ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_Comb_Final_V2.png"),
+           plot = fig_comb,
+           width = 14.2,
+           height = 18,
+           scale = 0.85,
+           dpi = 350)
+
+
     relative_difference(dt = dt_all,
                         m = 10,
-                        strat_ref = "Paired Cond",
+                        strat_ref = "Paired C-Kernel",
                         strat_other = c("Paired",
                                         "Paired Average",
-                                        "Paired Cond",
-                                        "Paired Cond L"),
+                                        "Paired C-Kernel",
+                                        "Paired CEL-Kernel",),
                         y_limits = c(-0.11, 0.15),
                         scale = FALSE,
                         legend_n_row = 1,
@@ -1990,101 +1991,20 @@ if (FALSE) {
 
     relative_difference(dt = dt_all,
                         m = 10,
-                        strat_ref = "Paired Cond",
+                        strat_ref = "Paired C-Kernel",
                         strat_other = c("Paired",
                                         "Paired Average",
                                         "Paired Empirical",
-                                        "Paired Cond",
-                                        "Paired Cond L",
-                                        "Paired Cond pS"),
+                                        "Paired C-Kernel",
+                                        "Paired CEL-Kernel",
+                                        "Paired CEPS-Kernel"),
                         y_limits = c(-0.11, 0.15),
                         scale = FALSE,
                         legend_n_row = 2,
                         hue_length = 8,
                         hue_indices = c(2,3,1,5,6,7))
 
-    relative_difference = function(dt, m, strat_ref,
-                                   strat_other = NULL,
-                                   y_breaks = waiver(),
-                                   y_limits = NULL,
-                                   scale = TRUE,
-                                   legend_n_row = 2,
-                                   include_coal_size_lines = FALSE,
-                                   hue_indices = NULL,
-                                   hue_length = NULL,
-                                   y_lab_frac = TRUE) {
-      if (xor(is.null(hue_indices), is.null(hue_length))) stop("Both `hue_indices` and `hue_length` must be provided.")
-      if (!is.null(hue_indices) && !is.null(hue_length)) {
-        hues = seq(15, 375, length = hue_length + 1)
-        colors = grDevices::hcl(h = hues, l = 65, c = 100)[1:hue_length][hue_indices]
-      }
 
-      library(latex2exp)
-      library(ggallin)
-      library(data.table)
-
-      # Get all the names from the data table
-      if (is.null(strat_other)) strat_other = levels(dt$sampling)
-
-      # Extract the needed columns
-      dt = dt[, c("rho", "sampling", "n_combinations", "mean")]
-
-      # Only even n_combinations
-      dt = dt[n_combinations %% 2 == 0]
-
-      # Only get the wanted strategies
-      dt = dt[sampling %in% strat_other,]
-
-      # Compute the relative error for each rho and n_combination
-      dt[, rel_error := (mean - mean[sampling == strat_ref]) / mean[sampling == strat_ref],
-           by = list(rho, n_combinations)]
-
-      # Convert sampling to a ordered factor
-      dt = dt[, sampling := factor(sampling, levels = strat_other, ordered = TRUE)]
-
-      #
-      n_features <- seq(ceiling((m - 1)/2))
-      n <- sapply(n_features, choose, n = m)
-      n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
-      n_cumsum = (cumsum(n) + 2) + 0.5
-
-      # Make the plot
-      fig = ggplot(dt, aes(x = n_combinations, y = rel_error, col = sampling)) +
-        {if (include_coal_size_lines) geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4)} +
-        geom_hline(yintercept = 0, col = "gray") +
-        geom_line(linewidth = 0.65) +
-        facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
-        {if (scale) scale_y_log10(trans = ggallin:::ssqrt_trans, breaks = y_breaks)} +
-        {if (!scale) scale_y_continuous(breaks = y_breaks)} +
-        coord_cartesian(ylim = y_limits) +
-        scale_x_continuous(labels = scales::label_number()) +
-        # scale_y_continuous(limits = c(-1, 2.5)) +
-        theme(legend.position = 'bottom') +
-        guides(col = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
-               fill = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
-               linetype = "none") +
-        labs(color = "Strategy:",
-             fill = "Strategy:",
-             # y = "Relative difference",
-             x = expression(N[S])) +
-        { if (y_lab_frac) {
-          labs(y = latex2exp::TeX(r'($\frac{MAE_{Strategy} - MAE_{Paired~C-Kernel}}{MAE_{Paired~C-Kernel}}$)'))
-        } else {
-          labs(y = latex2exp::TeX(r'($(MAE_{Strategy} - MAE_{Paired~C-Kernel}) / MAE_{Paired~C-Kernel}$)'))
-        }} +
-        theme(strip.text = element_text(size = rel(1.6)),
-              legend.title = element_text(size = rel(1.37)),
-              legend.text = element_text(size = rel(1.37)),
-              axis.title = element_text(size = rel(1.6)),
-              axis.text = element_text(size = rel(1.5))) +
-        {if (!is.null(hue_length)) scale_color_manual(values = colors)} +
-        {if (is.null(hue_length))  scale_color_hue()} #added as we want ordered}
-
-
-      return(fig)
-
-      # The relative difference on signed square root scale.
-    }
 
   }
 
