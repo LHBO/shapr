@@ -893,7 +893,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
       message("Loading presampled coalitions unique")
-      presampled_coalitions_unique = file.path(folder_save, paste0("Unique_sampling_M_", M, "_repetition_", repetition, "_NO.rds"))
+      presampled_coalitions_unique = file.path(folder_save, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
       if (file.exists(presampled_coalitions_unique)) {
         presampled_coalitions_unique = readRDS(presampled_coalitions_unique)
       } else {
@@ -906,7 +906,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
       message("Loading presampled coalitions paired")
-      presampled_coalitions_paired = file.path(folder_save, paste0("Paired_sampling_M_", M, "_repetition_", repetition, "_NO.rds"))
+      presampled_coalitions_paired = file.path(folder_save, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds"))
       if (file.exists(presampled_coalitions_paired)) {
         presampled_coalitions_paired = readRDS(presampled_coalitions_paired)
       } else {

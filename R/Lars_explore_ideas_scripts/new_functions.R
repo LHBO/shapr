@@ -225,8 +225,8 @@ repeated_explanations = function(model,
                                  n_combinations_array = NULL,
                                  save_path = NULL,
                                  true_shapley_values_path = NULL,
-                                 presampled_coalitions_unique = presampled_coalitions_unique,
-                                 presampled_coalitions_paired = presampled_coalitions_paired,
+                                 presampled_coalitions_unique = NULL,
+                                 presampled_coalitions_paired = NULL,
                                  ...) {
 
   # Set the design of the progress bar
@@ -714,8 +714,8 @@ compute_SV_function = function(n_combinations,
                                sampling_method_idx,
                                n_sampling_methods,
                                precomputed_vS,
-                               presampled_coalitions_unique = presampled_coalitions_unique,
-                               presampled_coalitions_paired = presampled_coalitions_paired,
+                               presampled_coalitions_unique,
+                               presampled_coalitions_paired,
                                specific_coalition_set,
                                specific_coalition_set_weights,
                                replace_W,
@@ -729,18 +729,19 @@ compute_SV_function = function(n_combinations,
   # print(sampling_method)
 
 
-  # if (!is.null(presampled_coalitions_unique) &&
-  #     sampling_method %in% c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")) {
-  #   presampled_coalitions =
-  #     presampled_coalitions_unique$all_coalitions[seq(presampled_coalitions_unique$dt_N_S_and_L[N_S == n_combinations, L])]
-  # }
-  #
-  # if (!is.null(presampled_coalitions_unique) &&
-  #     sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric", "unique_paired_unif_V2") ||
-  #     grepl("unique_paired_equal_weights_", sampling_method)) {
-  #   presampled_coalitions =
-  #     presampled_coalitions_paired$all_coalitions[seq(presampled_coalitions_paired$dt_N_S_and_L[N_S == n_combinations, L])]
-  # }
+  if (!is.null(presampled_coalitions_unique) &&
+      sampling_method %in% c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")) {
+    presampled_coalitions =
+      presampled_coalitions_unique$all_coalitions[seq(presampled_coalitions_unique$dt_N_S_and_L[N_S == n_combinations, L])]
+  } else if (!is.null(presampled_coalitions_unique) &&
+      sampling_method %in% c("unique_paired", "unique_paired_SW", "unique_paired_equal_weights", "unique_paired_equal_weights_symmetric", "unique_paired_unif_V2") ||
+      grepl("unique_paired_equal_weights_", sampling_method)) {
+    presampled_coalitions =
+      presampled_coalitions_paired$all_coalitions[seq(presampled_coalitions_paired$dt_N_S_and_L[N_S == n_combinations, L])]
+  } else {
+    presampled_coalitions = NULL
+  }
+  presampled_coalitions = NULL
 
   # If the sampling method is one of these, then we do not want to remove some of the coalitions
   # in the specific_coalition_set, as we need all of them.
@@ -865,8 +866,8 @@ future_compute_SV_function = function(compute_SV_function,
                                       sampling_method_idx,
                                       n_sampling_methods,
                                       precomputed_vS,
-                                      presampled_coalitions_unique = presampled_coalitions_unique,
-                                      presampled_coalitions_paired = presampled_coalitions_paired,
+                                      presampled_coalitions_unique,
+                                      presampled_coalitions_paired,
                                       specific_coalition_set,
                                       specific_coalition_set_weights,
                                       n_repetitions,
