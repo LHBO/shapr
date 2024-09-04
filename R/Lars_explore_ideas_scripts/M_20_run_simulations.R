@@ -636,12 +636,13 @@ for (rho_idx in seq_along(rhos)) {
 
       # Save the results
       if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
-        saveRDS(MAE_dt, file.path(folder_save, paste0(file_name, "_MAE_", repetition, "_tmp.rds")))
+        saveRDS(MAE_dt, file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
       }
 
     } # End n_combinations
     print(MAE_dt)
 
+    # Save ------------------------------------------------------------------------------------------------------------
     # Melt the data.table
     MAE_dt_long = melt(MAE_dt, id.vars = c("Rho", "Repetition", "N_S"), variable.name = "Strategy", value.name = "MAE")
     # library(ggplot2)
@@ -653,9 +654,9 @@ for (rho_idx in seq_along(rhos)) {
     #   )
 
     # Save the results and remove tmp file
-    saveRDS(MAE_dt_long, file.path(folder_save, paste0(file_name, "_MAE_", repetition, ".rds")))
-    if (file.exists(file.path(folder_save, paste0(file_name, "_MAE_", repetition, "_tmp.rds")))) {
-      file.remove(file.path(folder_save, paste0(file_name, "_MAE_", repetition, "_tmp.rds")))
+    saveRDS(MAE_dt_long, file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
+    if (file.exists(file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
+      file.remove(file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
     }
 
   } # End repetition
