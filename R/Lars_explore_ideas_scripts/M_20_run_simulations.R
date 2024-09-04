@@ -129,7 +129,7 @@ create_X_dt_largest_random = function(m, presampled_coalitions, dt_all_coalition
   if (weight == "uniform") {
     dt[, shapley_weight := 1]
   } else if (weight == "shapley") {
-    dt[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
+    dt[, shapley_weight := shapr:::shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m)]
   }
   dt[c(1, .N), shapley_weight := weight_zero_m]
 
@@ -173,12 +173,10 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 
 
-# Rscript M_20_run_simulations.R 0.0 1:5
-# Rscript M_20_run_simulations.R 0.0 6:10
+# Rscript M_20_run_simulations.R 0.0 1:10
 # Rscript M_20_run_simulations.R 0.2 1:5
 # Rscript M_20_run_simulations.R 0.2 6:10
-# Rscript M_20_run_simulations.R 0.5 1:5
-# Rscript M_20_run_simulations.R 0.5 6:10
+# Rscript M_20_run_simulations.R 0.5 1:10
 # Rscript M_20_run_simulations.R 0.9 1:5
 # Rscript M_20_run_simulations.R 0.9 6:10
 
@@ -305,10 +303,12 @@ for (rho_idx in seq_along(rhos)) {
   save_file_name_true = file.path(folder_save, paste0(file_name, "_true.rds"))
 
   # Load the true explanations
+  message("Loading true Shapley values")
   true_explanations = readRDS(save_file_name_true)
   dt_vS = true_explanations$internal$output$dt_vS
   shap_names <- true_explanations$internal$parameters$feature_names
   dt_true_mat = as.matrix(true_explanations$shapley_values[,-1])
+  message("Done loading true Shapley values")
 
   # If we have duplicates, then we remove and save the file
   if (!is.null(true_explanations$internal$parameters$precomputed_vS)) {
@@ -494,7 +494,7 @@ for (rho_idx in seq_along(rhos)) {
           X_now_copy = copy(X_now)
 
           # Insert the Shapley kernel weights
-          X_now_copy[, shapley_weight := shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m = weight_zero_m)]
+          X_now_copy[, shapley_weight := shapr:::shapley_weights(m = m, N = N, n_components = n_features, weight_zero_m = weight_zero_m)]
 
           # Compute the approximated Shapley values
           dt_kshap_paired_kernel =
