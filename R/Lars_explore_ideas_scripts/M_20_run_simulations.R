@@ -118,6 +118,7 @@ create_X_dt_unique_and_paired = function(m, presampled_coalitions, dt_all_coalit
 }
 
 create_X_dt_largest_random = function(m, presampled_coalitions, dt_all_coalitions, weight_zero_m = 10^6, weight = c("uniform", "shapley")) {
+  n <- sapply(seq(m - 1), choose, n = m)
   weight = match.arg(weight)
   dt <- data.table::data.table(id_combination = seq(length(presampled_coalitions)))
   dt[, features_num := presampled_coalitions]
