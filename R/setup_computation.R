@@ -990,6 +990,68 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     # feature_sample_all
 
 
+    # m = 20
+    # # Find weights for given number of features
+    # n_features <- seq(m - 1)
+    # n <- sapply(n_features, choose, n = m)
+    # w <- shapley_weights(m = m, N = n, n_features) * n
+    # p <- w / sum(w)
+    # weight_zero_m = 10^6
+    #
+    # devtools::load_all(".")
+    # tmp = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paired_sampling_M_20_repetition_1.rds")
+    # feature_sample_all = tmp$all_coalitions[seq(tmp$dt_N_S_and_L[N_S == 1000000, L])]
+    # feature_sample_all = feature_sample_all[1:100]
+    # feature_sample_all
+    # #feature_sample_all = lapply(stringr::str_split(feature_sample_all, ','), as.integer)
+    # # feature_sample_all
+    #
+    #
+    # # String version
+    # #feature_sample_all = c(character(0), feature_sample_all, paste(seq(m), collapse = ","))
+    # t1 = Sys.time()
+    # dt_freq = data.table::data.table(features = feature_sample_all)[, .(shapley_weight = .N), by = features]
+    #
+    # t2 = Sys.time()
+    # dt_freq[, n_features := stringr::str_count(features, ",") + 1]
+    # data.table::setorder(dt_freq, n_features)
+    #
+    # t3 = Sys.time()
+    # dt_freq[, N := n[n_features]]
+    # dt_freq[, p := p[n_features]]
+    #
+    # t4 = Sys.time()
+    # dt_freq[, features := lapply(stringr::str_split(features, ','), as.integer)] # stringr is faster than base and stringi
+    # t5 = Sys.time()
+    #
+    # dt_freq = rbindlist( # Add the empty and grand coalitions
+    #   list(
+    #     data.table(features = list(integer(0)), shapley_weight = weight_zero_m, n_features = 0L, N = 1L, p = NA),
+    #     dt_freq,
+    #     data.table(features = list(1:m), shapley_weight = weight_zero_m, n_features = as.integer(m), N = 1L,  p = NA)
+    #   )
+    # )
+    # t6 = Sys.time()
+    # dt_freq[, id_combination := .I]
+    # data.table::setcolorder(dt_freq, c("id_combination", "features", "n_features", "N", "shapley_weight", "p"))
+    # t7 = Sys.time()
+    #
+    # # Optional to match the old setup
+    # dt_freq[, N := as.integer(N)]
+    # dt_freq[, shapley_weight := as.integer(shapley_weight)]
+    # dt_freq[, n_features := as.integer(n_features)]
+    # t8 = Sys.time()
+    #
+    # dt_freq
+    # print(t2 - t1)
+    # print(t3 - t2)
+    # print(t4 - t3)
+    # print(t5 - t4)
+    # print(t6 - t5)
+    # print(t7 - t6)
+    # print(t8 - t7)
+    # print(t8 - t1)
+
     # Add zero and m features
     feature_sample_all <- c(list(integer(0)), feature_sample_all, list(c(1:m)))
     X <- data.table(n_features = sapply(feature_sample_all, length))
@@ -1039,7 +1101,6 @@ feature_not_exact <- function(m, n_combinations = 200, weight_zero_m = 10^6,
     X[, N := as.integer(N)]
     nms <- c("id_combination", "features", "n_features", "N", "shapley_weight", "p")
     data.table::setcolorder(X, nms)
-
     dt = X
 
     # Overwrite the frequency Shapley kernel weights with the exact ones
