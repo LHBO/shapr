@@ -117,6 +117,7 @@ create_X_dt_unique_and_paired = function(m, presampled_coalitions, dt_all_coalit
   return(dt_freq)
 }
 
+
 create_X_dt_largest_random = function(m, presampled_coalitions, dt_all_coalitions, weight_zero_m = 10^6, weight = c("uniform", "shapley")) {
   n <- sapply(seq(m - 1), choose, n = m)
   weight = match.arg(weight)
@@ -156,7 +157,9 @@ if (grepl(",", rhos)) {
   rhos = as.numeric(rhos)
 }
 
-repetitions = as.character(args[2])
+rho_equi = as.logical(args[2])
+
+repetitions = as.character(args[3])
 if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   if (grepl(",", repetitions)) {
     repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
@@ -174,13 +177,34 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 
 
-# Rscript M_20_run_simulations.R 0.0 1:10
-# Rscript M_20_run_simulations.R 0.2 1:5
-# Rscript M_20_run_simulations.R 0.2 6:10
-# Rscript M_20_run_simulations.R 0.5 1:10
-# Rscript M_20_run_simulations.R 0.9 1:5
-# Rscript M_20_run_simulations.R 0.9 6:10
+#Rscript M_20_run_simulations.R 0.0 6:7 ixion
+#Rscript M_20_run_simulations.R 0.0 8:10 Diktys
 
+# Rscript M_20_run_simulations.R 0.0 6:10 labbu
+# Rscript M_20_run_simulations.R 0.0 11:17 nam1
+# Rscript M_20_run_simulations.R 0.0 18:25 nam1
+
+
+# Rscript M_20_run_simulations.R 0.0 24,25,23
+# Rscript M_20_run_simulations.R 0.0 17,16
+
+# FERDIG
+# Rscript M_20_run_simulations.R 0.2 1:10 diktys
+# Rscript M_20_run_simulations.R 0.2 11:20 metis
+# Rscript M_20_run_simulations.R 0.2 16:20 carpo
+# Rscript M_20_run_simulations.R 0.2 25:21 aload
+
+# FERDIG
+# Rscript M_20_run_simulations.R 0.5 1:10 ixion
+# Rscript M_20_run_simulations.R 0.5 11:20 nyx (snart ferdig)
+# Rscript M_20_run_simulations.R 0.5 21:25 sumeru
+
+# FERDIG
+# Rscript M_20_run_simulations.R 0.9 2:5 sumeru
+# Rscript M_20_run_simulations.R 0.9 6:10 tsenahale
+# Rscript M_20_run_simulations.R 0.9 11:15 mawu
+# Rscript M_20_run_simulations.R 0.9 16:20 beleili
+# Rscript M_20_run_simulations.R 0.9 21:25 bastet
 
 # Workstation -----------------------------------------------------------------------------------------------------
 # Get where we are working
@@ -211,7 +235,6 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 M = m = 20
 n_train = 1000
 n_test = 250
-rho_equi = FALSE
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)
 weight_zero_m = 10^6
 
@@ -256,7 +279,7 @@ dt_all_coalitions = data.table(features = sapply(all_coalitions, function(x) pas
 
 
 
-# for (rho in c(0.2, 0.5, 0.9)) {
+# for (rho in c(0.0)) {
 #   # Get the true value
 #   file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
 #                     "betas", paste(as.character(betas), collapse = "_"), sep = "_")
@@ -663,3 +686,135 @@ for (rho_idx in seq_along(rhos)) {
 } # End rho
 
 
+
+
+if (FALSE) {
+  # Plots -----------------------------------------------------------------------------------------------------------
+
+
+  # Load the MAE data
+  res = data.table::rbindlist(
+    lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
+      data.table::rbindlist(
+        lapply(1:25, function(repetition) {
+          file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                            "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+          if (!file.exists(file_name)) return(NULL)
+          #print(file_name)
+          readRDS(file_name)
+        }))
+    }))
+
+  # Compute the average
+  res2 = res[, .(MAE = mean(MAE), lower = quantile(MAE, 0.025), upper = quantile(MAE, 0.975)), by = c("Rho", "N_S", "Strategy")]
+
+
+  n_features <- seq(ceiling((m - 1)/2))
+  n <- sapply(n_features, choose, n = m)
+  n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+  n_cumsum = (cumsum(n) + 2) + 0.5
+
+  Strat_now = c("Unique",
+                "Paired",
+                "Paired Average",
+                "Paired Kernel",
+                "Paired C-Kernel",
+                "Paired CEL-Kernel",
+                #"Paired CEPS-Kernel",
+                "Paired Imp C-Kernel",
+                "Paired Imp CEL-Kernel"
+                #"Paired Imp CEPS-Kernel"
+  )
+
+  res3 = res2[Strategy %in% Strat_now, ]
+  fig_M_20_MAE =
+    ggplot(res3, aes(x = N_S, y = MAE, col = Strategy, fill = Strategy)) +
+    geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.0) +
+    geom_line(linewidth = 0.65) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
+         x = expression(N[S]),
+         y = bquote(bar(MAE)[25]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.6)),
+          legend.title = element_text(size = rel(1.7)),
+          legend.text = element_text(size = rel(1.7)),
+          axis.title.x = element_text(size = rel(1.6)),
+          axis.title.y = element_text(size = rel(2)),
+          axis.text.x = element_text(size = rel(1.75)),
+          axis.text.y = element_text(size = rel(1.75))) +
+    scale_color_hue() + #added as we want ordered
+    scale_fill_hue()
+
+
+
+
+  MAE_dt_long2 = copy(res3)
+  data.table::setnames(MAE_dt_long2, old = c("Rho", "Strategy", "MAE", "N_S"), new = c("rho", "sampling", "mean", "n_combinations"))
+  fig_M_20_rel =
+    relative_difference(dt = MAE_dt_long2,
+                      m = 20,
+                      strat_ref = "Paired C-Kernel",
+                      strat_other = c("Unique",
+                                      "Paired",
+                                      "Paired Average",
+                                      "Paired Kernel",
+                                      "Paired C-Kernel",
+                                      "Paired CEL-Kernel",
+                                      #"Paired CEPS-Kernel",
+                                      "Paired Imp C-Kernel",
+                                      "Paired Imp CEL-Kernel"
+                                      #"Paired Imp CEPS-Kernel"
+                      ),
+                      include_coal_size_lines = TRUE,
+                      y_limits = c(-0.9, 5.1),
+                      y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4, 1, 2, 4)
+  )
+
+
+  library("ggpubr")
+  fig_M_20_comb = ggarrange(fig_M_20_MAE, fig_M_20_rel,
+                       labels = c("A", "B"),
+                       ncol = 1, nrow = 2,
+                       align = "hv",
+                       common.legend = TRUE, legend = "bottom",
+                       font.label = list(size = 25, color = "black"))
+
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_MAE_Relative_Diff_V4.png"),
+         plot = fig_M_20_comb,
+         width = 14.2,
+         height = 18,
+         scale = 0.85,
+         dpi = 350)
+
+
+  fig_M_20_comb = ggarrange(fig_M_20_MAE, fig_M_20_rel,
+                            labels = c("B", "C"),
+                            ncol = 1, nrow = 2,
+                            align = "hv",
+                            common.legend = TRUE, legend = "bottom",
+                            font.label = list(size = 25, color = "black"))
+
+
+  fig_M_20_comb_V2 = ggarrange(fig_hist, fig_M_20_comb, labels = c("A", "B", "C"),
+            ncol = 1,
+            heights = c(1,4.25),
+            common.legend = TRUE, legend = "bottom",
+            font.label = list(size = 25, color = "black"))
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_MAE_Relative_Diff_V11.png"),
+         plot = fig_M_20_comb_V2,
+         width = 14.2,
+         height = 19.25,
+         scale = 0.85,
+         dpi = 350)
+
+
+}
