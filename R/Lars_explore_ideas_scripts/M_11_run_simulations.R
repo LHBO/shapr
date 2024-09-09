@@ -166,12 +166,12 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = seq(10)
 }
 
-Rscript M_11_run_simulations.R 101:200
-# Rscript M_11_run_simulations.R 1:100
-
-Rscript M_11_run_simulations.R 101:200
-Rscript M_11_run_simulations.R 101:200
-Rscript M_11_run_simulations.R 101:200
+# Rscript M_11_run_simulations.R 101:200
+# # Rscript M_11_run_simulations.R 1:100
+#
+# Rscript M_11_run_simulations.R 101:200
+# Rscript M_11_run_simulations.R 101:200
+# Rscript M_11_run_simulations.R 101:200
 
 #Rscript M_20_run_simulations.R 0.0 6:7 ixion
 #Rscript M_20_run_simulations.R 0.0 8:10 Diktys
