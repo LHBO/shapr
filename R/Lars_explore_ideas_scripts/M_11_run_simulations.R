@@ -166,8 +166,12 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = seq(10)
 }
 
+Rscript M_11_run_simulations.R 101:200
 # Rscript M_11_run_simulations.R 1:100
 
+Rscript M_11_run_simulations.R 101:200
+Rscript M_11_run_simulations.R 101:200
+Rscript M_11_run_simulations.R 101:200
 
 #Rscript M_20_run_simulations.R 0.0 6:7 ixion
 #Rscript M_20_run_simulations.R 0.0 8:10 Diktys
@@ -530,7 +534,7 @@ for (repetition_idx in seq_along(repetitions)) {
 
     # Save the results
     if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
-      saveRDS(MAE_dt, file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+      saveRDS(MAE_dt, file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
     }
 
   } # End n_combinations
@@ -548,9 +552,9 @@ for (repetition_idx in seq_along(repetitions)) {
   #   )
 
   # Save the results and remove tmp file
-  saveRDS(MAE_dt_long, file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
-  if (file.exists(file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
-    file.remove(file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+  saveRDS(MAE_dt_long, file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
+  if (file.exists(file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
+    file.remove(file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
   }
 
 } # End repetition
