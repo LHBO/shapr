@@ -178,34 +178,17 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 
 
-#Rscript M_20_run_simulations.R 0.0 6:7 ixion
-#Rscript M_10_run_simulations.R 0.0 8:10 Diktys
-
-# Rscript M_10_run_simulations.R 0.0 6:10 labbu
-# Rscript M_10_run_simulations.R 0.0 11:17 nam1
-# Rscript M_10_run_simulations.R 0.0 18:25 nam1
-
-
-# Rscript M_10_run_simulations.R 0.0 24,25,23
-# Rscript M_10_run_simulations.R 0.0 17,16
-
-# FERDIG
-# Rscript M_10_run_simulations.R 0.2 1:10 diktys
-# Rscript M_10_run_simulations.R 0.2 11:10 metis
-# Rscript M_10_run_simulations.R 0.2 16:10 carpo
-# Rscript M_10_run_simulations.R 0.2 25:21 aload
-
-# FERDIG
-# Rscript M_10_run_simulations.R 0.5 1:10 ixion
-# Rscript M_10_run_simulations.R 0.5 11:10 nyx (snart ferdig)
-# Rscript M_10_run_simulations.R 0.5 21:25 sumeru
-
-# FERDIG
-# Rscript M_10_run_simulations.R 0.9 2:5 sumeru
-# Rscript M_10_run_simulations.R 0.9 6:10 tsenahale
-# Rscript M_10_run_simulations.R 0.9 11:15 mawu
-# Rscript M_10_run_simulations.R 0.9 16:10 beleili
-# Rscript M_10_run_simulations.R 0.9 21:25 bastet
+# Rscript M_10_run_simulations.R 0.0 TRUE 1:250
+# Rscript M_10_run_simulations.R 0.0 TRUE 251:500
+#
+# Rscript M_10_run_simulations.R 0.2 TRUE 1:250
+# Rscript M_10_run_simulations.R 0.2 TRUE 251:500
+#
+# Rscript M_10_run_simulations.R 0.5 TRUE 1:250
+# Rscript M_10_run_simulations.R 0.5 TRUE 251:500
+#
+# Rscript M_10_run_simulations.R 0.9 TRUE 1:250
+# Rscript M_10_run_simulations.R 0.9 TRUE 251:500
 
 # Workstation -----------------------------------------------------------------------------------------------------
 # Get where we are working
@@ -225,6 +208,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
   folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
   folder_save_2 = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_2"
+  folder_save_3 = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_3"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
@@ -561,7 +545,7 @@ for (rho_idx in seq_along(rhos)) {
 
       # Save the results
       if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
-        saveRDS(MAE_dt, file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+        saveRDS(MAE_dt, file.path(folder_save_3, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
       }
 
     } # End n_combinations
@@ -579,9 +563,9 @@ for (rho_idx in seq_along(rhos)) {
     #   )
 
     # Save the results and remove tmp file
-    saveRDS(MAE_dt_long, file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
-    if (file.exists(file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
-      file.remove(file.path(folder_save_2, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+    saveRDS(MAE_dt_long, file.path(folder_save_3, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
+    if (file.exists(file.path(folder_save_3, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
+      file.remove(file.path(folder_save_3, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
     }
 
   } # End repetition
