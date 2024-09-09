@@ -166,6 +166,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = seq(10)
 }
 
+# Rscript M_11_run_simulations.R 1:100
 
 
 #Rscript M_20_run_simulations.R 0.0 6:7 ixion
@@ -271,7 +272,7 @@ for (repetition_idx in seq_along(repetitions)) {
 
 
   message("Loading presampled coalitions unique")
-  presampled_coalitions_unique = file.path(folder_save, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
+  presampled_coalitions_unique = file.path(folder_save_2, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
   if (file.exists(presampled_coalitions_unique)) {
     presampled_coalitions_unique = readRDS(presampled_coalitions_unique)
   } else {
@@ -280,7 +281,7 @@ for (repetition_idx in seq_along(repetitions)) {
   message("Done loading presampled coalitions unique")
 
   message("Loading presampled coalitions paired")
-  presampled_coalitions_paired = file.path(folder_save, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds"))
+  presampled_coalitions_paired = file.path(folder_save_2, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds"))
   if (file.exists(presampled_coalitions_paired)) {
     presampled_coalitions_paired = readRDS(presampled_coalitions_paired)
   } else {
@@ -289,7 +290,7 @@ for (repetition_idx in seq_along(repetitions)) {
   message("Done loading presampled coalitions paired")
 
   message("Loading presampled coalitions largest")
-  presampled_coalitions_largest = file.path(folder_save, paste0("Largest_random_sampling_M_", M, "_repetition_", repetition, ".rds"))
+  presampled_coalitions_largest = file.path(folder_save_2, paste0("Largest_random_sampling_M_", M, "_repetition_", repetition, ".rds"))
   if (file.exists(presampled_coalitions_largest)) {
     presampled_coalitions_largest = readRDS(presampled_coalitions_largest)
   } else {
