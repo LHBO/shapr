@@ -35,9 +35,45 @@ coalition_sampling_largest_random = function(m,
 }
 
 
-m = 11
-folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
-repetitions = seq(10)
+args = commandArgs(trailingOnly = TRUE)
+m = as.integer(args(1))
+repetitions = as.character(args[2])
+if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
+  if (grepl(",", repetitions)) {
+    repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
+  } else {
+    repetitions = unlist(strsplit(repetitions, ":"))
+    if (length(repetitions) > 1) {
+      repetitions = seq(as.numeric(repetitions[1]), as.numeric(repetitions[2]))
+    } else {
+      repetitions = as.numeric(repetitions)
+    }
+  }
+} else {
+  repetitions = NULL
+}
+
+# Get where we are working
+hostname = R.utils::System$getHostname()
+message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
+
+# Check if we are working on an UiO computer or not and define the correct folder based on system
+if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
+  folder = "/Users/larsolsen/PhD/Paper3/shapr"
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  UiO = FALSE
+} else if (grepl("hpc.uio.no", hostname)) {
+  # To be added
+  folder = ""
+  UiO = TRUE
+} else if (grepl("uio.no", hostname)) {
+  folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_2"
+  UiO = TRUE
+} else {
+  stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
+}
+
 
 repetition = 1
 for (repetition in repetitions) {

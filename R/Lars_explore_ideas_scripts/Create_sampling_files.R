@@ -172,8 +172,9 @@ coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scal
 # Code starts -----------------------------------------------------------------------------------------------------
 library(data.table)
 args = commandArgs(trailingOnly = TRUE)
-version = as.character(args[1])
-repetitions = as.character(args[2])
+m = as.integer(args[1])
+version = as.character(args[2])
+repetitions = as.character(args[3])
 if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   if (grepl(",", repetitions)) {
     repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
@@ -193,7 +194,6 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 # n_combinations = 1048500
 # n_sample_scale = 35
 
-m = 11
 n_combinations = 2^m - 2
 n_sample_scale = 30
 
@@ -212,7 +212,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   UiO = TRUE
 } else if (grepl("uio.no", hostname)) {
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
-  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_2"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
