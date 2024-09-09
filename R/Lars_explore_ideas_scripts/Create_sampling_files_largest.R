@@ -35,7 +35,7 @@ coalition_sampling_largest_random = function(m,
 }
 
 
-m = 20
+m = 11
 folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
 repetitions = seq(10)
 

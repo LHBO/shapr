@@ -189,9 +189,13 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = NULL
 }
 
-m = 20
-n_combinations = 1048500
-n_sample_scale = 35
+# m = 20
+# n_combinations = 1048500
+# n_sample_scale = 35
+
+m = 11
+n_combinations = 2^m - 2
+n_sample_scale = 30
 
 # Get where we are working
 hostname = R.utils::System$getHostname()
