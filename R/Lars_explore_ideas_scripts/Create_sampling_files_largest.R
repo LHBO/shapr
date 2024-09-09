@@ -36,7 +36,7 @@ coalition_sampling_largest_random = function(m,
 
 
 args = commandArgs(trailingOnly = TRUE)
-m = as.integer(args(1))
+m = as.integer(args[1])
 repetitions = as.character(args[2])
 if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   if (grepl(",", repetitions)) {
@@ -85,6 +85,7 @@ for (repetition in repetitions) {
 }
 
 
+# Rscript Create_sampling_files_largest.R 11 1:500
 
 
 
