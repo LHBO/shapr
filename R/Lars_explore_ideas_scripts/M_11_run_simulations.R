@@ -231,6 +231,7 @@ n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)[seq(M+1)]
 weight_zero_m = 10^6
 n_combinations_array = seq(4, 2^M-2, 2)
+verbose_now = FALSE
 
 # Create list of all feature combinations
 all_coalitions = unlist(lapply(0:M, utils::combn, x = M, simplify = FALSE), recursive = FALSE)
@@ -324,7 +325,7 @@ for (repetition_idx in seq_along(repetitions)) {
 
 
     ## Unique ----------------------------------------------------------------------------------------------------------
-    message("Unique")
+    if (verbose_now) message("Unique")
     {
 
       # sampling_methods = "unique" #c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")
@@ -347,7 +348,7 @@ for (repetition_idx in seq_along(repetitions)) {
 
     ## Paired ----------------------------------------------------------------------------------------------------------
     # Paired, average, kernel, c-kernel, cel-kernel
-    message("Paired")
+    if (verbose_now) message("Paired")
     {
 
       # Get the n_combinations coalitions to include
@@ -456,7 +457,7 @@ for (repetition_idx in seq_along(repetitions)) {
 
 
     ## Paired Imp ------------------------------------------------------------------------------------------------------
-    message("Paired Imp")
+    if (verbose_now) message("Paired Imp")
     {
       # Get the features to include
       presampled_coalitions = all_coalitions[sort(presampled_coalitions_largest[seq(n_combination)])]
@@ -524,7 +525,8 @@ for (repetition_idx in seq_along(repetitions)) {
 
     }
 
-    print(MAE_dt[n_combination_idx,])
+    # Remove print
+    if (verbose_now) print(MAE_dt[n_combination_idx,])
 
     # Save the results
     if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
