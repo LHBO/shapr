@@ -197,6 +197,8 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 n_combinations = 2^m - 2
 n_sample_scale = 30
 
+if (m == 20) n_combinations = 1048500
+
 # Get where we are working
 hostname = R.utils::System$getHostname()
 message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
@@ -290,6 +292,8 @@ for (repetition in repetitions) {
 # Rscript Create_sampling_files.R unique 10
 
 
+
+# Rscript Create_sampling_files.R 20 paired 26
 
 
 
