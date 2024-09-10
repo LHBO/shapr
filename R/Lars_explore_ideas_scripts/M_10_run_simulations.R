@@ -178,17 +178,17 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 
 
-# Rscript M_10_run_simulations.R 0.0 TRUE 1:250
-# Rscript M_10_run_simulations.R 0.0 TRUE 251:500
+# Rscript M_10_run_simulations.R 0.0 TRUE 1:250 sumeru
+# Rscript M_10_run_simulations.R 0.0 TRUE 251:500 nyx
 #
-# Rscript M_10_run_simulations.R 0.2 TRUE 1:250
-# Rscript M_10_run_simulations.R 0.2 TRUE 251:500
+# Rscript M_10_run_simulations.R 0.2 TRUE 1:250 metis
+# Rscript M_10_run_simulations.R 0.2 TRUE 251:500 mawu
 #
-# Rscript M_10_run_simulations.R 0.5 TRUE 1:250
-# Rscript M_10_run_simulations.R 0.5 TRUE 251:500
+# Rscript M_10_run_simulations.R 0.5 TRUE 1:250 labbu
+# Rscript M_10_run_simulations.R 0.5 TRUE 251:500 ixion
 #
-# Rscript M_10_run_simulations.R 0.9 TRUE 1:250
-# Rscript M_10_run_simulations.R 0.9 TRUE 251:500
+# Rscript M_10_run_simulations.R 0.9 TRUE 1:250 diktys
+# Rscript M_10_run_simulations.R 0.9 TRUE 251:500 belet
 
 # Workstation -----------------------------------------------------------------------------------------------------
 # Get where we are working
@@ -199,6 +199,8 @@ message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
   folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_2 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_3 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # To be added
@@ -330,7 +332,7 @@ for (rho_idx in seq_along(rhos)) {
                         "Paired Imp CEPS-Kernel" = NaN)
 
 
-    n_combination_idx = 4
+    n_combination_idx = 500
     for (n_combination_idx in seq_along(n_combinations_array)) {
       #for (n_combination_idx in c(1, 10, 20)) {
       n_combination = n_combinations_array[n_combination_idx]
@@ -440,8 +442,7 @@ for (rho_idx in seq_along(rhos)) {
           # Find the weights of the combination closest to n_combinations
           n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
           dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-
-          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
           dt_new_weights_now[, Size := .I]
           setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -508,7 +509,7 @@ for (rho_idx in seq_along(rhos)) {
           n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
           dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
 
-          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
           dt_new_weights_now[, Size := .I]
           setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -577,6 +578,260 @@ for (rho_idx in seq_along(rhos)) {
 if (FALSE) {
   # Plots -----------------------------------------------------------------------------------------------------------
 
+  library(ggplot2)
+  library(ggpubr)
+  library(data.table)
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  rhos = c(0.0, 0.2, 0.5, 0.9)
+
+  ## Histogram -------------------------------------------------------------------------------------------------------
+  M_10_data = lapply(rhos, function(rho) {
+    message(rho)
+    readRDS(file.path(folder_save, paste0("Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_", rho, "_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_true.rds")))
+  })
+  names(M_10_data) = rhos
+
+  # Absolute difference between the phi_0 and f(x) (for each rho)
+  sapply(names(M_10_data), function(x) {
+    round(mean(abs(M_10_data[[x]]$pred_explain - M_10_data[[x]]$internal$parameters$prediction_zero)), 2)
+  })
+
+  # Absolute difference between the phi_0 and f(x) and then divided by M (for each rho)
+  sapply(names(M_10_data), function(x) {
+    round(mean(abs(M_10_data[[x]]$pred_explain - M_10_data[[x]]$internal$parameters$prediction_zero)) / 10, 2)
+  })
+
+  # Look at the mean absolute Shapley values for each feature and rho
+  sapply(names(M_10_data), function(x) {
+    round(colMeans(abs(M_10_data[[x]]$shapley_values)), 2)
+  })
+
+  # Look at the standard deviation of the absolute Shapley values for each feature and rho
+  sapply(names(M_10_data), function(x) {
+    round(apply(as.matrix(abs(M_10_data[[x]]$shapley_values)), 2, sd), 2)
+  })
+
+  # Look at the max of the absolute Shapley values for each feature and rho
+  sapply(names(M_10_data), function(x) {
+    round(apply(as.matrix(abs(M_10_data[[x]]$shapley_values)), 2, max), 2)
+  })
+
+  # Get the phi_0 values for each rho
+  phi0s = data.table(rho = names(M_10_data), phi0 = sapply(names(M_10_data), function(x) M_10_data[[x]]$internal$parameters$prediction_zero))
+  phi0s_text = data.table(
+    label = paste0("phi[0]=='", format(round(phi0s$phi0, 2), drop0Trailing = FALSE), "'"), # Add "'" so that i can parse the string but keep trailing zeros
+    rho   = phi0s$rho,
+    x     = round(phi0s$phi0, 2),
+    y     = rep(150, 4)
+  )
+  geom_text(data = phi0s_text, mapping = aes(x = x, y = y, label = label), parse = TRUE, size = 6, color = "black", hjust = -0.2, vjust = 0.15) +  y     = rep(150, 4)
+
+  # Extract the explicands for each rho
+  explicands = rbindlist(lapply(names(M_10_data),
+                                function(x) data.table(rho = x, id_explicand = seq(length(M_10_data[[x]]$pred_explain)), prediction = M_10_data[[x]]$pred_explain)))
+
+  # Create the histogram
+  fig_hist = ggplot(explicands, aes(x = prediction)) +
+    geom_histogram(binwidth = 6, color="black", fill = "grey") +
+    facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), ncol = 4) +
+    geom_vline(data = phi0s, mapping = aes(xintercept = phi0), color = "black", linewidth = 1, linetype = "dashed") +
+    geom_text(data = phi0s_text, mapping = aes(x = x, y = y, label = label), parse = TRUE, size = 6, color = "black", hjust = -1.35, vjust = 0) +
+    labs(color = "Strategy:", fill = "Strategy:", x = expression(f(bold(x)*"*")), y = "Count") +
+    #lims(y = c(0, 90)) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title.y = element_text(size = rel(1.7)),# margin = margin(r = 25)),
+          axis.title.x = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4)))
+
+  # Save the histogram
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_hist_V1.png"),
+         plot =  fig_hist,
+         width = 14,
+         height = 3.5,
+         scale = 1,
+         dpi = 350)
+
+
+  ## MAE -------------------------------------------------------------------------------------------------------------
+  # What correlation matrix to use
+  # rho_equi = TRUE
+  rho_equi = TRUE
+  M = m = 10
+  n_train = 1000
+  n_test = 1000
+  betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)[seq(m+1)]
+
+  # Compute the vertical dashed lines
+  n_features <- seq(ceiling((m - 1)/2))
+  n <- sapply(n_features, choose, n = m)
+  n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+  n_cumsum = (cumsum(n) + 2) + 0.5
+
+  # Number of repetitions
+  n_repetitions = 500
+
+  # List the strategies to create the MAE plot for
+  strat_MAE = c("Unique",
+                "Paired",
+                "Paired Average",
+                "Paired Kernel",
+                "Paired C-Kernel",
+                "Paired CEL-Kernel",
+                #"Paired CEPS-Kernel",
+                "Paired Imp C-Kernel",
+                "Paired Imp CEL-Kernel"
+                #"Paired Imp CEPS-Kernel"
+  )
+
+  # Strategies in the relative difference plot
+  strat_rel_diff = c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel")
+  strat_rel_diff_reference = c("Paired C-Kernel")
+
+  # Load the MAE data
+  res = data.table::rbindlist(
+    lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
+      data.table::rbindlist(
+        lapply(seq(n_repetitions), function(repetition) {
+          file_name = paste("Gompertz_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                            "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+          file_name = file.path(folder_save, "M_10_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+          if (!file.exists(file_name)) return(NULL)
+          # print(file_name)
+          readRDS(file_name)
+        }))
+    }))
+
+  # Values to skip
+  N_S_skip = c(1022)
+  res = res[!N_S %in% N_S_skip]
+
+  # Compute the mean, lower, and upper MAE
+  res_MAE = res[Strategy %in% strat_MAE, .(MAE_mean = mean(MAE),
+                                           MAE_lower = quantile(MAE, 0.025),
+                                           MAE_upper = quantile(MAE, 0.975)),
+                by = c("Rho", "N_S", "Strategy")]
+
+  M_10_fig_MAE =
+    ggplot(res_MAE, aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+    geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
+    geom_line(linewidth = 0.65) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
+         x = expression(N[S]),
+         y = bquote(bar(MAE)[50]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.8)),
+          legend.text = element_text(size = rel(1.8)),
+          axis.title = element_text(size = rel(1.7)),
+          axis.text = element_text(size = rel(1.5)))
+  # scale_color_manual(values = colors) +
+  # scale_fill_manual(values = colors)
+  #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
+  M_10_fig_MAE
+
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_V1.png"),
+         plot = M_10_fig_MAE,
+         width = 14,
+         height = 9,
+         scale = 0.85,
+         dpi = 350)
+
+  ## Relative diff ---------------------------------------------------------------------------------------------------
+  # Compute the relative error for each n_combination and repetition, and then compute mean, lower and upper values
+  res_rel_diff = copy(res[Strategy %in% strat_rel_diff])
+  res_rel_diff[, rel_error := (MAE - MAE[Strategy == strat_rel_diff_reference]) / MAE[Strategy == strat_rel_diff_reference], by = list(Rho, N_S, Repetition)]
+  res_rel_diff_errors = res_rel_diff[, .(rel_error_mean = mean(rel_error),
+                                         rel_error_lower = quantile(rel_error, 0.025),
+                                         rel_error_upper = quantile(rel_error, 0.975)),
+                                     by = c("Rho", "N_S", "Strategy")]
+
+  ggplot(res_rel_diff_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+    geom_line(linewidth = 0.65) +
+    coord_cartesian(ylim = c(-0.1, 0.2))
+
+
+  # Compute the bootstrap for relative difference for the MAE_mean
+  boot_repetitions = 100
+
+  res_rel_diff_boot = data.table::rbindlist(
+    lapply(seq(boot_repetitions),
+           function(b, res_rel_diff, strat_rel_diff_reference) {
+             message(b)
+
+             # Set seed for reproducibility
+             set.seed(b)
+
+             # Get the bootstrap data table
+             res_rel_diff_boot_now = res_rel_diff[, .SD[sample(n_repetitions, replace = TRUE)], by = .(Rho, N_S, Strategy)]
+
+             # Compute the average MAE
+             res_rel_diff_boot_now = res_rel_diff_boot_now[, .(MAE_mean = mean(MAE)), by = .(Rho, N_S, Strategy)]
+
+             # Compute the relative difference
+             res_rel_diff_boot_now[, rel_error := (MAE_mean - MAE_mean[Strategy == strat_rel_diff_reference]) / MAE_mean[Strategy == strat_rel_diff_reference], by = list(Rho, N_S)]
+           },
+           res_rel_diff = res_rel_diff, strat_rel_diff_reference = strat_rel_diff_reference),
+    use.names = TRUE, idcol = "id_boot")
+
+  # Compute the relative errors for the
+  res_rel_diff_boot_errors = res_rel_diff_boot[, .(rel_error_mean = mean(rel_error),
+                                                   rel_error_lower = quantile(rel_error, 0.025),
+                                                   rel_error_upper = quantile(rel_error, 0.975)),
+                                               by = c("N_S", "Strategy")]
+
+
+  # Plot the results
+  M_10_fig_relative = ggplot(res_rel_diff_boot_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    coord_cartesian(ylim = c(-0.125, 0.25)) +
+    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.1, linewidth = 0.4, linetype = "dashed") +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.6, linewidth = 0.1) +
+    geom_line(linewidth = 1.1) +
+    labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~C-Kernel}}{\bar{MAE}_{Paired~C-Kernel}}$)')) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 1, theme = theme(legend.byrow = FALSE)),
+           fill = guide_legend(nrow = 1, theme = theme(legend.byrow = FALSE)),
+           linetype = "none") +
+    labs(color = "Strategy:",
+         fill = "Strategy:",
+         x = expression(N[S])) +
+    scale_x_continuous(labels = scales::label_number()) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.9)),
+          legend.text = element_text(size = rel(1.9)),
+          axis.title = element_text(size = rel(1.7)),
+          axis.text = element_text(size = rel(1.5)))
+
+  M_10_fig_relative
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_relative_V1.png"),
+         plot = M_10__fig_relative,
+         width = 14.2,
+         height = 7,
+         scale = 1,
+         dpi = 350)
+
+
+
+
+
+
+
+  ## Other stuff -----------------------------------------------------------------------------------------------------
+
+
+
   rho_equi = TRUE
   rho_equi = FALSE
 
@@ -587,7 +842,7 @@ if (FALSE) {
         lapply(1:25, function(repetition) {
           file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
                             "betas", paste(as.character(betas), collapse = "_"), sep = "_")
-          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+          file_name = file.path(folder_save, "M_10_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
           if (!file.exists(file_name)) return(NULL)
           print(file_name)
           readRDS(file_name)
@@ -616,7 +871,7 @@ if (FALSE) {
   )
 
   res3 = res2[Strategy %in% Strat_now, ]
-  fig_M_20_MAE =
+  fig_M_10_MAE =
     ggplot(res3, aes(x = N_S, y = MAE, col = Strategy, fill = Strategy)) +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.0) +
@@ -647,9 +902,9 @@ if (FALSE) {
 
   MAE_dt_long2 = copy(res3)
   data.table::setnames(MAE_dt_long2, old = c("Rho", "Strategy", "MAE", "N_S"), new = c("rho", "sampling", "mean", "n_combinations"))
-  fig_M_20_rel =
+  fig_M_10_rel =
     relative_difference(dt = MAE_dt_long2,
-                        m = 20,
+                        m = 10,
                         strat_ref = "Paired C-Kernel",
                         strat_other = c("Unique",
                                         "Paired",
@@ -667,9 +922,9 @@ if (FALSE) {
                         y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4, 1, 2, 4)
     )
 
-  fig_M_20_rel_reg_scale =
+  fig_M_10_rel_reg_scale =
     relative_difference(dt = MAE_dt_long2,
-                        m = 20,
+                        m = 10,
                         strat_ref = "Paired C-Kernel",
                         strat_other = c(#"Unique",
                           #"Paired",
@@ -693,22 +948,22 @@ if (FALSE) {
 
 
   library("ggpubr")
-  fig_M_20_comb = ggarrange(fig_M_20_MAE, fig_M_20_rel,
+  fig_M_10_comb = ggarrange(fig_M_10_MAE, fig_M_10_rel,
                             labels = c("A", "B"),
                             ncol = 1, nrow = 2,
                             align = "hv",
                             common.legend = TRUE, legend = "bottom",
                             font.label = list(size = 25, color = "black"))
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_MAE_Relative_Diff_V4.png"),
-         plot = fig_M_20_comb,
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_MAE_Relative_Diff_V4.png"),
+         plot = fig_M_10_comb,
          width = 14.2,
          height = 18,
          scale = 0.85,
          dpi = 350)
 
 
-  fig_M_20_comb = ggarrange(fig_M_20_MAE, fig_M_20_rel,
+  fig_M_10_comb = ggarrange(fig_M_10_MAE, fig_M_10_rel,
                             labels = c("B", "C"),
                             ncol = 1, nrow = 2,
                             align = "hv",
@@ -716,13 +971,13 @@ if (FALSE) {
                             font.label = list(size = 25, color = "black"))
 
 
-  fig_M_20_comb_V2 = ggarrange(fig_hist, fig_M_20_comb, labels = c("A", "B", "C"),
+  fig_M_10_comb_V2 = ggarrange(fig_hist, fig_M_10_comb, labels = c("A", "B", "C"),
                                ncol = 1,
                                heights = c(1,4.25),
                                common.legend = TRUE, legend = "bottom",
                                font.label = list(size = 25, color = "black"))
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_MAE_Relative_Diff_V11.png"),
-         plot = fig_M_20_comb_V2,
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_MAE_Relative_Diff_V11.png"),
+         plot = fig_M_10_comb_V2,
          width = 14.2,
          height = 19.25,
          scale = 0.85,

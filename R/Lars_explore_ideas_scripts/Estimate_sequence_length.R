@@ -18,6 +18,83 @@ library(data.table)
 #' @export
 #'
 #' @examples
+# coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, return_coalitions = FALSE,
+#                                      seed = NULL, verbose = TRUE) {
+#   if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
+#   if (!is.null(seed)) set.seed(seed)
+#
+#   # Find weights for given number of features
+#   n_features <- seq(m - 1)
+#   n <- sapply(n_features, choose, n = m)
+#   w <- shapr:::shapley_weights(m = m, N = n, n_features) * n
+#   p <- w / sum(w)
+#
+#   # List to store all the sampled coalitions
+#   all_coalitions = c()
+#
+#   # Variable to keep track of the number of unique coalitions
+#   unique_coalitions = 0
+#
+#   # Variable to keep track of the iteration number
+#   iteration = 1
+#
+#   # Loop until we have enough unique samples
+#   while (unique_coalitions < n_combinations) {
+#
+#     # Sample the coalition sizes
+#     n_features_sample <- sample(
+#       x = n_features,
+#       size = n_sample_scale*n_combinations,
+#       replace = TRUE,
+#       prob = p
+#     )
+#
+#     # Sample the coalitions
+#     feature_sample <- shapr:::sample_features_cpp(m, n_features_sample)
+#
+#     # Get the paired coalitions
+#     feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
+#
+#     # Merge the coalitions in alternating fashion as we do paired sampling (i.e., first is S and second is Sbar and so on)
+#     coalitions = c(rbind(feature_sample, feature_sample_paired))
+#
+#     # Convert the coalitions to strings such that we can compare them
+#     coalitions = sapply(coalitions, paste, collapse = ",")
+#
+#     # Add the new coalitions to the previously sampled coalitions
+#     all_coalitions = c(all_coalitions, coalitions)
+#
+#     # Get the cumulative number of unique coalitions for each coalition in all_coalitions
+#     dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)))[, L := .I]
+#
+#     # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
+#     dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
+#
+#     # Get the number of unique coalitions
+#     unique_coalitions = dt_N_S_and_L[.N, N_S]
+#
+#     # Message to user
+#     if (verbose) {
+#       message(paste0("Iteration ", iteration, ": N_S = ", unique_coalitions,
+#                      ", Sampled = ", n_sample_scale*n_combinations*iteration, "."))
+#     }
+#
+#     # Update the iteration number
+#     iteration = iteration + 1
+#   }
+#
+#   # Post processing: keep only the coalitions until n_combinations
+#   all_coalitions = all_coalitions[seq(dt_N_S_and_L[N_S == n_combinations, L])]
+#   if (length(unique(all_coalitions)) != n_combinations) stop("Not the right number of unique coalitions")
+#
+#   # Return
+#   if (return_coalitions) {
+#     return(list(dt_N_S_and_L = dt_N_S_and_L, all_coalitions = all_coalitions))
+#   } else {
+#     return(dt_N_S_and_L)
+#   }
+# }
+
 coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scale = 5, return_coalitions = FALSE,
                                      seed = NULL, verbose = TRUE) {
   if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
@@ -42,6 +119,7 @@ coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scal
   while (unique_coalitions < n_combinations) {
 
     # Sample the coalition sizes
+    message("Getting the coalition sizes")
     n_features_sample <- sample(
       x = n_features,
       size = n_sample_scale*n_combinations,
@@ -50,24 +128,29 @@ coalition_sampling_paired = function(m, n_combinations = 2^m - 2,  n_sample_scal
     )
 
     # Sample the coalitions
+    message("Getting coalitions")
     feature_sample <- shapr:::sample_features_cpp(m, n_features_sample)
 
     # Get the paired coalitions
+    message("Making the paired")
     feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
 
     # Merge the coalitions in alternating fashion as we do paired sampling (i.e., first is S and second is Sbar and so on)
     coalitions = c(rbind(feature_sample, feature_sample_paired))
 
     # Convert the coalitions to strings such that we can compare them
+    message("Converting to strings")
     coalitions = sapply(coalitions, paste, collapse = ",")
 
     # Add the new coalitions to the previously sampled coalitions
     all_coalitions = c(all_coalitions, coalitions)
 
     # Get the cumulative number of unique coalitions for each coalition in all_coalitions
+    message("Getting cumsum")
     dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)))[, L := .I]
 
     # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
+    message("Getting shift")
     dt_N_S_and_L <- dt_cumsum[N_S != shift(N_S, type = "lag", fill = 0)]
 
     # Get the number of unique coalitions
@@ -168,10 +251,11 @@ coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scal
 
 
 repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m - 2, n_sample_scale = 5, verbose = TRUE, verbose_extra = NULL) {
+  if (m == 20) n_combinations = 1048500
   dt = data.table::rbindlist(
     lapply(repetitions, function(repetition) {
       if (verbose){
-        string = paste0("Working on repetition ", repetition, " of ", repetitions ,".")
+        string = paste0("Working on repetition ", repetition, " of ", length(repetitions), ".")
         if (!is.null(verbose_extra)) string = paste(verbose_extra, string)
         message(string)
       }
@@ -259,7 +343,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # TBA
-  folder = ""
+  folder_save = "/home/lholsen/Paper3/Paper3_save_location"
   UiO = TRUE
 } else if (grepl("uio.no", hostname)) {
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
@@ -309,6 +393,61 @@ n_sample_scale = as.numeric(args[3]) # 10
 repetitions_start = repetitions[1]
 repetitions_end = repetitions[length(repetitions)]
 
+# Rscript Estimate_sequence_length.R 20 1:50 40
+
+# Rscript Estimate_sequence_length.R 20 1:25 40
+# Rscript Estimate_sequence_length.R 20 26:50 40
+# Rscript Estimate_sequence_length.R 20 51:75 40
+# Rscript Estimate_sequence_length.R 20 76:100 40
+#
+# Rscript Estimate_sequence_length.R 20 101:125 40
+# Rscript Estimate_sequence_length.R 20 126:250 40
+# Rscript Estimate_sequence_length.R 20 151:275 40
+# Rscript Estimate_sequence_length.R 20 176:200 40
+#
+# Rscript Estimate_sequence_length.R 20 201:225 40
+# Rscript Estimate_sequence_length.R 20 226:250 40
+# Rscript Estimate_sequence_length.R 20 251:275 40
+# Rscript Estimate_sequence_length.R 20 276:300 40
+#
+# Rscript Estimate_sequence_length.R 20 301:325 40
+# Rscript Estimate_sequence_length.R 20 326:350 40
+# Rscript Estimate_sequence_length.R 20 351:375 40
+# Rscript Estimate_sequence_length.R 20 376:400 40
+#
+# Rscript Estimate_sequence_length.R 20 401:425 40
+# Rscript Estimate_sequence_length.R 20 426:450 40
+# Rscript Estimate_sequence_length.R 20 451:475 40
+# Rscript Estimate_sequence_length.R 20 476:500 40
+#
+# Rscript Estimate_sequence_length.R 20 501:525 40
+# Rscript Estimate_sequence_length.R 20 526:550 40
+# Rscript Estimate_sequence_length.R 20 551:575 40
+# Rscript Estimate_sequence_length.R 20 576:600 40
+# #
+# Rscript Estimate_sequence_length.R 20 601:625 40
+# Rscript Estimate_sequence_length.R 20 626:650 40
+# Rscript Estimate_sequence_length.R 20 651:675 40
+# Rscript Estimate_sequence_length.R 20 676:700 40
+#
+# Rscript Estimate_sequence_length.R 20 701:725 40
+# Rscript Estimate_sequence_length.R 20 726:750 40
+# Rscript Estimate_sequence_length.R 20 751:775 40
+# Rscript Estimate_sequence_length.R 20 776:800 40
+#
+# Rscript Estimate_sequence_length.R 20 801:825 40
+# Rscript Estimate_sequence_length.R 20 826:850 40
+# Rscript Estimate_sequence_length.R 20 851:875 40
+# Rscript Estimate_sequence_length.R 20 876:900 40
+#
+# Rscript Estimate_sequence_length.R 20 901:925 40
+# Rscript Estimate_sequence_length.R 20 926:950 40
+# Rscript Estimate_sequence_length.R 20 951:975 40
+# Rscript Estimate_sequence_length.R 20 976:1000 40
+#
+# module load R/4.2.2-foss-2022b
+# cd Paper3
+
 
 # Iterate over the number
 for (m in m_vec) {
@@ -316,6 +455,8 @@ for (m in m_vec) {
   dt_avg = dt[, list(L_avg = mean(L)), by = N_S]
   saveRDS(list(dt = dt, dt_avg = dt_avg), file.path(folder_save, paste0("Sequence_length_M_", m, "_rep_", repetitions_start, "_to_", repetitions_end, ".rds")))
 }
+
+stop("DONE")
 
 
 

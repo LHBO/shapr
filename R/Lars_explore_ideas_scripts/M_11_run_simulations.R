@@ -144,6 +144,113 @@ create_X_dt_largest_random = function(m, presampled_coalitions, dt_all_coalition
   return(dt)
 }
 
+relative_difference_wine_V2 = function(dt,
+                                       m,
+                                       strat_ref,
+                                       strat_other = NULL,
+                                       y_breaks = waiver(),
+                                       y_limits = NULL,
+                                       scale = TRUE,
+                                       legend_n_row = 2,
+                                       include_coal_size_lines = FALSE,
+                                       hue_indices = NULL,
+                                       hue_length = NULL,
+                                       y_lab_frac = TRUE,
+                                       skip_N_S = NULL) {
+  if (xor(is.null(hue_indices), is.null(hue_length))) stop("Both `hue_indices` and `hue_length` must be provided.")
+  if (!is.null(hue_indices) && !is.null(hue_length)) {
+    hues = seq(15, 375, length = hue_length + 1)
+    colors = grDevices::hcl(h = hues, l = 65, c = 100)[1:hue_length][hue_indices]
+  }
+
+  library(latex2exp)
+  library(ggallin)
+  library(data.table)
+
+  # Get all the names from the data table
+  if (is.null(strat_other)) strat_other = levels(dt$sampling)
+
+  # Extract the needed columns
+  dt = dt[, c("sampling", "n_combinations", "mean", "lower", "upper")]
+
+  # Only even n_combinations
+  dt = dt[n_combinations %% 2 == 0]
+
+  # Only get the wanted strategies
+  dt = dt[sampling %in% strat_other,]
+
+  # Compute the relative error for each n_combination
+  dt[, rel_error := (mean - mean[sampling == strat_ref]) / mean[sampling == strat_ref], by = list(n_combinations)]
+  dt[, rel_error_upper := (upper - upper[sampling == strat_ref]) / upper[sampling == strat_ref], by = list(n_combinations)]
+  dt[, rel_error_lower := (lower - lower[sampling == strat_ref]) / lower[sampling == strat_ref], by = list(n_combinations)]
+
+  # Convert sampling to a ordered factor
+  dt = dt[, sampling := factor(sampling, levels = strat_other, ordered = TRUE)]
+
+  #
+  n_features <- seq(ceiling((m - 1)/2))
+  n <- sapply(n_features, choose, n = m)
+  n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+  n_cumsum = (cumsum(n) + 2) + 0.5
+
+  # Remove some N_s values
+  if (!is.null(skip_N_S)) dt = dt[!n_combinations %in% skip_N_S,]
+
+
+  # plot(res2[N_S <= 2044 & !N_S %in% skip_N_S & Strategy %in% c("Paired CEL-Kernel"), rel_error_avg],
+  #      dt[n_combinations <= 2044 & sampling == "Paired CEL-Kernel", rel_error])
+  # abline(a = 0, b = 1, col = "red")
+  #
+  # ggplot(res2[N_S <= 2044 & Strategy %in% c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel"),],
+  #        aes(x = N_S, y = rel_error_avg, color = Strategy, fill = Strategy)) +
+  #   geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+  #   geom_hline(yintercept = 0, col = "gray") +
+  #   geom_line(linewidth = 0.65) +
+  #   coord_cartesian(ylim = c(-0.1, 0.2))
+
+
+
+  # Make the plot
+  fig = ggplot(dt, aes(x = n_combinations, y = rel_error, col = sampling, fill = sampling)) +
+    {if (include_coal_size_lines) geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4)} +
+    geom_hline(yintercept = 0, col = "gray") +
+    geom_line(linewidth = 0.65) +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+    {if (scale) scale_y_log10(trans = ggallin:::ssqrt_trans, breaks = y_breaks)} +
+    {if (!scale) scale_y_continuous(breaks = y_breaks)} +
+    coord_cartesian(ylim = y_limits) +
+    scale_x_continuous(labels = scales::label_number()) +
+    # scale_y_continuous(limits = c(-1, 2.5)) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
+           fill = guide_legend(nrow = legend_n_row, theme = theme(legend.byrow = FALSE)),
+           linetype = "none") +
+    labs(color = "Strategy:",
+         fill = "Strategy:",
+         # y = "Relative difference",
+         x = expression(N[S])) +
+    { if (y_lab_frac) {
+      labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~C-Kernel}}{\bar{MAE}_{Paired~C-Kernel}}$)'))
+    } else {
+      labs(y = latex2exp::TeX(r'($(MAE_{Strategy} - MAE_{Paired~C-Kernel}) / MAE_{Paired~C-Kernel}$)'))
+    }} +
+    theme(strip.text = element_text(size = rel(1.6)),
+          legend.title = element_text(size = rel(1.37)),
+          legend.text = element_text(size = rel(1.37)),
+          axis.title.y = element_text(size = rel(1.25)),
+          axis.title.x = element_text(size = rel(1.4)),
+          axis.text.x = element_text(size = rel(1.65)),
+          axis.text.y = element_text(size = rel(1.65))) +
+    {if (!is.null(hue_length)) scale_color_manual(values = colors)} +
+    {if (!is.null(hue_length)) scale_fill_manual(values = colors)} +
+    {if (is.null(hue_length)) scale_color_hue()} + #added as we want ordered}
+    {if (is.null(hue_length)) scale_fill_hue()} #added as we want ordered}
+  #fig
+
+  return(fig)
+
+  # The relative difference on signed square root scale.
+}
 
 
 
@@ -166,12 +273,18 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = seq(10)
 }
 
+# Rscript M_11_run_simulations.R 1:100
 # Rscript M_11_run_simulations.R 101:200
-# # Rscript M_11_run_simulations.R 1:100
-#
-# Rscript M_11_run_simulations.R 101:200
-# Rscript M_11_run_simulations.R 101:200
-# Rscript M_11_run_simulations.R 101:200
+# Rscript M_11_run_simulations.R 201:300
+# Rscript M_11_run_simulations.R 301:400
+# Rscript M_11_run_simulations.R 401:500
+
+
+# Rscript M_11_run_simulations.R 100:51
+# Rscript M_11_run_simulations.R 200:151
+# Rscript M_11_run_simulations.R 300:251
+# Rscript M_11_run_simulations.R 400:351
+# Rscript M_11_run_simulations.R 500:451
 
 #Rscript M_20_run_simulations.R 0.0 6:7 ixion
 #Rscript M_20_run_simulations.R 0.0 8:10 Diktys
@@ -429,7 +542,8 @@ for (repetition_idx in seq_along(repetitions)) {
         n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
         dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
 
-        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
+        #dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
+        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
         dt_new_weights_now[, Size := .I]
         setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -496,7 +610,8 @@ for (repetition_idx in seq_along(repetitions)) {
         n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
         dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
 
-        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
+        # dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
+        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
         dt_new_weights_now[, Size := .I]
         setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -565,32 +680,372 @@ for (repetition_idx in seq_along(repetitions)) {
 
 if (FALSE) {
   # Plots -----------------------------------------------------------------------------------------------------------
+  library(ggplot2)
+  library(ggpubr)
+  library(data.table)
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  M = m = 11
 
-  rho_equi = TRUE
-  rho_equi = FALSE
+  ## Histogram -------------------------------------------------------------------------------------------------------
 
-  # Load the MAE data
-  res = data.table::rbindlist(
-    lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
-      data.table::rbindlist(
-        lapply(1:25, function(repetition) {
-          file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
-                            "betas", paste(as.character(betas), collapse = "_"), sep = "_")
-          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
-          if (!file.exists(file_name)) return(NULL)
-          print(file_name)
-          readRDS(file_name)
-        }))
-    }))
+  true_explanations = readRDS(file.path(folder_save, paste0("Wine_data_sep_rf", ".rds")))
+  Wine_fig_hist = ggplot(data = data.table(pred = true_explanations$pred_explain), aes(x = pred)) +
+    geom_histogram(color="black", fill = "grey") +
+    geom_vline(aes(xintercept = true_explanations$shapley_values$none[1]),
+               color = "black", linewidth = 1, linetype = "dashed") +
+    annotate('text', x = 6.5, y = 12.72, #x = 6.15, y = 12.72,
+             label = "phi[0]==5.65",
+             parse = TRUE,
+             size = 8,
+             color = "black") +
+    labs(color = "Strategy:", fill = "Strategy:", x = expression(f(bold(x)*"*")), y = "Count") +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.7)),
+          legend.text = element_text(size = rel(1.7)),
+          axis.title = element_text(size = rel(1.7)),
+          axis.text = element_text(size = rel(1.5)))
+    Wine_fig_hist
 
-  # Compute the average
-  res2 = res[, .(MAE = mean(MAE), lower = quantile(MAE, 0.025), upper = quantile(MAE, 0.975)), by = c("Rho", "N_S", "Strategy")]
 
 
+
+  ## MAE -------------------------------------------------------------------------------------------------------------
+  n_repetitions = 500
+
+  # List the strategies to create the MAE plot for
+  strat_MAE = c("Unique",
+                "Paired",
+                "Paired Average",
+                "Paired Kernel",
+                "Paired C-Kernel",
+                "Paired CEL-Kernel",
+                #"Paired CEPS-Kernel",
+                "Paired Imp C-Kernel",
+                "Paired Imp CEL-Kernel"
+                #"Paired Imp CEPS-Kernel"
+  )
+
+  # Strategies in the relative difference plot
+  strat_rel_diff = c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel")
+  strat_rel_diff_reference = c("Paired C-Kernel")
+
+  # Compute the vertical dashed lines
   n_features <- seq(ceiling((m - 1)/2))
   n <- sapply(n_features, choose, n = m)
   n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
   n_cumsum = (cumsum(n) + 2) + 0.5
+
+  # Load the MAE data
+  res =
+    data.table::rbindlist(
+      lapply(seq(n_repetitions), function(repetition) {
+        message(repetition)
+        file_name = paste0("Wine_data_set_M_", M)
+        file_name = file.path(folder_save, "Wine_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+        if (!file.exists(file_name)) return(NULL)
+        #print(file_name)
+        readRDS(file_name)
+      }))
+
+  # Values to skip
+  N_S_skip = c(16,18, 20, 22, 24, 26, 36, 2046)
+  res = res[!N_S %in%  N_S_skip]
+
+  # Compute the mean, lower, and upper MAE
+  res_MAE = res[Strategy %in% strat_MAE, .(MAE_mean = mean(MAE),
+                                           MAE_lower = quantile(MAE, 0.025),
+                                           MAE_upper = quantile(MAE, 0.975)),
+                by = c("N_S", "Strategy")]
+
+  Wine_fig_MAE =
+    ggplot(res_MAE, aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+    geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+    geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
+    geom_line(linewidth = 0.65) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
+         x = expression(N[S]),
+         y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.9)),
+          legend.text = element_text(size = rel(1.9)),
+          axis.title = element_text(size = rel(1.7)),
+          axis.text = element_text(size = rel(1.5))) +
+    # scale_color_manual(values = colors) +
+    # scale_fill_manual(values = colors) +
+    coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
+
+  Wine_fig_MAE
+  Wine_fig_hist
+
+
+  ## Hist + MAE ------------------------------------------------------------------------------------------------------
+  Wine_fig_MAE_hist = ggpubr::ggarrange(Wine_fig_MAE,  Wine_fig_hist,
+                                        labels = c("A", "B"),
+                                        nrow = 1,
+                                        ncol = 2,
+                                        widths = c(3, 1),
+                                        common.legend = TRUE,
+                                        legend = "bottom",
+                                        font.label = list(size = 25, color = "black"))
+  Wine_fig_MAE_hist
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Wine_fig_MAE_hist_V3.png"),
+         plot = Wine_fig_MAE_hist,
+         width = 14.2,
+         height = 8,
+         scale = 1,
+         dpi = 350)
+
+
+
+
+
+  ## Relative diff ---------------------------------------------------------------------------------------------------
+  # Compute the relative error for each n_combination and repetition, and then compute mean, lower and upper values
+  res_rel_diff = copy(res[Strategy %in% strat_rel_diff])
+  res_rel_diff[, rel_error := (MAE - MAE[Strategy == strat_rel_diff_reference]) / MAE[Strategy == strat_rel_diff_reference], by = list(N_S, Repetition)]
+  res_rel_diff_errors = res_rel_diff[, .(rel_error_mean = mean(rel_error),
+                                         rel_error_lower = quantile(rel_error, 0.025),
+                                         rel_error_upper = quantile(rel_error, 0.975)),
+                                     by = c("N_S", "Strategy")]
+
+  # ggplot(res_rel_diff_errors[N_S <= 2040],
+  #        aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+  #   geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+  #   geom_line(linewidth = 0.65) +
+  #   coord_cartesian(ylim = c(-0.1, 0.2))
+
+
+  # Compute the bootstrap for relative difference for the MAE_mean
+  boot_repetitions = 100
+
+  res_rel_diff_boot = data.table::rbindlist(
+    lapply(seq(boot_repetitions),
+           function(b, res_rel_diff, strat_rel_diff_reference) {
+             message(b)
+
+             # Set seed for reproducibility
+             set.seed(b)
+
+             # Get the bootstrap data table
+             res_rel_diff_boot_now = res_rel_diff[, .SD[sample(n_repetitions, replace = TRUE)], by = .(N_S, Strategy)]
+
+             # Compute the average MAE
+             res_rel_diff_boot_now = res_rel_diff_boot_now[, .(MAE_mean = mean(MAE)), by = .(N_S, Strategy)]
+
+             # Compute the relative difference
+             res_rel_diff_boot_now[, rel_error := (MAE_mean - MAE_mean[Strategy == strat_rel_diff_reference]) / MAE_mean[Strategy == strat_rel_diff_reference], by = N_S]
+           },
+           res_rel_diff = res_rel_diff, strat_rel_diff_reference = strat_rel_diff_reference),
+    use.names = TRUE, idcol = "id_boot")
+
+  # Compute the relative errors for the
+  res_rel_diff_boot_errors = res_rel_diff_boot[, .(rel_error_mean = mean(rel_error),
+                                                   rel_error_lower = quantile(rel_error, 0.025),
+                                                   rel_error_upper = quantile(rel_error, 0.975)),
+                                               by = c("N_S", "Strategy")]
+
+  # Plot the results
+  Wine_fig_relative = ggplot(res_rel_diff_boot_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+    coord_cartesian(ylim = c(-0.125, 0.25)) +
+    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.1, linewidth = 0.4, linetype = "dashed") +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.6, linewidth = 0.1) +
+    geom_line(linewidth = 1.1) +
+    labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~C-Kernel}}{\bar{MAE}_{Paired~C-Kernel}}$)')) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 1, theme = theme(legend.byrow = FALSE)),
+           fill = guide_legend(nrow = 1, theme = theme(legend.byrow = FALSE)),
+           linetype = "none") +
+    labs(color = "Strategy:",
+         fill = "Strategy:",
+         x = expression(N[S])) +
+    scale_x_continuous(labels = scales::label_number()) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.9)),
+          legend.text = element_text(size = rel(1.9)),
+          axis.title = element_text(size = rel(1.7)),
+          axis.text = element_text(size = rel(1.5)))
+
+  Wine_fig_relative
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Wine_fig_relative_V3.png"),
+         plot = Wine_fig_relative,
+         width = 14.2,
+         height = 7,
+         scale = 1,
+         dpi = 350)
+
+
+
+
+
+  ## Shapley values --------------------------------------------------------------------------------------------------
+  # Load the exact and approximated Shapley values
+  folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  true_explanations = readRDS(file.path(folder_save, paste0("Wine_data_sep_rf", ".rds")))
+  approximated_explanations = readRDS(file.path(folder_save, paste0("NEW_Wine_data_res_on_all_cond_paired_unique_paired_non_analytical", ".rds")))
+
+  # Get the six explicands with evenly spread out predictions
+  n_explicands = 6
+  index_explicands = order(true_explanations$pred_explain)[seq(1, true_explanations$internal$parameters$n_explain, length.out = n_explicands)]
+  index_explicands = order(true_explanations$pred_explain)[seq(4, true_explanations$internal$parameters$n_explain, length.out = n_explicands)]
+  index_explicands[4] = 26
+  true_pred = true_explanations$pred_explain[index_explicands]
+  names(true_pred) = paste0("p_hat1_", seq(n_explicands))
+  true_sv = true_explanations$shapley_values[index_explicands]
+
+  n_combinations_vec = c(20, 50, 100, 200, 500, 1000)
+
+  #explanation_list = res$unique_paired_equal_weights
+  approximated_explanations2 = lapply(approximated_explanations$res, function(x) x[[1]])
+  approximated_explanations2 = approximated_explanations2[paste0("n_combinations_", n_combinations_vec)]
+  names(approximated_explanations2) = paste0("n_combinations_", n_combinations_vec)
+  explanation_list2 = c(approximated_explanations2, list(True = true_explanations))
+  n_explicands = 6
+
+
+  explanation_list3 = lapply(seq(length(explanation_list2)), function(i) {
+    message(i)
+    true_copy = copy(true_explanations)
+    xx = copy(explanation_list2[[i]])
+    true_copy$shapley_values = xx$shapley_values[index_explicands,]
+    true_copy$pred_explain = true_pred
+    true_copy$internal$data$x_explain = true_copy$internal$data$x_explain[index_explicands,]
+    return(true_copy)
+  })
+  names(explanation_list3) = c(n_combinations_vec, 2^11)
+
+  explanation_list3[[1]]$internal$paramters$is_groupwise = FALSE
+
+  figure = plot_SV_several_approaches(explanation_list3, facet_scales = "free", index_explicands = c(1:6), digits = 2, )
+
+  figure_now = figure + theme(legend.position = 'bottom') +
+    guides(fill = guide_legend(title = expression(N[S]*":"), nrow = 1)) +
+    labs(title = NULL)+
+    theme(strip.text = element_text(size = rel(1.3)),
+          legend.title = element_text(size = rel(1.75)),
+          legend.text = element_text(size = rel(1.75)),
+          axis.title = element_text(size = rel(1.6)),
+          axis.text = element_text(size = rel(1.3)))
+
+
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Wine_fig_shapley_values_v3.png",
+         plot = figure_now,
+         width = 14.2,
+         height = 18.5,
+         scale = 0.85,
+         dpi = 350)
+
+
+  ## Other things ----------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+  hue_length = 8
+  hue_indices = c(3,5,6)
+  colors = c("#F8766D", "#CD9600", "#7CAE00", "#00BE67", "#00BFC4", "#00A9FF", "#C77CFF", "#FF61CC")
+  colors = c("#00BFC4", "#CD9600", "#7CAE00", "#00BE67", "#F8766D", "#00A9FF", "#C77CFF", "#FF61CC")
+  colors = c("#CD9600", "#7CAE00", "#00BE67", "#00BFC4", "#F8766D", "#00A9FF", "#C77CFF", "#FF61CC")
+  colors_rel_diff = colors[hue_indices]
+
+  if (xor(is.null(hue_indices), is.null(hue_length))) stop("Both `hue_indices` and `hue_length` must be provided.")
+  if (!is.null(hue_indices) && !is.null(hue_length)) {
+    seq(5, 375, length = hue_length + 1)
+    hues = seq(15, 375, length = hue_length + 1)
+    colors = grDevices::hcl(h = hues, l = 65, c = 100)[1:hue_length][hue_indices]
+  }
+
+  colors
+
+
+  scales::show_col(grDevices::hcl(h = seq(15, 375, length = hue_length + 1), l = 65, c = 100))
+
+
+
+
+
+
+  res
+
+  strat_ref = "Paired C-Kernel"
+  # Compute the relative error for each n_combination and repetition
+  res[, rel_error := (MAE - MAE[Strategy == strat_ref]) / MAE[Strategy == strat_ref], by = list(N_S, Repetition)]
+  # Compute the average
+  res2 = res[, .(rel_error_avg = mean(rel_error),
+                 rel_error_lower = quantile(rel_error, 0.025),
+                 rel_error_upper = quantile(rel_error, 0.975)), by = c("N_S", "Strategy")]
+
+
+
+  res_small = res[Strategy %in% c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel")]
+
+
+
+  res_small[,.N, by = .(Strategy, N_S)]
+
+
+
+  res_small[Strategy == "Paired Average" & N_S == 100, MAE]
+  res_small[Strategy == "Paired Average" & N_S == 100]
+  bootstrap_summary(res_small[Strategy == "Paired Average" & N_S == 100])
+  data_subset = res_small[Strategy == "Paired Average" & N_S == 100]
+
+  bootstrap_fn(res_small[Strategy == "Paired Average" & N_S == 100], indices = NULL)
+
+  library(boot)
+
+
+res_small = res_small[!N_S %in% c(18, 22, 36),]
+
+
+  B = 100
+  jjj = data.table::rbindlist(lapply(seq(B), function(b) {
+    message(b)
+
+    # Set seed for reproducibility
+    set.seed(b)
+
+    # Get the bootstrap data table
+    res_small2 = res_small[, .SD[sample(n_repetitions, replace = TRUE)], by = .(N_S, Strategy)]
+
+    # Compute the average MAE
+    res_small2 = res_small2[, .(MAE_avg = mean(MAE)), by = c("N_S", "Strategy")]
+
+    # Compute the relative difference
+    res_small2[, rel_error := (MAE_avg - MAE_avg[Strategy == strat_ref]) / MAE_avg[Strategy == strat_ref], by = N_S]
+    }
+  ), use.names = TRUE, idcol = "id_boot")
+
+  jjj2 = jjj[, .(rel_error_avg = mean(rel_error),
+                 rel_error_lower = quantile(rel_error, 0.025),
+                 rel_error_upper = quantile(rel_error, 0.975)),
+             by = c("N_S", "Strategy")]
+
+  ggplot(jjj2[N_S <= 2044 & !N_S %in% c(16,18, 20, 22, 24, 26, 36) & Strategy %in% c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel"),],
+         aes(x = N_S, y = rel_error_avg, color = Strategy, fill = Strategy)) +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+    geom_hline(yintercept = 0, col = "gray") +
+    #geom_line(linewidth = 0.65) +
+    geom_line(data = res2[N_S <= 2044 & !N_S %in% c(18, 22, 36) & Strategy %in% c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel"),],
+              aes(x = N_S, y = rel_error)) +
+    coord_cartesian(ylim = c(-0.1, 0.2))
+
+
+
+    res2[, rel_error := (MAE - MAE[Strategy == strat_ref]) / MAE[Strategy == strat_ref], by = N_S]
+
+
+
+
 
   Strat_now = c("Unique",
                 "Paired",
@@ -604,8 +1059,12 @@ if (FALSE) {
                 #"Paired Imp CEPS-Kernel"
   )
 
-  res3 = res2[Strategy %in% Strat_now, ]
-  fig_M_20_MAE =
+
+
+
+
+  res3 = res2[Strategy %in% Strat_now & N_S <= 2045, ]
+  fig_M_11_MAE =
     ggplot(res3, aes(x = N_S, y = MAE, col = Strategy, fill = Strategy)) +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.0) +
@@ -615,12 +1074,11 @@ if (FALSE) {
       breaks = scales::trans_breaks("log10", function(x) 10^x),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
-    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     theme(legend.position = 'bottom') +
     guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
-         y = bquote(bar(MAE)[25]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+         y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
     theme(strip.text = element_text(size = rel(1.6)),
           legend.title = element_text(size = rel(1.7)),
           legend.text = element_text(size = rel(1.7)),
@@ -630,35 +1088,35 @@ if (FALSE) {
           axis.text.y = element_text(size = rel(1.75))) +
     scale_color_hue() + #added as we want ordered
     scale_fill_hue()
-
+  fig_M_11_MAE
 
 
 
   MAE_dt_long2 = copy(res3)
-  data.table::setnames(MAE_dt_long2, old = c("Rho", "Strategy", "MAE", "N_S"), new = c("rho", "sampling", "mean", "n_combinations"))
-  fig_M_20_rel =
-    relative_difference(dt = MAE_dt_long2,
-                        m = 20,
-                        strat_ref = "Paired C-Kernel",
-                        strat_other = c("Unique",
-                                        "Paired",
-                                        "Paired Average",
-                                        "Paired Kernel",
-                                        "Paired C-Kernel",
-                                        "Paired CEL-Kernel",
-                                        #"Paired CEPS-Kernel",
-                                        "Paired Imp C-Kernel",
-                                        "Paired Imp CEL-Kernel"
-                                        #"Paired Imp CEPS-Kernel"
-                        ),
-                        include_coal_size_lines = TRUE,
-                        y_limits = c(-0.9, 5.1),
-                        y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4, 1, 2, 4)
+  data.table::setnames(MAE_dt_long2, old = c("Strategy", "MAE", "N_S"), new = c("sampling", "mean", "n_combinations"))
+  fig_M_11_rel =
+    relative_difference_wine_V2(dt = MAE_dt_long2,
+                                m = 11,
+                                strat_ref = "Paired C-Kernel",
+                                strat_other = c("Unique",
+                                                "Paired",
+                                                "Paired Average",
+                                                "Paired Kernel",
+                                                "Paired C-Kernel",
+                                                "Paired CEL-Kernel",
+                                                #"Paired CEPS-Kernel",
+                                                "Paired Imp C-Kernel",
+                                                "Paired Imp CEL-Kernel"
+                                                #"Paired Imp CEPS-Kernel"
+                                ),
+                                include_coal_size_lines = TRUE,
+                                y_limits = c(-0.9, 5.1),
+                                y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4, 1, 2, 4)
     )
 
-  fig_M_20_rel_reg_scale =
-    relative_difference(dt = MAE_dt_long2,
-                        m = 20,
+  fig_M_11_rel_reg_scale =
+    relative_difference_wine_V2(dt = MAE_dt_long2,
+                        m = 11,
                         strat_ref = "Paired C-Kernel",
                         strat_other = c(#"Unique",
                           #"Paired",
@@ -672,24 +1130,27 @@ if (FALSE) {
                           #"Paired Imp CEPS-Kernel"
                         ),
                         include_coal_size_lines = FALSE,
-                        y_limits = c(-0.025, 0.05),
+                        y_limits = c(-0.1, 0.25),
                         scale = FALSE,
                         hue_indices = c(3,5,6),
                         hue_length = 8,
-                        ncol = 2,
-                        scales = "fixed"
-    ) + scale_y_continuous(labels = scales::percent_format(accuracy = 1))
-
+                        y_breaks = c(-0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5),
+                        skip_N_S = c(18, 22, 36),
+    ) # + scale_y_continuous(labels = scales::percent_format(accuracy = 1))
+  fig_M_11_rel_reg_scale
 
   library("ggpubr")
-  fig_M_20_comb = ggarrange(fig_M_20_MAE, fig_M_20_rel,
+  fig_M_11_comb = ggarrange(fig_M_11_MAE,
+                            fig_M_11_rel_reg_scale,
                             labels = c("A", "B"),
                             ncol = 1, nrow = 2,
+                            heights = c(1.5, 1),
                             align = "hv",
                             common.legend = TRUE, legend = "bottom",
                             font.label = list(size = 25, color = "black"))
+  fig_M_11_comb
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_MAE_Relative_Diff_V4.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_11_MAE_Relative_Diff_V4.png"),
          plot = fig_M_20_comb,
          width = 14.2,
          height = 18,
