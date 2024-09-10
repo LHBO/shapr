@@ -2620,6 +2620,8 @@ relative_difference = function(dt, m, strat_ref,
                                include_coal_size_lines = FALSE,
                                hue_indices = NULL,
                                hue_length = NULL,
+                               ncol = 2,
+                               scales = "free_y",
                                y_lab_frac = TRUE) {
   if (xor(is.null(hue_indices), is.null(hue_length))) stop("Both `hue_indices` and `hue_length` must be provided.")
   if (!is.null(hue_indices) && !is.null(hue_length)) {
@@ -2661,7 +2663,7 @@ relative_difference = function(dt, m, strat_ref,
     {if (include_coal_size_lines) geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4)} +
     geom_hline(yintercept = 0, col = "gray") +
     geom_line(linewidth = 0.65) +
-    facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+    facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), ncol = ncol, scales=scales) +
     {if (scale) scale_y_log10(trans = ggallin:::ssqrt_trans, breaks = y_breaks)} +
     {if (!scale) scale_y_continuous(breaks = y_breaks)} +
     coord_cartesian(ylim = y_limits) +
@@ -2683,7 +2685,8 @@ relative_difference = function(dt, m, strat_ref,
     theme(strip.text = element_text(size = rel(1.6)),
           legend.title = element_text(size = rel(1.37)),
           legend.text = element_text(size = rel(1.37)),
-          axis.title = element_text(size = rel(1.6)),
+          axis.title.x = element_text(size = rel(1.6)),
+          axis.title.y = element_text(size = rel(1.8)),
           axis.text = element_text(size = rel(1.5))) +
     {if (!is.null(hue_length)) scale_color_manual(values = colors)} +
     {if (is.null(hue_length))  scale_color_hue()} #added as we want ordered}

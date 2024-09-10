@@ -85,7 +85,7 @@ for (repetition in repetitions) {
 }
 
 
-# Rscript Create_sampling_files_largest.R 11 1:500
+# Rscript Create_sampling_files_largest.R 20 26:50
 
 
 

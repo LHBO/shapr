@@ -170,6 +170,9 @@ relative_difference_wine = function(dt, m, strat_ref,
 }
 
 
+
+# Code starts -----------------------------------------------------------------------------------------------------
+
 if (R.utils::System$getHostname() == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   path_source = "/Users/larsolsen"
 } else {
@@ -538,7 +541,7 @@ if (FALSE) {
 
   dt_all2 = res_dt_v2[Strategy %in% samps & n_combinations %% 2 == 0, ]
   dt_all2 = dt_all2[, Strategy := factor(Strategy, levels = samps, ordered = TRUE)]
-  fig_wine_2 = ggplot(data = dt_all2, aes(x = n_combinations, y = avg_MAE, col = Strategy, fill = Strategy)) +
+  fig_wine_2 = ggplot(data = dt_all2, aes(x = n_combinations, y = median, col = Strategy, fill = Strategy)) +
     #theme_light() +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0) +
@@ -709,6 +712,53 @@ if (FALSE) {
 
   # module load R/4.2.1-foss-2022a
   # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+
+
+
+  # Final Plots -----------------------------------------------------------------------------------------------------
+
+  fig_rel_dif_wine = relative_difference_wine(dt = res_dt_v2,
+                                              m = 11,
+                                              strat_ref = "Paired C-Kernel",
+                                              strat_other = c(#"Unique",
+                                                              #"Paired",
+                                                              "Paired Average",
+                                                              #"Paired Kernel",
+                                                              "Paired C-Kernel",
+                                                              "Paired CEL-Kernel"
+                                                              #"Paired Imp C-Kernel",
+                                                              #"Paired Imp CEL-Kernel"
+                                                              ),
+                                              y_limits = c(-0.1, 0.25),
+                                              scale = FALSE,
+                                              hue_indices = c(3,5,6),
+                                              hue_length = 8,
+                                              legend_n_row = 1,
+                                              #include_coal_size_lines = TRUE
+                                              #hue_length = 8,
+                                              #hue_indices = c(2,3,5,6)
+  )# + scale_y_continuous(labels = scales::percent_format(accuracy = 1))
+
+  fig_comb_wine_1 = ggpubr::ggarrange(fig_wine_2,
+                                      fig_rel_dif_wine ,
+                                      labels = c("A", "B"),
+                                      ncol = 1,
+                                      nrow = 2,
+                                      align = "hv",
+                                      hjust = -0.5,
+                                      vjust = 1.2,
+                                      common.legend = TRUE, legend = "bottom",
+                                      font.label = list(size = 25, color = "black"))
+
+
+  fig_comb_wine_2 = ggpubr::ggarrange(fig_comb_wine_1, fig_wine_3,
+                                      labels = c("A", "C"),
+                                      ncol = 2, nrow = 1,
+                                      widths = c(10,4),
+                                      hjust = -0.5,
+                                      vjust = 1.2,
+                                      common.legend = TRUE, legend = "bottom",
+                                      font.label = list(size = 25, color = "black"))
 
 
 

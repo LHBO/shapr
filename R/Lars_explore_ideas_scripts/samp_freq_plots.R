@@ -679,7 +679,7 @@ if (FALSE) {
   library(xtable)
   xtable_dt <- xtable::xtable(dcast(tmp_list, M + n_combinations ~ col, value.var = "weight"),
                       caption = "Wide Format Data Table", label = "tab:wide_table",
-                      digits = 6)
+                      digits = 7)
 
   # Print the LaTeX code for the table
   print(xtable_dt, type = "latex", include.rownames = FALSE, math.style.exponents = TRUE)
