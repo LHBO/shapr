@@ -169,7 +169,7 @@ coalition_sampling_unique = function(m, n_combinations = 2^m - 2,  n_sample_scal
 
 repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m - 2, n_sample_scale = 5, verbose = TRUE, verbose_extra = NULL) {
   dt = data.table::rbindlist(
-    lapply(seq(repetitions), function(repetition) {
+    lapply(repetitions, function(repetition) {
       if (verbose){
         string = paste0("Working on repetition ", repetition, " of ", repetitions ,".")
         if (!is.null(verbose_extra)) string = paste(verbose_extra, string)
@@ -178,10 +178,10 @@ repeated_coalition_sampling = function(m, repetitions, n_combinations = 2^m - 2,
       coalition_sampling_paired(m = m,
                                 n_combinations = n_combinations,
                                 n_sample_scale = n_sample_scale,
+                                seed = repetition,
                                 verbose = verbose)[,-"coalitions"]}
-    ), use.names = TRUE,
-    idcol = "Repetition"
-  )
+    ), use.names = TRUE, idcol = "Repetition")
+  dt[, Repetition := repetitions[Repetition]]
   return(dt)
 }
 
@@ -203,7 +203,7 @@ sum_shapley_weights <- function(m){
 #' @export
 #'
 #' @examples
-get_exact_ps_values = function(m_seq) {
+get_exact_ps_values = function(m_seq, M_as_factor = TRUE) {
 
   tmp_list = lapply(m_seq, function(m) {
     tmp = shapr:::shapley_weights(m = m,
@@ -216,7 +216,7 @@ get_exact_ps_values = function(m_seq) {
   })
   names(tmp_list) = m_seq
   tmp_list = data.table::rbindlist(tmp_list, idcol = "M")
-  tmp_list[, M := factor(M, levels = m_seq, labels = paste0("M = ", m_seq))]
+  if (M_as_factor) tmp_list[, M := factor(M, levels = m_seq, labels = paste0("M = ", m_seq))]
   return(tmp_list)
 }
 
@@ -287,15 +287,34 @@ if (grepl(",", m_vec)) {
     m_vec = as.numeric(m_vec)
   }
 }
-repetitions = as.integer(args[2]) # 250
+repetitions = as.character(args[2]) # 1:250
+if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
+  if (grepl(",", repetitions)) {
+    repetitions = as.numeric(unlist(strsplit(repetitions, ",")))
+  } else {
+    repetitions = unlist(strsplit(repetitions, ":"))
+    if (length(repetitions) > 1) {
+      repetitions = seq(as.numeric(repetitions[1]), as.numeric(repetitions[2]))
+    } else {
+      repetitions = as.numeric(repetitions)
+    }
+  }
+} else {
+  repetitions = NULL
+}
 n_sample_scale = as.numeric(args[3]) # 10
+
+
+# New version
+repetitions_start = repetitions[1]
+repetitions_end = repetitions[length(repetitions)]
+
 
 # Iterate over the number
 for (m in m_vec) {
-  dt = repeated_coalition_sampling(m = m, repetitions = repetitions, n_sample_scale = n_sample_scale,
-                                   verbose_extra = paste0("M = ", m, "."))
+  dt = repeated_coalition_sampling(m = m, repetitions = repetitions, n_sample_scale = n_sample_scale, verbose_extra = paste0("M = ", m, "."))
   dt_avg = dt[, list(L_avg = mean(L)), by = N_S]
-  saveRDS(list(dt = dt, dt_avg = dt_avg), file.path(folder_save, paste0("Sequence_length_M_", m, ".rds")))
+  saveRDS(list(dt = dt, dt_avg = dt_avg), file.path(folder_save, paste0("Sequence_length_M_", m, "_rep_", repetitions_start, "_to_", repetitions_end, ".rds")))
 }
 
 
@@ -476,7 +495,7 @@ if (FALSE) {
   dt_extended = copy(dt_extended2)
 
   # Remove extra N_S
-  dt_extended = dt_combined_short_fun(dt_extended, m_seq_reduce = 17:20)
+  dt_extended = dt_combined_short_fun(dt_extended, m_seq_reduce = 15:20)
   dt_extended[M %in% 15:20, .N, by = M]
   dt_extended[, M := factor(M, levels = m_seq, labels = paste0("M = ", m_seq))]
 
@@ -494,10 +513,14 @@ if (FALSE) {
           legend.text = element_text(size = rel(1.5)),
           axis.title = element_text(size = rel(1.5)),
           axis.text = element_text(size = rel(1.4))) +
-    scale_y_continuous(labels = scales::label_number())
+    #scale_y_continuous(labels = scales::label_number()) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    )
 
   # Save the figure
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Expected_L_v2.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Expected_L_v4.png",
          plot = fig_L,
          width = 14.2,
          height = 20,
@@ -547,15 +570,26 @@ if (FALSE) {
 
 
   dt1 = dt_extended[, c("M", "N_S", "L_avg")]
-  dt2 = tmp_list_unnormalized2[, c("M", "Size", "weight2")]
+  dt2 = tmp_list_unnormalized2[, c("M", "Size", "weight", "weight2")]
   dt3 = merge(dt1,
               dt2,
               by = "M",
               all.x = TRUE,
               allow.cartesian = TRUE)
-  dt3[, weight3 := weight2^L_avg]
+  dt3[, weight3 := weight2^(L_avg/2)]
   dt3[, weight4 := 1 - weight3]
+  dt3[, weight5 := 2*weight/weight4]
   dt3
+
+  dt3[, weight_imp2 := weight2^(N_S/2)]
+  dt3[, weight_imp3 := 1 - weight_imp2]
+  dt3[, weight_imp4 := 2*weight/weight_imp3]
+
+
+  dt3[M == "M = 10" & N_S == 1022, ]
+
+  $weight5
+
 
 
   # Plot (1-pS)^E[L] ------------------------------------------------------------------------------------------------
@@ -573,7 +607,7 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4))) +
     scale_x_continuous(labels = scales::label_number()) +
     scale_y_continuous(labels = scales::label_number())
-
+  fig_diff_exp
 
   ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/One_minus_PS_exp_expected_L_v2.png",
          plot = fig_diff_exp,
@@ -598,7 +632,7 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4))) +
     scale_x_continuous(labels = scales::label_number()) +
     scale_y_continuous(labels = scales::label_number())
-
+  fig_diff_exp_one_minus
 
   ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/One_minus_One_minus_PS_exp_expected_L_v2.png",
          plot = fig_diff_exp_one_minus,
@@ -607,6 +641,22 @@ if (FALSE) {
          scale = 0.85,
          dpi = 350)
 
+
+  fig_diff_exp_one_minus_N_S = ggplot(dt3, aes(x = N_S, y = weight_imp3, col = Size)) +
+    geom_line() +
+    facet_wrap("M ~ .", ncol = 2, scales = "free_x") +
+    labs(y = expression(1 - (1 - p[S])^{N[S]}), x = expression(N[S])) +
+    theme(legend.position="bottom", legend.box = "horizontal") +
+    guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1),
+           color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1)) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.5)),
+          axis.text = element_text(size = rel(1.4))) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_continuous(labels = scales::label_number())
+  fig_diff_exp_one_minus_N_S
 
 }
 
@@ -621,6 +671,7 @@ if (FALSE) {
   dt_combined = data.table(M = numeric(), N_S = numeric(), type = character(), Size = numeric(), Ps_tilde = numeric(), version = factor())
   dt_diff = data.table(M = numeric(), N_S = numeric(), Size = numeric(), "mean L" = numeric(), "mean ps" = numeric(), diff = numeric())
 
+  m_idx = 1
   for (m_idx in seq_along(m_seq)) {
     m = m_seq[m_idx]
     message(paste0("Working on m = ", m, " (", m_idx, " of ", length(m_seq)  ,")."))
@@ -662,6 +713,7 @@ if (FALSE) {
 
     ### Get the average pstilde values
     dt_ps = rbindlist(lapply(seq(2, dt[, max(N_S)], 2), function(N_S_now) {
+      if (N_S_now %% 10000 == 0) message(N_S_now)
       # Iterate over all values of L and compute the corresponding ps values
       ps_hat = t(sapply(dt[N_S == N_S_now, L], function(L_now) {
         pstilde = 2*ps / (1 - (1 - 2*ps)^(L_now/2))
@@ -723,6 +775,7 @@ if (FALSE) {
 
   # Load the data files ---------------------------------------------------------------------------------------------
   m_seq = 7:20
+  m_seq = 19:20
   folder = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   dt_combined3 =
     rbindlist(lapply(m_seq, function(m) readRDS(file.path(folder, paste0("Sequence_length_M_", m, "_combined.rds")))))
@@ -737,8 +790,8 @@ if (FALSE) {
   dt_combined[, Size := as.factor(Size)]
   dt_combined = dt_combined[N_S %% 2 == 0,]
 
-  # Redduce
-  m_seq_reduce = 17:20
+  # Reduce
+  m_seq_reduce = 16:20
   dt_combined[M %in% m_seq_reduce, .N, by = M]
   dt_combined = dt_combined_short_fun(dt_combined = dt_combined, m_seq_reduce = m_seq_reduce)
   dt_combined[M %in% m_seq_reduce, .N, by = M]
@@ -790,12 +843,184 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.4))) +
     scale_x_continuous(labels = scales::label_number())
 
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_confidence_bands_v5.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_confidence_bands_v7.png",
          plot = fig_ps_bands,
          width = 14.2,
          height = 20,
          scale = 0.85,
          dpi = 350)
+
+
+
+
+  ## Paired Imp C-kernel ---------------------------------------------------------------------------------------------
+
+  dt_cumsum = data.table::rbindlist(
+    lapply(m_seq, function(m) {
+      n <- sapply(seq(floor(m/2)), choose, n = m)
+      n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+      n_cumsum = (cumsum(n) + 2) + 0.5
+      #n_cumsum = n_cumsum[-length(n_cumsum)]
+      data.table(M = paste0("M = ", m), n_cumsum = n_cumsum)
+    })
+  )
+  dt_cumsum[, M := factor(M)]
+
+
+
+
+  dt_exact_ps = get_exact_ps_values(m_seq)
+
+  dt_paired_imp_c_kernel = data.table(
+    rbindlist(
+      lapply(m_seq, function(m) {
+        message(m)
+        n <- sapply(seq(floor(m/2)), choose, n = m)
+        n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+        n_cumsum = (cumsum(n) + 2) + 0.5
+
+        dt_n_cumsum = data.table(N_S = c(0, n_cumsum), Size = lapply(seq(length(n_cumsum) + 1), function(x) seq(x)))
+        remove_non_added_sizes = TRUE
+        data.table(rbindlist(
+          lapply(unique(round(seq(2, 2^m, length.out = 1000))),
+                 function(L, m, n_cumsum, remove_non_added_sizes) {
+                   shapley_weight = shapr:::shapley_weights(m = m,
+                                                            N = sapply(seq(m - 1), choose, n = m),
+                                                            n_components = seq(m - 1))
+                   shapley_weight = shapley_weight / sum_shapley_weights(m)
+                   #shapley_weight = shapley_weight/sum(shapley_weight)
+
+                   dt_tmp = data.table(
+                     M = paste0("M = ", m),
+                     N_S = L,
+                     Size = seq(m-1),
+                     Ps_tilde = 2*shapley_weight / (1-(1-2*shapley_weight)^(L/2))
+                   )
+
+                   dt_tmp[, Ps_tilde := Ps_tilde / sum(Ps_tilde)]
+                   dt_tmp = dt_tmp[Size <= floor(m/2),]
+                   dt_tmp
+
+                    if (remove_non_added_sizes) {
+                      dt_tmp = dt_tmp[dt_n_cumsum[which(L < dt_n_cumsum$N_S)[1] - 1, Size][[1]],]
+                    }
+
+                    return(dt_tmp)
+                 }, m = m, n_cumsum = n_cumsum, remove_non_added_sizes = remove_non_added_sizes)))
+      })))
+
+    dt_paired_imp_c_kernel[, M := factor(M)]
+    dt_paired_imp_c_kernel[, Size := factor(Size)]
+
+    fig_ps_all_strategies = ggplot(data = dt_combined) +
+      facet_wrap(M ~ ., ncol = 2, scales = "free") +
+      geom_vline(data = dt_cumsum, aes(xintercept = n_cumsum, group = M), col = "gray60", linetype = "dashed", linewidth = 0.4) +
+      geom_ribbon(data = data_ribbon,
+                  mapping = aes(x = N_S, ymin = lower, ymax = upper, colour = Size, fill = Size),
+                  alpha = 0.4, linewidth = 0.1) +
+      geom_line(data = dt_combined[type == "mean" & version == "mean ps"],
+                mapping = aes(x = N_S, y = Ps_tilde, colour = Size, group = Size, linetype = "dashed"), linewidth = 0.85) +
+      geom_line(data = dt_combined[type == "mean" & version == "mean L"],
+                mapping = aes(x = N_S, y = Ps_tilde, group = Size, linetype = "dotted"), color = "black", linewidth = 0.85) +
+      geom_line(data = dt_paired_imp_c_kernel,
+                mapping = aes(x = N_S, y = Ps_tilde, colour = Size, group = Size, linetype = "solid"), linewidth = 0.85) +
+      geom_point(dt_exact_ps,
+                 mapping = aes(x = N_S, y = weight, colour = Size),
+                 size = 2.5) +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x)),
+        #labels = scales::label_number()
+      ) +
+      guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1, order = 1),
+             color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1, order = 1),
+             linetype = guide_legend(title = "Version: ", order = 2)) +
+      labs(x = expression(N[S]), y = "Normalized weights") +
+      scale_linetype_manual(values = c("solid", "dotted", "dashed"),
+                            labels = c(expression(bar(p)["|"*S*"|"](L)),
+                                       expression(p["|"*S*"|"](bar(L))),
+                                       expression(p["|"*S*"|"](N[S]))),
+                            guide = guide_legend(override.aes = list(c("solid", "solid", "solid"),
+                                                                     lwd = c(0.5,0.1,0.4)))) +
+      theme(legend.position = "bottom",
+            legend.box = "horizontal",
+            legend.justification = "right",
+            strip.text = element_text(size = rel(1.5)),
+            legend.title = element_text(size = rel(1.5)),
+            legend.text = element_text(size = rel(1.5)),
+            axis.title = element_text(size = rel(1.5)),
+            axis.text = element_text(size = rel(1.4))) +
+      scale_x_continuous(labels = scales::label_number())
+
+
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_all_strategies_v4.png",
+           plot = fig_ps_all_strategies,
+           width = 14.2,
+           height = 20,
+           scale = 0.85,
+           dpi = 350)
+
+
+
+
+    only_these_M = c(10, 11, 20)
+    only_these_M = paste0("M = ", only_these_M)
+    fig_ps_all_strategies_some_M = ggplot(data = dt_combined[M %in% only_these_M, ]) +
+      facet_wrap(M ~ ., ncol = length(only_these_M), scales = "free") +
+      geom_vline(data = dt_cumsum[M %in% only_these_M, ], aes(xintercept = n_cumsum, group = M), col = "gray60", linetype = "dashed", linewidth = 0.4) +
+      geom_ribbon(data = data_ribbon[M %in% only_these_M, ],
+                  mapping = aes(x = N_S, ymin = lower, ymax = upper, colour = Size, fill = Size),
+                  alpha = 0.4, linewidth = 0.1) +
+      geom_line(data = dt_combined[type == "mean" & version == "mean ps"][M %in% only_these_M, ],
+                mapping = aes(x = N_S, y = Ps_tilde, colour = Size, group = Size, linetype = "dashed"), linewidth = 0.85) +
+      geom_line(data = dt_combined[type == "mean" & version == "mean L"][M %in% only_these_M, ],
+                mapping = aes(x = N_S, y = Ps_tilde, group = Size, linetype = "dotted"), color = "black", linewidth = 0.85) +
+      geom_line(data = dt_paired_imp_c_kernel[M %in% only_these_M, ],
+                mapping = aes(x = N_S, y = Ps_tilde, colour = Size, group = Size, linetype = "solid"), linewidth = 0.85) +
+      geom_point(dt_exact_ps[M %in% only_these_M, ],
+                 mapping = aes(x = N_S, y = weight, colour = Size),
+                 size = 2.5) +
+      scale_y_log10(
+        breaks = scales::trans_breaks("log10", function(x) 10^x),
+        labels = scales::trans_format("log10", scales::math_format(10^.x))
+        #labels = scales::label_number()
+      ) +
+      guides(fill = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1, order = 1),
+             color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1, order = 1),
+             linetype = guide_legend(title = "Version: ", order = 2, nrow = 1)) +
+      labs(x = expression(N[S]), y = "Normalized weights") +
+      scale_linetype_manual(values = c("solid", "dotted", "dashed"),
+                            labels = c(expression(bar(p)["|"*S*"|"](L)),
+                                       expression(p["|"*S*"|"](bar(L))),
+                                       expression(p["|"*S*"|"](N[S])))) + #,
+                            # guide = guide_legend(override.aes = list(c("solid", "solid", "solid"),
+                            #                                          lwd = c(0.5,0.1,0.4)))) +
+      theme(legend.position = "bottom",
+            legend.box = "horizontal",
+            plot.margin = margin(t = 5.5,  # Top margin
+                                 r = 8,  # Right margin
+                                 b = 5.5,  # Bottom margin
+                                 l = 5.5),
+            strip.text = element_text(size = rel(1.5)),
+            legend.title = element_text(size = rel(1.9)),
+            legend.text = element_text(size = rel(1.9)),
+            axis.title = element_text(size = rel(1.5)),
+            axis.text = element_text(size = rel(1.33))) +
+      scale_x_continuous(labels = scales::label_number())
+
+
+
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_all_strategies_some_M_v99.png",
+           plot = fig_ps_all_strategies_some_M,
+           width = 16.85,
+           height = 7,
+           scale = 0.85,
+           dpi = 350)
+
+
+  }
+
+
 
 
   ## Only some M values ----------------------------------------------------------------------------------------------
