@@ -178,7 +178,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 
 
-# Rscript M_10_run_simulations.R 0.0 TRUE 1:250 sumeru
+# Rscript M_10_run_simulations.R 0.0 TRUE 1:250 sumeru X
 # Rscript M_10_run_simulations.R 0.0 TRUE 251:500 nyx
 #
 # Rscript M_10_run_simulations.R 0.2 TRUE 1:250 metis
@@ -442,7 +442,7 @@ for (rho_idx in seq_along(rhos)) {
           # Find the weights of the combination closest to n_combinations
           n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
           dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
           dt_new_weights_now[, Size := .I]
           setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -508,8 +508,7 @@ for (rho_idx in seq_along(rhos)) {
           # Find the weights of the combination closest to n_combinations
           n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
           dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-
-          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
           dt_new_weights_now[, Size := .I]
           setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -686,12 +685,14 @@ if (FALSE) {
   )
 
   # Strategies in the relative difference plot
+  strat_rel_diff = c("Paired", "Paired Average", "Paired C-Kernel", "Paired CEL-Kernel")
   strat_rel_diff = c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel")
   strat_rel_diff_reference = c("Paired C-Kernel")
 
   # Load the MAE data
   res = data.table::rbindlist(
     lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
+      message(rho)
       data.table::rbindlist(
         lapply(seq(n_repetitions), function(repetition) {
           file_name = paste("Gompertz_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
@@ -728,7 +729,7 @@ if (FALSE) {
     guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
-         y = bquote(bar(MAE)[50]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+         y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
     theme(strip.text = element_text(size = rel(1.5)),
           legend.title = element_text(size = rel(1.8)),
           legend.text = element_text(size = rel(1.8)),
@@ -739,7 +740,7 @@ if (FALSE) {
   #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   M_10_fig_MAE
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_V1.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_V2.png"),
          plot = M_10_fig_MAE,
          width = 14,
          height = 9,
@@ -760,6 +761,12 @@ if (FALSE) {
     geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
     geom_line(linewidth = 0.65) +
     coord_cartesian(ylim = c(-0.1, 0.2))
+
+  ggplot(res_rel_diff_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+    geom_line(linewidth = 0.65) +
+    coord_cartesian(ylim = c(-0.1, 4))
 
 
   # Compute the bootstrap for relative difference for the MAE_mean
@@ -789,14 +796,14 @@ if (FALSE) {
   res_rel_diff_boot_errors = res_rel_diff_boot[, .(rel_error_mean = mean(rel_error),
                                                    rel_error_lower = quantile(rel_error, 0.025),
                                                    rel_error_upper = quantile(rel_error, 0.975)),
-                                               by = c("N_S", "Strategy")]
+                                               by = .(Rho, N_S, Strategy)]
 
 
   # Plot the results
   M_10_fig_relative = ggplot(res_rel_diff_boot_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     coord_cartesian(ylim = c(-0.125, 0.25)) +
-    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.1, linewidth = 0.4, linetype = "dashed") +
+    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.2, linewidth = 0.4, linetype = "dashed") +
     geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.6, linewidth = 0.1) +
     geom_line(linewidth = 1.1) +
     labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~C-Kernel}}{\bar{MAE}_{Paired~C-Kernel}}$)')) +
@@ -815,8 +822,8 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.5)))
 
   M_10_fig_relative
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_relative_V1.png"),
-         plot = M_10__fig_relative,
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_relative_V3.png"),
+         plot = M_10_fig_relative,
          width = 14.2,
          height = 7,
          scale = 1,

@@ -541,9 +541,7 @@ for (repetition_idx in seq_along(repetitions)) {
         # Find the weights of the combination closest to n_combinations
         n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
         dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-
-        #dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
-        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
+        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
         dt_new_weights_now[, Size := .I]
         setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -609,9 +607,7 @@ for (repetition_idx in seq_along(repetitions)) {
         # Find the weights of the combination closest to n_combinations
         n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
         dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-
-        # dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
-        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
+        dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
         dt_new_weights_now[, Size := .I]
         setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -711,6 +707,7 @@ if (FALSE) {
 
   ## MAE -------------------------------------------------------------------------------------------------------------
   n_repetitions = 500
+  M = m = 11
 
   # List the strategies to create the MAE plot for
   strat_MAE = c("Unique",
@@ -743,7 +740,7 @@ if (FALSE) {
         file_name = paste0("Wine_data_set_M_", M)
         file_name = file.path(folder_save, "Wine_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
         if (!file.exists(file_name)) return(NULL)
-        #print(file_name)
+        # print(file_name)
         readRDS(file_name)
       }))
 
@@ -854,7 +851,7 @@ if (FALSE) {
   # Plot the results
   Wine_fig_relative = ggplot(res_rel_diff_boot_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
     coord_cartesian(ylim = c(-0.125, 0.25)) +
-    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.1, linewidth = 0.4, linetype = "dashed") +
+    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.2, linewidth = 0.4, linetype = "dashed") +
     geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.6, linewidth = 0.1) +
     geom_line(linewidth = 1.1) +
     labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~C-Kernel}}{\bar{MAE}_{Paired~C-Kernel}}$)')) +

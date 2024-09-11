@@ -207,6 +207,10 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 # Rscript M_20_run_simulations.R 0.9 16:20 beleili
 # Rscript M_20_run_simulations.R 0.9 21:25 bastet
 
+# Rscript M_20_run_simulations.R 0.9 TRUE 26:50 sumeru
+
+
+
 # Workstation -----------------------------------------------------------------------------------------------------
 # Get where we are working
 hostname = R.utils::System$getHostname()
@@ -555,9 +559,7 @@ for (rho_idx in seq_along(rhos)) {
           # Find the weights of the combination closest to n_combinations
           n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
           dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-
-          #dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
-          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
           dt_new_weights_now[, Size := .I]
           setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -623,9 +625,7 @@ for (rho_idx in seq_along(rhos)) {
           # Find the weights of the combination closest to n_combinations
           n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
           dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-
-          #dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 0, 1)):1])
-          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(.N %% 2 == 1, 1, 0)):1])
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
           dt_new_weights_now[, Size := .I]
           setnames(dt_new_weights_now, "Size", "n_features")
 
@@ -905,14 +905,14 @@ if (FALSE) {
   res_rel_diff_boot_errors = res_rel_diff_boot[, .(rel_error_mean = mean(rel_error),
                                                    rel_error_lower = quantile(rel_error, 0.025),
                                                    rel_error_upper = quantile(rel_error, 0.975)),
-                                               by = c("N_S", "Strategy")]
+                                               by = .(Rho, N_S, Strategy)]
 
 
   # Plot the results
   M_20_fig_relative = ggplot(res_rel_diff_boot_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     coord_cartesian(ylim = c(-0.125, 0.25)) +
-    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.1, linewidth = 0.4, linetype = "dashed") +
+    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.2, linewidth = 0.4, linetype = "dashed") +
     geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.6, linewidth = 0.1) +
     geom_line(linewidth = 1.1) +
     labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~C-Kernel}}{\bar{MAE}_{Paired~C-Kernel}}$)')) +
