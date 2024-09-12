@@ -213,6 +213,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 # Workstation -----------------------------------------------------------------------------------------------------
 # Get where we are working
+# Get where we are working
 hostname = R.utils::System$getHostname()
 message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
 
@@ -228,10 +229,12 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 } else if (grepl("uio.no", hostname)) {
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
   folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
+  folder_save_2 = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_2"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
 }
+
 
 
 
@@ -364,7 +367,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
     message("Loading presampled coalitions unique")
-    presampled_coalitions_unique = file.path(folder_save, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
+    presampled_coalitions_unique = file.path(folder_save_2, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
     if (file.exists(presampled_coalitions_unique)) {
       presampled_coalitions_unique = readRDS(presampled_coalitions_unique)
     } else {
@@ -373,7 +376,7 @@ for (rho_idx in seq_along(rhos)) {
     message("Done loading presampled coalitions unique")
 
     message("Loading presampled coalitions paired")
-    presampled_coalitions_paired = file.path(folder_save, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds"))
+    presampled_coalitions_paired = file.path(folder_save_2, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds"))
     if (file.exists(presampled_coalitions_paired)) {
       presampled_coalitions_paired = readRDS(presampled_coalitions_paired)
     } else {
@@ -382,7 +385,7 @@ for (rho_idx in seq_along(rhos)) {
     message("Done loading presampled coalitions paired")
 
     message("Loading presampled coalitions largest")
-    presampled_coalitions_largest = file.path(folder_save, paste0("Largest_random_sampling_M_", M, "_repetition_", repetition, ".rds"))
+    presampled_coalitions_largest = file.path(folder_save_2, paste0("Largest_random_sampling_M_", M, "_repetition_", repetition, ".rds"))
     if (file.exists(presampled_coalitions_largest)) {
       presampled_coalitions_largest = readRDS(presampled_coalitions_largest)
     } else {
