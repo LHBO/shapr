@@ -405,7 +405,7 @@ for (rho_idx in seq_along(rhos)) {
                         "Paired CEL-Kernel" = NaN,
                         #"Paired CEPS-Kernel" = NaN,
                         "Paired Imp C-Kernel" = NaN,
-                        "Paired Imp CEL-Kernel" = NaN,
+                        "Paired Imp CEL-Kernel" = NaN
                         #"Paired Imp CEPS-Kernel" = NaN
                         )
 
