@@ -400,10 +400,11 @@ for (rho_idx in seq_along(rhos)) {
                         "Paired Kernel" = NaN,
                         "Paired C-Kernel" = NaN,
                         "Paired CEL-Kernel" = NaN,
-                        "Paired CEPS-Kernel" = NaN,
+                        #"Paired CEPS-Kernel" = NaN,
                         "Paired Imp C-Kernel" = NaN,
                         "Paired Imp CEL-Kernel" = NaN,
-                        "Paired Imp CEPS-Kernel" = NaN)
+                        #"Paired Imp CEPS-Kernel" = NaN
+                        )
 
 
     n_combination_idx = 4
@@ -576,16 +577,16 @@ for (rho_idx in seq_along(rhos)) {
           MAE_dt[n_combination_idx, "Paired CEL-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_cel_kernel[,-1])))]
 
 
-          # EXPECTED E[P_S]
-          # Update the weights with the provided weights for each coalition size
-          X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_ps"))]
-
-          # Compute the approximated Shapley values
-          dt_kshap_paired_ceps_kernel =
-            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
-
-          # Get the MAE between the approximated and full Shapley values
-          MAE_dt[n_combination_idx, "Paired CEPS-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_ceps_kernel[,-1])))]
+          # # EXPECTED E[P_S]
+          # # Update the weights with the provided weights for each coalition size
+          # X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_ps"))]
+          #
+          # # Compute the approximated Shapley values
+          # dt_kshap_paired_ceps_kernel =
+          #   compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+          #
+          # # Get the MAE between the approximated and full Shapley values
+          # MAE_dt[n_combination_idx, "Paired CEPS-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_ceps_kernel[,-1])))]
         }
       }
 
@@ -642,16 +643,16 @@ for (rho_idx in seq_along(rhos)) {
           MAE_dt[n_combination_idx, "Paired Imp CEL-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_imp_cel_kernel[,-1])))]
 
 
-          # EXPECTED E[P_S]
-          # Update the weights with the provided weights for each coalition size
-          X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_ps"))]
-
-          # Compute the approximated Shapley values
-          dt_kshap_paired_imp_ceps_kernel =
-            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
-
-          # Get the MAE between the approximated and full Shapley values
-          MAE_dt[n_combination_idx, "Paired Imp CEPS-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_imp_ceps_kernel[,-1])))]
+          # # EXPECTED E[P_S]
+          # # Update the weights with the provided weights for each coalition size
+          # X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_ps"))]
+          #
+          # # Compute the approximated Shapley values
+          # dt_kshap_paired_imp_ceps_kernel =
+          #   compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+          #
+          # # Get the MAE between the approximated and full Shapley values
+          # MAE_dt[n_combination_idx, "Paired Imp CEPS-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_imp_ceps_kernel[,-1])))]
 
 
         }
@@ -912,7 +913,7 @@ if (FALSE) {
   M_20_fig_relative = ggplot(res_rel_diff_boot_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     coord_cartesian(ylim = c(-0.125, 0.25)) +
-    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.2, linewidth = 0.4, linetype = "dashed") +
+    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.15, linewidth = 0.4, linetype = "dashed") +
     geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.6, linewidth = 0.1) +
     geom_line(linewidth = 1.1) +
     labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~C-Kernel}}{\bar{MAE}_{Paired~C-Kernel}}$)')) +
