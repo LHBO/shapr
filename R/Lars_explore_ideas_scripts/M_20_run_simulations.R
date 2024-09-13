@@ -221,6 +221,7 @@ message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
   folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_2 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # To be added
@@ -410,7 +411,7 @@ for (rho_idx in seq_along(rhos)) {
                         )
 
 
-    n_combination_idx = 4
+    n_combination_idx = 123
     for (n_combination_idx in seq_along(n_combinations_array)) {
       #for (n_combination_idx in c(1, 10, 20)) {
       n_combination = n_combinations_array[n_combination_idx]

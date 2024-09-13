@@ -1684,27 +1684,6 @@ plot_SV_several_approaches <- function(explanation_list,
   }
   if (horizontal_bars) figure <- figure + ggplot2::coord_flip()
 
-  figure_now = figure + ggplot2::scale_fill_discrete(
-    breaks = breaks,
-    direction = direction,
-    name = expression(N[S]*":")
-  ) + theme(legend.position = 'bottom') +
-    guides(fill = guide_legend(nrow = 1)) +
-    ggplot2::coord_flip() +
-    theme(strip.text = element_text(size = rel(1.3)),
-        legend.title = element_text(size = rel(1.5)),
-        legend.text = element_text(size = rel(1.5)),
-        axis.title = element_text(size = rel(1.5)),
-        axis.text = element_text(size = rel(1.1))) +
-    ggplot2::labs(title = NULL)
-
-  # ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_Wine_Random_Forest_SV_7.png",
-  #        plot = figure_now,
-  #        width = 14.2,
-  #        height = 15,
-  #        scale = 0.85,
-  #        dpi = 350)
-
   # Return the figure
   return(figure)
 }
