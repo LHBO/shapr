@@ -56,6 +56,7 @@ if (grepl(",", m_seq)) {
 
 n_workers <- as.numeric(args[2])  # Number of workers 4
 
+several_files = FALSE
 
 
 ## Create the files ------------------------------------------------------------------------------------------------
@@ -65,6 +66,9 @@ dt_avg_L = data.table(M = numeric(), N_S = numeric(), type = character(), Size =
 dt_avg_ps = data.table(M = numeric(), N_S = numeric(), type = character(), Size = numeric(), Ps_tilde = numeric())
 dt_combined = data.table(M = numeric(), N_S = numeric(), type = character(), Size = numeric(), Ps_tilde = numeric(), version = factor())
 dt_diff = data.table(M = numeric(), N_S = numeric(), Size = numeric(), "mean L" = numeric(), "mean ps" = numeric(), diff = numeric())
+
+normalize_version = "coalition_size"
+normalize_version = "coalition"
 
 m_idx = 1
 for (m_idx in seq_along(m_seq)) {
@@ -77,27 +81,34 @@ for (m_idx in seq_along(m_seq)) {
   n <- sapply(n_features, choose, n = m)
   ps = shapr:::shapley_weights(m = m, N = n, n_features) / sum_shapley_weights(m)
 
-  # Read in the files
-  file_names = list.files(folder_save, pattern = "Sequence_length_M_20_rep_")
-  # file_names = file_names[1:2]
+  if (several_files) {
+    # Read in the files
+    file_names = list.files(folder_save, pattern = "Sequence_length_M_20_rep_")
+    # file_names = file_names[1:2]
 
-  if (length(file_names) == 0) stop("No files")
-  tmp = readRDS(file.path(folder_save, file_names[1]))
-  dt = copy(tmp$dt)#[N_S %% 2 == 0, ]
-  dt_avg = copy(tmp$dt_avg)#[N_S %% 2 == 0, ]
+    if (length(file_names) == 0) stop("No files")
+    tmp = readRDS(file.path(folder_save, file_names[1]))
+    dt = copy(tmp$dt[N_S %% 2 == 0, ])
+    dt_avg = copy(tmp$dt_avg[N_S %% 2 == 0, ])
 
-  #dt[, .(L_avg = mean(L)), by = .(N_S)]
-  if (length(file_names) > 1) {
-    file_name_idx = 1
-    for (file_name_idx in seq_along(file_names[-1])) {
-      file_name = file_names[-1][file_name_idx]
-      message(file_name)
-      tmp2 = readRDS(file.path(folder_save, file_name))
-      #dt = rbind(dt, tmp2$dt[N_S %% 2 == 0, ])
-      dt = rbind(dt, tmp2$dt)
-      # dt_avg[, L_avg := L_avg + (tmp2$dt_avg[N_S %% 2 == 0, L_avg] - L_avg) / (file_name_idx + 1)]
-      dt_avg[, L_avg := L_avg + (tmp2$dt_avg[, L_avg] - L_avg) / (file_name_idx + 1)]
+    #dt[, .(L_avg = mean(L)), by = .(N_S)]
+    if (length(file_names) > 1) {
+      file_name_idx = 1
+      for (file_name_idx in seq_along(file_names[-1])) {
+        file_name = file_names[-1][file_name_idx]
+        message(file_name)
+        tmp2 = readRDS(file.path(folder_save, file_name))
+        dt = rbind(dt, tmp2$dt[N_S %% 2 == 0, ])
+        #dt = rbind(dt, tmp2$dt)
+        dt_avg[, L_avg := L_avg + (tmp2$dt_avg[N_S %% 2 == 0, L_avg] - L_avg) / (file_name_idx + 1)]
+        #dt_avg[, L_avg := L_avg + (tmp2$dt_avg[, L_avg] - L_avg) / (file_name_idx + 1)]
+      }
     }
+
+  } else {
+    file = readRDS(file.path(folder_save, paste0("Sequence_length_M_", m, ".rds")))
+    dt = copy(file$dt)
+    dt_avg = copy(file$dt_avg)
   }
 
 
@@ -114,9 +125,11 @@ for (m_idx in seq_along(m_seq)) {
   message("E[L]")
   dt_L_avg = data.table(N_S = dt_avg$N_S[dt_avg$N_S %% 2 == 0],
                         type = "mean",
-                        t(sapply(dt_avg$L_avg[seq(2, length(dt_avg$L_avg), 2)], function(L) {
+                        #t(sapply(dt_avg$L_avg[seq(2, length(dt_avg$L_avg), 2)], function(L) {
+                        t(sapply(dt_avg$L_avg, function(L) {
                           pstilde = 2*ps / (1 - (1 - 2*ps)^(L/2))
-                          pstilde = pstilde / sum(pstilde)
+                          if (normalize_version == "coalition") pstilde = pstilde / sum(pstilde * n)
+                          if (normalize_version == "coalition_size") pstilde = pstilde / sum(pstilde)
                           pstilde
                         })))
   setnames(dt_L_avg, old = paste0("V", n_features), new = paste(n_features))
@@ -139,7 +152,7 @@ for (m_idx in seq_along(m_seq)) {
   message("SAVE 1")
   dt_L_avg_long_lower_tmp = copy(dt_L_avg_long_lower)[, version := "mean L"]
   dt_L_avg_long_lower_tmp[, version := as.factor(version)]
-  saveRDS(dt_L_avg_long_lower_tmp, file.path(folder_save, paste0("Sequence_length_M_", m, "_combined.rds")))
+  saveRDS(dt_L_avg_long_lower_tmp, file.path(folder_save, paste0("Sequence_length_M_", m, "_normalized_", normalize_version, "_combined.rds")))
 
 
   ### Get the average pstilde values
@@ -163,7 +176,9 @@ for (m_idx in seq_along(m_seq)) {
         # Iterate over all values of L and compute the corresponding ps values
         ps_hat <- t(vapply(dt[N_S == N_S_now, L], function(L_now) {
           pstilde <- 2 * ps / (1 - (1 - 2 * ps)^(L_now / 2))
-          return(pstilde / sum(pstilde))
+          if (normalize_version == "coalition") pstilde = pstilde / sum(pstilde * n)
+          if (normalize_version == "coalition_size") pstilde = pstilde / sum(pstilde)
+          return(pstilde)
         }, numeric(length(ps))))
         # Create a data table with the mean, 2.5% percentile, median, and 97.5% percentile
         data.table(type = c("mean", "lower", "median", "upper"),
@@ -189,7 +204,7 @@ for (m_idx in seq_along(m_seq)) {
   #              rbind(colMeans(ps_hat), apply(ps_hat, 2, quantile, probs = c(0.025, 0.5, 0.975))))
   # }),
   # use.names = TRUE, idcol = "N_S")
-  dt_ps[, N_S := rep(seq(2, dt[, max(N_S)], 2), each = 4)]
+  dt_ps[, N_S := rep(N_S_now_arr, each = 4)]
   setnames(dt_ps, old = paste0("V", n_features), new = paste(n_features))
 
   # old version without quantiles
@@ -222,7 +237,7 @@ for (m_idx in seq_along(m_seq)) {
   dt_combined_ps = rbind(copy(dt_ps_long_lower)[, version := "mean ps"],
                          copy(dt_L_avg_long_lower)[, version := "mean L"])
   dt_combined_ps[, version := as.factor(version)]
-  saveRDS(dt_combined_ps, file.path(folder_save, paste0("Sequence_length_M_", m, "_combined.rds")))
+  saveRDS(dt_combined_ps, file.path(folder_save, paste0("Sequence_length_M_", m, "_normalized_", normalize_version, "_combined.rds")))
   if (length(m_seq) > 1) dt_combined = rbind(dt_combined, dt_combined_ps)
 
   ### Difference
@@ -236,6 +251,6 @@ for (m_idx in seq_along(m_seq)) {
   message("Save")
   # Save to disk
   # saveRDS(dt_combined_ps, file.path(folder_save, paste0("Sequence_length_M_", m, "_combined.rds")))
-  saveRDS(dt_diff_now, file.path(folder_save, paste0("Sequence_length_M_", m, "_diff.rds")))
+  saveRDS(dt_diff_now, file.path(folder_save, paste0("Sequence_length_M_", m, "_normalized_", normalize_version, "_diff.rds")))
 }
 
