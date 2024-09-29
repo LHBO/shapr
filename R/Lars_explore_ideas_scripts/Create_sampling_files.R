@@ -295,5 +295,10 @@ for (repetition in repetitions) {
 
 # Rscript Create_sampling_files.R 20 paired 26
 
+# Rscript Create_sampling_files.R 20 paired 101:125
+# Rscript Create_sampling_files.R 20 unique 101:125
+# Rscript Create_sampling_files.R 20 paired 126:150
+# Rscript Create_sampling_files.R 20 unique 126:150
+
 
 
