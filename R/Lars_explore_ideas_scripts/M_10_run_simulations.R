@@ -327,7 +327,7 @@ n_train = 1000
 n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)[seq(M+1)]
 weight_zero_m = 10^6
-n_combinations_array = seq(4, 2^M-2, 2)
+n_combinations_array = seq(4, 2^M-4, 2)
 verbose_now = FALSE
 
 # Create list of all feature combinations
@@ -424,6 +424,7 @@ for (rho_idx in seq_along(rhos)) {
       presampled_coalitions_KernelSHAP = readRDS(presampled_coalitions_KernelSHAP)
     } else {
       presampled_coalitions_KernelSHAP = NULL
+      stop("`presampled_coalitions_KernelSHAP` does not exist")
     }
     # print(presampled_coalitions_KernelSHAP)
     message("Done loading presampled coalitions KernelSHAP")
