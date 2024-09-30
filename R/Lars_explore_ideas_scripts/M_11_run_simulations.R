@@ -357,7 +357,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = seq(10)
 }
 
-# Rscript M_11_run_simulations.R 1:250
+# Rscript M_11_run_simulations.R 1:250 labbu
 # Rscript M_11_run_simulations.R 251:500
 
 # Rscript M_11_run_simulations.R 1:100
@@ -534,8 +534,7 @@ for (repetition_idx in seq_along(repetitions)) {
 
 
   # Data.table to store the results for this repetition
-  MAE_dt = data.table("Rho" = rho,
-                      "Repetition" = repetition,
+  MAE_dt = data.table("Repetition" = repetition,
                       "N_S" = n_combinations_array,
                       "Unique" = NaN,
                       "Paired" = NaN,
@@ -556,8 +555,7 @@ for (repetition_idx in seq_along(repetitions)) {
                       #"Paired KernelSHAP C-Kernel" = NaN,
                       "Paired KernelSHAP CEL-Kernel" = NaN)
   if (only_KernelSHAP) {
-    MAE_dt = data.table("Rho" = rho,
-                        "Repetition" = repetition,
+    MAE_dt = data.table("Repetition" = repetition,
                         "N_S" = n_combinations_array,
                         "KernelSHAP" = NaN,
                         "KernelSHAP Average" = NaN,
