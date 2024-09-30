@@ -329,6 +329,7 @@ betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 
 weight_zero_m = 10^6
 n_combinations_array = seq(4, 2^M-4, 2)
 verbose_now = FALSE
+only_KernelSHAP = TRUE
 
 # Create list of all feature combinations
 all_coalitions = unlist(lapply(0:M, utils::combn, x = M, simplify = FALSE), recursive = FALSE)
@@ -390,33 +391,34 @@ for (rho_idx in seq_along(rhos)) {
 
 
 
+    if (!only_KernelSHAP) {
+      message("Loading presampled coalitions unique")
+      presampled_coalitions_unique = file.path(folder_save_2, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
+      if (file.exists(presampled_coalitions_unique)) {
+        presampled_coalitions_unique = readRDS(presampled_coalitions_unique)
+      } else {
+        presampled_coalitions_unique = NULL
+      }
+      message("Done loading presampled coalitions unique")
 
-    message("Loading presampled coalitions unique")
-    presampled_coalitions_unique = file.path(folder_save_2, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
-    if (file.exists(presampled_coalitions_unique)) {
-      presampled_coalitions_unique = readRDS(presampled_coalitions_unique)
-    } else {
-      presampled_coalitions_unique = NULL
-    }
-    message("Done loading presampled coalitions unique")
+      message("Loading presampled coalitions paired")
+      presampled_coalitions_paired = file.path(folder_save_2, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds"))
+      if (file.exists(presampled_coalitions_paired)) {
+        presampled_coalitions_paired = readRDS(presampled_coalitions_paired)
+      } else {
+        presampled_coalitions_paired = NULL
+      }
+      message("Done loading presampled coalitions paired")
 
-    message("Loading presampled coalitions paired")
-    presampled_coalitions_paired = file.path(folder_save_2, paste0("Paired_sampling_M_", M, "_repetition_", repetition, ".rds"))
-    if (file.exists(presampled_coalitions_paired)) {
-      presampled_coalitions_paired = readRDS(presampled_coalitions_paired)
-    } else {
-      presampled_coalitions_paired = NULL
+      message("Loading presampled coalitions largest")
+      presampled_coalitions_largest = file.path(folder_save_2, paste0("Largest_random_sampling_M_", M, "_repetition_", repetition, ".rds"))
+      if (file.exists(presampled_coalitions_largest)) {
+        presampled_coalitions_largest = readRDS(presampled_coalitions_largest)
+      } else {
+        presampled_coalitions_largest = NULL
+      }
+      message("Done loading presampled coalitions largest")
     }
-    message("Done loading presampled coalitions paired")
-
-    message("Loading presampled coalitions largest")
-    presampled_coalitions_largest = file.path(folder_save_2, paste0("Largest_random_sampling_M_", M, "_repetition_", repetition, ".rds"))
-    if (file.exists(presampled_coalitions_largest)) {
-      presampled_coalitions_largest = readRDS(presampled_coalitions_largest)
-    } else {
-      presampled_coalitions_largest = NULL
-    }
-    message("Done loading presampled coalitions largest")
 
     message("Loading presampled coalitions KernelSHAP")
     presampled_coalitions_KernelSHAP = file.path(folder_save_KernelSHAP, paste0("KernelSHAP_sampling_M_", M, "_repetition_", repetition, ".rds"))
@@ -447,6 +449,15 @@ for (rho_idx in seq_along(rhos)) {
                         "KernelSHAP Average" = NaN,
                         #"KernelSHAP C-Kernel" = NaN,
                         "KernelSHAP CEL-Kernel" = NaN)
+    if (only_KernelSHAP) {
+      MAE_dt = data.table("Rho" = rho,
+                          "Repetition" = repetition,
+                          "N_S" = n_combinations_array,
+                          "KernelSHAP" = NaN,
+                          "KernelSHAP Average" = NaN,
+                          #"KernelSHAP C-Kernel" = NaN,
+                          "KernelSHAP CEL-Kernel" = NaN)
+    }
 
 
     n_combination_idx = 500
@@ -461,7 +472,7 @@ for (rho_idx in seq_along(rhos)) {
 
       ## Unique ----------------------------------------------------------------------------------------------------------
       if (verbose_now) message("Unique")
-      {
+      if (!only_KernelSHAP) {
 
         # sampling_methods = "unique" #c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")
         # Get the n_combinations coalitions to include
@@ -484,7 +495,7 @@ for (rho_idx in seq_along(rhos)) {
       ## Paired ----------------------------------------------------------------------------------------------------------
       # Paired, average, kernel, c-kernel, cel-kernel
       if (verbose_now) message("Paired")
-      {
+      if (!only_KernelSHAP) {
 
         # Get the n_combinations coalitions to include
         presampled_coalitions =
@@ -592,7 +603,7 @@ for (rho_idx in seq_along(rhos)) {
 
       ## Paired Imp ------------------------------------------------------------------------------------------------------
       if (verbose_now) message("Paired Imp")
-      {
+      if (!only_KernelSHAP) {
         # Get the features to include
         presampled_coalitions = all_coalitions[sort(presampled_coalitions_largest[seq(n_combination)])]
 
@@ -712,7 +723,7 @@ for (rho_idx in seq_along(rhos)) {
               compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
 
             # Get the MAE between the approximated and full Shapley values
-            MAE_dt[n_combination_idx, "kernelSHAP Average" := mean(abs(dt_true_mat - as.matrix(dt_kernelSHAP_average[,-1])))]
+            MAE_dt[n_combination_idx, "KernelSHAP Average" := mean(abs(dt_true_mat - as.matrix(dt_kernelSHAP_average[,-1])))]
           }
 
           # # C-kernel
@@ -759,15 +770,17 @@ for (rho_idx in seq_along(rhos)) {
           }
 
         }
-
-
       }
 
       if (verbose_now) print(MAE_dt[n_combination_idx,])
 
       # Save the results
       if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
-        saveRDS(MAE_dt, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+        if (only_KernelSHAP) {
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+        } else {
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+        }
       }
 
     } # End n_combinations
@@ -785,10 +798,19 @@ for (rho_idx in seq_along(rhos)) {
     #   )
 
     # Save the results and remove tmp file
-    saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
-    if (file.exists(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
-      file.remove(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+    if (only_KernelSHAP) {
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP.rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+      }
+
+    } else {
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+      }
     }
+
 
   } # End repetition
 } # End rho
