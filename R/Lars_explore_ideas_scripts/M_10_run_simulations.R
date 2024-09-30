@@ -277,6 +277,11 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 }
 
 
+# Rscript M_10_run_simulations.R 0.0 TRUE 500:330 adonis
+# Rscript M_10_run_simulations.R 0.2 TRUE 500:330 adroa
+# Rscript M_10_run_simulations.R 0.5 TRUE 500:330 aload
+# Rscript M_10_run_simulations.R 0.9 TRUE 500:330 carpo
+
 
 # Rscript M_10_run_simulations.R 0.0 TRUE 1:250 sumeru X
 # Rscript M_10_run_simulations.R 0.0 TRUE 251:500 nyx
@@ -1050,7 +1055,10 @@ if (FALSE) {
                 #"Paired Imp CEPS-Kernel",
                 "KernelSHAP",
                 "KernelSHAP Average",
-                "KernelSHAP CEL-Kernel"
+                "KernelSHAP CEL-Kernel",
+                "Paired KernelSHAP",
+                "Paired KernelSHAP Average",
+                "Paired KernelSHAP CEL-Kernel"
   )
 
   strat_MAE_final = c("Unique",
@@ -1173,16 +1181,20 @@ if (FALSE) {
                # "Paired Average",
                 "Paired Kernel",
                 "Paired C-Kernel",
+               "Paired Imp CEL-Kernel",
                 "KernelSHAP",
                 "KernelSHAP Average",
-                "KernelSHAP CEL-Kernel"
+                "KernelSHAP CEL-Kernel",
+               "Paired KernelSHAP",
+               "Paired KernelSHAP Average",
+               "Paired KernelSHAP CEL-Kernel"
   )
 
   M_10_fig_MAE =
     ggplot(res_MAE[Strategy %in% strat_MAE_small], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
-    geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
+    #geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
     geom_line(linewidth = 0.65) +
     scale_x_continuous(labels = scales::label_number()) +
     scale_y_log10(
