@@ -328,7 +328,7 @@ n_train = 1000
 n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)[seq(M+1)]
 weight_zero_m = 10^6
-n_combinations_array = seq(4, 2^M-4, 2)
+n_combinations_array = seq(4, 2^M-2, 2)
 verbose_now = FALSE
 only_KernelSHAP = TRUE
 
