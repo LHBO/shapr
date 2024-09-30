@@ -114,8 +114,11 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   # Fix the weights according to the technique in KernelSHAP
   print("hei1")
   if (version_scaled) {
+    print(prefixed_coalition)
     num_full_subsets = length(prefixed_coalitions[.N - 1, features][[1]]) # This relies on the list version
+    print("hei11")
     weight_left = sum(weight_vector[-seq(num_full_subsets)])
+    print("hei11")
     dt_freq[, shapley_weight := shapley_weight * weight_left / sum(shapley_weight)]
   }
 
