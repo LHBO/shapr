@@ -358,7 +358,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 }
 
 # Rscript M_11_run_simulations.R 1:250 labbu
-# Rscript M_11_run_simulations.R 251:500
+# Rscript M_11_run_simulations.R 251:500 metis
 
 # Rscript M_11_run_simulations.R 1:100
 # Rscript M_11_run_simulations.R 101:200
