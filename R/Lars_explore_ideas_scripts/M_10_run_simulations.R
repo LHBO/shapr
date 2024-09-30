@@ -921,8 +921,23 @@ if (FALSE) {
                 "Paired CEL-Kernel",
                 #"Paired CEPS-Kernel",
                 "Paired Imp C-Kernel",
-                "Paired Imp CEL-Kernel"
-                #"Paired Imp CEPS-Kernel"
+                "Paired Imp CEL-Kernel",
+                #"Paired Imp CEPS-Kernel",
+                "KernelSHAP",
+                "KernelSHAP Average",
+                "KernelSHAP CEL-Kernel"
+  )
+
+  strat_MAE_final = c("Unique",
+                      "Paired",
+                      "Paired Average",
+                      "Paired Kernel",
+                      "Paired C-Kernel",
+                      "Paired CEL-Kernel",
+                      #"Paired CEPS-Kernel",
+                      "Paired Imp C-Kernel",
+                      "Paired Imp CEL-Kernel"
+                      #"Paired Imp CEPS-Kernel",
   )
 
   # Strategies in the relative difference plot
@@ -930,20 +945,57 @@ if (FALSE) {
   strat_rel_diff = c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel")
   strat_rel_diff_reference = c("Paired C-Kernel")
 
+  # # Load the MAE data
+  # res = data.table::rbindlist(
+  #   lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
+  #     message(rho)
+  #     data.table::rbindlist(
+  #       lapply(seq(n_repetitions), function(repetition) {
+  #         file_name = paste("Gompertz_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+  #                           "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+  #         file_name = file.path(folder_save, "M_10_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+  #         if (!file.exists(file_name)) return(NULL)
+  #         # print(file_name)
+  #         readRDS(file_name)
+  #       }))
+  #   }))
+
   # Load the MAE data
   res = data.table::rbindlist(
     lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
-      message(rho)
-      data.table::rbindlist(
+      dt_now_tmp = data.table::rbindlist(
         lapply(seq(n_repetitions), function(repetition) {
-          file_name = paste("Gompertz_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
-                            "betas", paste(as.character(betas), collapse = "_"), sep = "_")
-          file_name = file.path(folder_save, "M_10_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+          #if (repetition %in% c(5,6)) return(NULL)
+          file_name_org = paste("Gompertz_Xgboost_M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                                "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+          file_name = file.path(folder_save, "M_10_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, ".rds"))
+          file_name_2 = file.path(folder_save, "M_10_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_KernelSHAP.rds"))
           if (!file.exists(file_name)) return(NULL)
-          # print(file_name)
-          readRDS(file_name)
+          if (!file.exists(file_name_2)) return(NULL)
+          print(file_name)
+          file_read = readRDS(file_name)
+
+
+          if (any(strat_MAE %in% c("KernelSHAP",
+                                   "KernelSHAP Average",
+                                   "KernelSHAP CEL-Kernel"))) {
+            if (file.exists(file_name_2)) {
+              file_read = rbind(file_read, readRDS(file_name_2))
+            }
+          }
+          return(file_read)
         }))
+      dt_now_tmp_unique = data.table(old = unique(dt_now_tmp$Repetition))[, new := .I]
+
+      DT <- merge(dt_now_tmp, dt_now_tmp_unique, by.x = "Repetition", by.y = "old", all.x = TRUE)
+      DT[, Repetition := ifelse(is.na(new), Repetition, new)]
+      DT[, new := NULL]
+      return(DT)
     }))
+
+  # Ensure the same number of repetitions
+  n_repetitions = res[, max(Repetition), by = Rho][, min(V1)]
+  res = res[Repetition <= n_repetitions]
 
   # Values to skip
   N_S_skip = c(1022)
@@ -956,7 +1008,7 @@ if (FALSE) {
                 by = c("Rho", "N_S", "Strategy")]
 
   M_10_fig_MAE =
-    ggplot(res_MAE, aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+    ggplot(res_MAE[Strategy %in% strat_MAE_final], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
@@ -987,6 +1039,46 @@ if (FALSE) {
          height = 9,
          scale = 0.85,
          dpi = 350)
+
+
+  ## KernelSHAP ------------------------------------------------------------------------------------------------------
+  strat_MAE_small = c("Unique",
+                "Paired",
+                "Paired Average",
+                "Paired Kernel",
+                "Paired C-Kernel",
+                "KernelSHAP",
+                "KernelSHAP Average",
+                "KernelSHAP CEL-Kernel"
+  )
+
+  M_10_fig_MAE =
+    ggplot(res_MAE[Strategy %in% strat_MAE_small], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+    geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
+    geom_line(linewidth = 0.65) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
+         x = expression(N[S]),
+         y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.6)),
+          axis.text = element_text(size = rel(1.5)))
+  # scale_color_manual(values = colors) +
+  # scale_fill_manual(values = colors)
+  #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
+  M_10_fig_MAE
+
+
 
   ## Relative diff ---------------------------------------------------------------------------------------------------
   # Compute the relative error for each n_combination and repetition, and then compute mean, lower and upper values

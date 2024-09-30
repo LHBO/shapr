@@ -72,6 +72,91 @@ compute_SV_values = function(X_now, dt_all_coalitions, dt_vS, shap_names) {
   return(dt_kshap)
 }
 
+create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
+                                  dt_all_coalitions, weight_zero_m = 10^6, version_scaled = TRUE) {
+  # regular, average, c-kernel, cel-kernel
+
+  # Find weights for given number of features
+  n_features <- seq(m - 1)
+  n <- sapply(n_features, choose, n = m)
+  w <- shapr:::shapley_weights(m = m, N = n, n_features) * n
+  p <- w / sum(w)
+
+  # Weight the different coalition sizes (KernelSHAP version)
+  num_subset_sizes = as.integer(ceiling((M - 1) / 2))
+  num_paired_subset_sizes = as.integer(floor((M - 1) / 2))
+  weight_vector = sapply(seq(num_subset_sizes), function(i) (M - 1.0) / (i * (M - i)))
+  weight_vector[seq(num_paired_subset_sizes)] = 2*weight_vector[seq(num_paired_subset_sizes)]
+  weight_vector = weight_vector / sum(weight_vector)
+
+  # Get the sampled coalitions for which we have to compute the frequencies
+  if (!is.null(prefixed_coalitions)) {
+    presampled_coal_wo_prefixed_coal = presampled_coalitions[-seq(nrow(prefixed_coalitions))]
+  } else {
+    presampled_coal_wo_prefixed_coal = presampled_coalitions
+  }
+
+  # String version
+  # Insert all sampled coalitions into a data table and find their frequencies
+  dt_freq = data.table::data.table(features = presampled_coal_wo_prefixed_coal)[, .(shapley_weight = .N), by = features]
+
+  # Fix the weights according to the technique in KernelSHAP
+  if (version_scaled) {
+    if (is.null(prefixed_coalitions)) {
+      num_full_subsets = 0
+      weight_left = sum(weight_vector)
+    } else {
+      num_full_subsets = length(prefixed_coalitions[.N - 1, features][[1]]) # This relies on the list version
+      weight_left = sum(weight_vector[-seq(num_full_subsets)])
+    }
+    dt_freq[, shapley_weight := shapley_weight * weight_left / sum(shapley_weight)]
+  }
+
+  # Convert the list column to a comma-separated string for each row
+  if (!is.null(prefixed_coalitions)) {
+    prefixed_coalitions[, features := sapply(features, function(x) paste(unlist(x), collapse = ","))]
+    setnames(prefixed_coalitions, "w", "shapley_weight")
+  }
+
+  # Put together with the prefixed samples
+  dt_freq = rbind(prefixed_coalitions, dt_freq)
+
+  # Get the number of features in each coalition
+  dt_freq[, n_features := stringr::str_count(features, ",") + 1]
+
+  # Add the number of coalitions of each size
+  dt_freq[, N := n[n_features]]
+  dt_freq[, p := p[n_features]]
+
+  # Get the id_combination if we had used all combinations
+  dt_freq[, id_combination_full := dt_all_coalitions[dt_freq, id, on = "features"]]
+
+  # Convert from string to list of integer vectors. stringr is faster than base and stringi
+  dt_freq[, features := lapply(stringr::str_split(features, ','), as.integer)]
+
+  # Add the empty and grand coalitions
+  dt_freq = rbindlist(
+    list(
+      data.table(features = list(integer(0)), shapley_weight = weight_zero_m, n_features = 0L, N = 1L, p = NA, id_combination_full = 1),
+      dt_freq,
+      data.table(features = list(1:m), shapley_weight = weight_zero_m, n_features = as.integer(m), N = 1L,  p = NA, id_combination_full = 2^m)
+    )
+  )
+  data.table::setorder(dt_freq, "id_combination_full")
+  dt_freq[, id_combination := .I]
+  data.table::setcolorder(dt_freq, c("id_combination", "id_combination_full", "features", "n_features", "N", "shapley_weight", "p"))
+  # dt_freq
+
+  # Optional to match the old setup
+  dt_freq[, N := as.integer(N)]
+  dt_freq[, n_features := as.integer(n_features)]
+
+  # plot(dt_freq[-c(1, .N), id_combination_full], dt_freq[-c(1, .N), shapley_weight])
+  #
+  # dt_freq[, sum(shapley_weight), by = N][-1]
+  return(dt_freq)
+}
+
 create_X_dt_unique_and_paired = function(m, presampled_coalitions, dt_all_coalitions, weight_zero_m = 10^6) {
 
   # Find weights for given number of features
@@ -222,6 +307,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
   folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   folder_save_2 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_KernelSHAP = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # To be added
@@ -231,6 +317,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
   folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location"
   folder_save_2 = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_2"
+  folder_save_KernelSHAP = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
@@ -246,6 +333,9 @@ n_train = 1000
 n_test = 250
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)
 weight_zero_m = 10^6
+
+verbose_now = TRUE
+only_KernelSHAP = TRUE
 
 if (M == 20) {
   n_combinations_array = c(seq(10, 200, 10), 250, 500, 750, seq(1000, 9000, 1000), c(seq(10000, 1040000, 10000), seq(1040000, 1048000, 1000)))
@@ -366,7 +456,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
 
-
+    if (!only_KernelSHAP) {
     message("Loading presampled coalitions unique")
     presampled_coalitions_unique = file.path(folder_save_2, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
     if (file.exists(presampled_coalitions_unique)) {
@@ -393,6 +483,20 @@ for (rho_idx in seq_along(rhos)) {
       presampled_coalitions_largest = NULL
     }
     message("Done loading presampled coalitions largest")
+    }
+
+    message("Loading presampled coalitions KernelSHAP")
+    presampled_coalitions_KernelSHAP = file.path(folder_save_KernelSHAP, paste0("KernelSHAP_sampling_M_", M, "_repetition_", repetition, ".rds"))
+    if (file.exists(presampled_coalitions_KernelSHAP)) {
+      presampled_coalitions_KernelSHAP = readRDS(presampled_coalitions_KernelSHAP)
+    } else {
+      presampled_coalitions_KernelSHAP = NULL
+      stop("`presampled_coalitions_KernelSHAP` does not exist")
+    }
+    # print(presampled_coalitions_KernelSHAP)
+    message("Done loading presampled coalitions KernelSHAP")
+
+
 
     # Data.table to store the results for this repetition
     MAE_dt = data.table("Rho" = rho,
@@ -404,11 +508,24 @@ for (rho_idx in seq_along(rhos)) {
                         "Paired Kernel" = NaN,
                         "Paired C-Kernel" = NaN,
                         "Paired CEL-Kernel" = NaN,
-                        #"Paired CEPS-Kernel" = NaN,
+                        "Paired CEPS-Kernel" = NaN,
                         "Paired Imp C-Kernel" = NaN,
-                        "Paired Imp CEL-Kernel" = NaN
-                        #"Paired Imp CEPS-Kernel" = NaN
-                        )
+                        "Paired Imp CEL-Kernel" = NaN,
+                        "Paired Imp CEPS-Kernel" = NaN,
+                        "KernelSHAP" = NaN,
+                        "KernelSHAP Average" = NaN,
+                        #"KernelSHAP C-Kernel" = NaN,
+                        "KernelSHAP CEL-Kernel" = NaN)
+
+    if (only_KernelSHAP) {
+      MAE_dt = data.table("Rho" = rho,
+                          "Repetition" = repetition,
+                          "N_S" = n_combinations_array,
+                          "KernelSHAP" = NaN,
+                          "KernelSHAP Average" = NaN,
+                          #"KernelSHAP C-Kernel" = NaN,
+                          "KernelSHAP CEL-Kernel" = NaN)
+    }
 
 
     n_combination_idx = 123
@@ -465,8 +582,8 @@ for (rho_idx in seq_along(rhos)) {
 
 
       ## Unique ----------------------------------------------------------------------------------------------------------
-      message("Unique")
-      {
+      if (verbose_now) message("Unique")
+      if (!only_KernelSHAP) {
 
         # sampling_methods = "unique" #c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")
         # Get the n_combinations coalitions to include
@@ -488,8 +605,8 @@ for (rho_idx in seq_along(rhos)) {
 
       ## Paired ----------------------------------------------------------------------------------------------------------
       # Paired, average, kernel, c-kernel, cel-kernel
-      message("Paired")
-      {
+      if (verbose_now) message("Paired")
+      if (!only_KernelSHAP) {
 
         # Get the n_combinations coalitions to include
         presampled_coalitions =
@@ -596,8 +713,8 @@ for (rho_idx in seq_along(rhos)) {
 
 
       ## Paired Imp ------------------------------------------------------------------------------------------------------
-      message("Paired Imp")
-      {
+      if (verbose_now) message("Paired Imp")
+      if (!only_KernelSHAP) {
         # Get the features to include
         presampled_coalitions = all_coalitions[sort(presampled_coalitions_largest[seq(n_combination)])]
 
@@ -657,17 +774,125 @@ for (rho_idx in seq_along(rhos)) {
           #
           # # Get the MAE between the approximated and full Shapley values
           # MAE_dt[n_combination_idx, "Paired Imp CEPS-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_imp_ceps_kernel[,-1])))]
-
-
         }
 
       }
 
-      print(MAE_dt[n_combination_idx,])
+      ## KernelSHAP ------------------------------------------------------------------------------------------------------
+      # Paired, average, kernel, c-kernel, cel-kernel
+      if (verbose_now) message("KernelSHAP")
+      {
+
+        # Figure out which list to look at
+        dt_id = presampled_coalitions_KernelSHAP$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+
+        # Get the n_combinations coalitions to include
+        to_this_index = presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
+        presampled_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$all_coalitions_small[seq(to_this_index)])
+        prefixed_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_res)
+
+        # Get the X data.table
+        X_now = create_X_dt_KernelSHAP(m = m,
+                                       presampled_coalitions = presampled_coalitions,
+                                       prefixed_coalitions = copy(prefixed_coalitions),
+                                       dt_all_coalitions = dt_all_coalitions,
+                                       version_scaled = TRUE)
+
+        # # Get the X data.table
+        # X_now_int = create_X_dt_KernelSHAP(m = m,
+        #                                presampled_coalitions = presampled_coalitions,
+        #                                prefixed_coalitions = copy(prefixed_coalitions),
+        #                                dt_all_coalitions = dt_all_coalitions,
+        #                                version_scaled = FALSE)
+
+        # "KernelSHAP" = NaN,
+        # "KernelSHAP Average" = NaN,
+        # "KernelSHAP C-Kernel" = NaN,
+        # "KernelSHAP CEL-Kernel" = NaN
+
+        # Default version
+        {
+          # Compute the approximated Shapley values
+          dt_KernelSHAP =
+            compute_SV_values(X_now = X_now, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "KernelSHAP" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP[,-1])))]
+        }
+
+        # Average
+        {
+          X_now_copy = copy(X_now)
+          #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+          X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
+
+          # Average the weights on the coalition sizes
+          shapley_reweighting(X = X_now_copy, reweight = "on_N")
+          #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+
+          # Compute the approximated Shapley values
+          dt_kernelSHAP_average =
+            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "KernelSHAP Average" := mean(abs(dt_true_mat - as.matrix(dt_kernelSHAP_average[,-1])))]
+        }
+
+        # # C-kernel
+        # {
+        #   X_now_copy = copy(X_now)
+        #
+        #   # Insert the corrected Shapley kernel weights
+        #   shapley_reweighting(X = X_now_copy, reweight = "on_all_cond_paired")
+        #
+        #   # Compute the approximated Shapley values
+        #   dt_kshap_paired_c_kernel =
+        #     compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+        #
+        #   # Get the MAE between the approximated and full Shapley values
+        #   MAE_dt[n_combination_idx, "Paired C-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_c_kernel[,-1])))]
+        # }
+
+        # CEL-kernel
+        {
+          X_now_copy = copy(X_now)
+          X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
+
+          # Get the weights
+          dt_new_weights = copy(dt_new_weights_sequence)
+
+          # Find the weights of the combination closest to n_combinations
+          n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
+          dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
+          dt_new_weights_now[, Size := .I]
+          setnames(dt_new_weights_now, "Size", "n_features")
+
+
+          # EXPECTED E[L]
+          # Update the weights with the provided weights for each coalition size
+          X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_L"))]
+
+          # Compute the approximated Shapley values
+          dt_KernelSHAP_cel_kernel =
+            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "KernelSHAP CEL-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP_cel_kernel[,-1])))]
+        }
+
+      }
+
+
+      if (verbose_now) print(MAE_dt[n_combination_idx,])
 
       # Save the results
       if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
-        saveRDS(MAE_dt, file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+        if (only_KernelSHAP) {
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+        } else {
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+        }
       }
 
     } # End n_combinations
@@ -685,9 +910,17 @@ for (rho_idx in seq_along(rhos)) {
     #   )
 
     # Save the results and remove tmp file
-    saveRDS(MAE_dt_long, file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
-    if (file.exists(file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
-      file.remove(file.path(folder_save, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+    if (only_KernelSHAP) {
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP.rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+      }
+
+    } else {
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+      }
     }
 
   } # End repetition
@@ -702,6 +935,7 @@ if (FALSE) {
   library(ggpubr)
   library(data.table)
   folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_2 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_MAE"
   rhos = c(0.0, 0.2, 0.5, 0.9)
 
   ## Histogram -------------------------------------------------------------------------------------------------------
@@ -790,7 +1024,7 @@ if (FALSE) {
   n_cumsum = (cumsum(n) + 2) + 0.5
 
   # Number of repetitions
-  n_repetitions = 25
+  n_repetitions = 150
 
   # List the strategies to create the MAE plot for
   strat_MAE = c("Unique",
@@ -808,24 +1042,72 @@ if (FALSE) {
   # Strategies in the relative difference plot
   strat_rel_diff = c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel")
   strat_rel_diff_reference = c("Paired C-Kernel")
+#
+#   # Load the MAE data
+#   res = data.table::rbindlist(
+#     lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
+#       data.table::rbindlist(
+#         lapply(seq(n_repetitions), function(repetition) {
+#           if (repetition %in% c(5,6,80:82)) return(NULL)
+#           file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+#                             "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+#           file_name = file.path(folder_save, "M_20_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+#           if (!file.exists(file_name)) return(NULL)
+#           print(file_name)
+#           return(readRDS(file_name))
+#         }))
+#     }))
+#
+#   res[Repetition %in% c(4,5,6) & Strategy == "Paired CEL-Kernel" & N_S == 500000 & Rho == 0.5, ]
+#   res[Strategy == "Paired CEL-Kernel" & N_S == 500000 & Rho == 0.5, ]
+#   res[Strategy == "Paired CEL-Kernel" & N_S == 500000 & Rho == 0.9, ]
+#
+#   plot(res[Strategy == "Paired C-Kernel" & N_S == 530000 & Rho == 0.0, MAE])
+#   points(res[Strategy == "Paired CEL-Kernel" & N_S == 530000 & Rho == 0.0, MAE], col = "red")
+#
+#   plot(res[Strategy == "Paired C-Kernel" & N_S == 530000 & Rho == 0.0, MAE] - res[Strategy == "Paired CEL-Kernel" & N_S == 530000 & Rho == 0.0, MAE])
 
   # Load the MAE data
   res = data.table::rbindlist(
     lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
-      data.table::rbindlist(
+      dt_now_tmp = data.table::rbindlist(
         lapply(seq(n_repetitions), function(repetition) {
-          file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
-                            "betas", paste(as.character(betas), collapse = "_"), sep = "_")
-          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+          #if (repetition %in% c(5,6)) return(NULL)
+          file_name_org = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                                "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, ".rds"))
           if (!file.exists(file_name)) return(NULL)
           print(file_name)
-          readRDS(file_name)
+          file_read = readRDS(file_name)
+
+
+          if (any(strat_MAE %in% c("Paired CEPS-Kernel", "Paired Imp CEPS-Kernel"))) {
+            file_name_2 = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_EPS.rds"))
+            if (file.exists(file_name_2)) {
+              file_read = rbind(file_read, readRDS(file_name_2))
+            }
+          }
+          return(file_read)
         }))
+      dt_now_tmp_unique = data.table(old = unique(dt_now_tmp$Repetition))[, new := .I]
+
+      DT <- merge(dt_now_tmp, dt_now_tmp_unique, by.x = "Repetition", by.y = "old", all.x = TRUE)
+      DT[, Repetition := ifelse(is.na(new), Repetition, new)]
+      DT[, new := NULL]
+      return(DT)
     }))
 
+  # Ensure the same number of repetitions
+  n_repetitions = res[, max(Repetition), by = Rho][, min(V1)]
+  res = res[Repetition <= n_repetitions]
+
+
   # Values to skip
+  # N_S_skip = c(10, 20, 1048500)
   N_S_skip = NULL
   res = res[!N_S %in% N_S_skip]
+
+
 
   # Compute the mean, lower, and upper MAE
   res_MAE = res[Strategy %in% strat_MAE, .(MAE_mean = mean(MAE),
@@ -849,18 +1131,18 @@ if (FALSE) {
     guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
-         y = bquote(bar(MAE)[50]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+         y = bquote(bar(MAE)[150]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
     theme(strip.text = element_text(size = rel(1.5)),
-          legend.title = element_text(size = rel(1.8)),
-          legend.text = element_text(size = rel(1.8)),
-          axis.title = element_text(size = rel(1.7)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.6)),
           axis.text = element_text(size = rel(1.5)))
     # scale_color_manual(values = colors) +
     # scale_fill_manual(values = colors)
     #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   M_20_fig_MAE
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_MAE_V1.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_MAE_V_FINAL2.png"),
          plot = M_20_fig_MAE,
          width = 14,
          height = 9,
@@ -882,9 +1164,18 @@ if (FALSE) {
     geom_line(linewidth = 0.65) +
     coord_cartesian(ylim = c(-0.1, 0.2))
 
+  ggplot(res_rel_diff_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+    geom_line(linewidth = 0.65) +
+    coord_cartesian(ylim = c(-0.1, 0.3))
+
+  plot(res_rel_diff_errors[Rho == 0.0 & Strategy == "Paired CEL-Kernel", rel_error_mean])
+  which.max(res_rel_diff_errors[Rho == 0.0 & Strategy == "Paired CEL-Kernel", rel_error_mean])
+
 
   # Compute the bootstrap for relative difference for the MAE_mean
-  boot_repetitions = 100
+  boot_repetitions = 250
 
   res_rel_diff_boot = data.table::rbindlist(
     lapply(seq(boot_repetitions),
@@ -936,14 +1227,221 @@ if (FALSE) {
           axis.text = element_text(size = rel(1.5)))
 
   M_20_fig_relative
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_relative_V1.png"),
-         plot = M_20__fig_relative,
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_relative_V_FINAL2.png"),
+         plot = M_20_fig_relative,
          width = 14.2,
          height = 7,
          scale = 1,
          dpi = 350)
 
 
+
+
+  ## E[L] vs E[pS] ---------------------------------------------------------------------------------------------------
+  # What correlation matrix to use
+  # rho_equi = TRUE
+  rho_equi = FALSE
+  M = m = 20
+  n_train = 1000
+  n_test = 250
+  betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)
+
+  ### MAE -----
+  # Compute the vertical dashed lines
+  n_features <- seq(ceiling((m - 1)/2))
+  n <- sapply(n_features, choose, n = m)
+  n[seq(floor((m - 1)/2))] = 2*n[seq(floor((m - 1)/2))]
+  n_cumsum = (cumsum(n) + 2) + 0.5
+
+  # Number of repetitions
+  n_repetitions = 150
+
+  # List the strategies to create the MAE plot for
+  strat_MAE = c(#"Unique",
+    # "Paired",
+    # "Paired Average",
+    # "Paired Kernel",
+    "Paired C-Kernel",
+    "Paired CEL-Kernel",
+    "Paired CEPS-Kernel",
+    # "Paired Imp C-Kernel",
+    "Paired Imp CEL-Kernel",
+    "Paired Imp CEPS-Kernel"
+  )
+
+  # Strategies in the relative difference plot
+  strat_rel_diff = c("Paired Average", "Paired C-Kernel", "Paired CEL-Kernel", "Paired CEPS-Kernel", "Paired Imp CEL-Kernel", "Paired Imp CEPS-Kernel")
+  strat_rel_diff_reference = c("Paired C-Kernel")
+
+  # Load the MAE data
+  res = data.table::rbindlist(
+    lapply(c(0.0, 0.2, 0.5, 0.9), function(rho) {
+      dt_now_tmp = data.table::rbindlist(
+        lapply(seq(n_repetitions), function(repetition) {
+          #if (repetition %in% c(5,6)) return(NULL)
+          file_name_org = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+                                "betas", paste(as.character(betas), collapse = "_"), sep = "_")
+          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, ".rds"))
+          file_name_2 = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_EPS.rds"))
+          if (!file.exists(file_name)) return(NULL)
+          if (!file.exists(file_name_2)) return(NULL)
+          print(file_name)
+          file_read = readRDS(file_name)
+
+
+          if (any(strat_MAE %in% c("Paired CEPS-Kernel", "Paired Imp CEPS-Kernel"))) {
+            if (file.exists(file_name_2)) {
+              file_read = rbind(file_read, readRDS(file_name_2))
+            }
+          }
+          return(file_read)
+        }))
+      dt_now_tmp_unique = data.table(old = unique(dt_now_tmp$Repetition))[, new := .I]
+
+      DT <- merge(dt_now_tmp, dt_now_tmp_unique, by.x = "Repetition", by.y = "old", all.x = TRUE)
+      DT[, Repetition := ifelse(is.na(new), Repetition, new)]
+      DT[, new := NULL]
+      return(DT)
+    }))
+
+  # Ensure the same number of repetitions
+  n_repetitions = res[, max(Repetition), by = Rho][, min(V1)]
+  res = res[Repetition <= n_repetitions]
+
+
+  # Values to skip
+  # N_S_skip = c(10, 20, 1048500)
+  N_S_skip = NULL
+  res = res[!N_S %in% N_S_skip]
+
+
+
+  # Compute the mean, lower, and upper MAE
+  res_MAE = res[Strategy %in% strat_MAE, .(MAE_mean = mean(MAE),
+                                           MAE_lower = quantile(MAE, 0.025),
+                                           MAE_upper = quantile(MAE, 0.975)),
+                by = c("Rho", "N_S", "Strategy")]
+
+
+  M_20_fig_MAE =
+    ggplot(res_MAE, aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+    geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
+    geom_line(linewidth = 0.65) +
+    scale_x_continuous(labels = scales::label_number()) +
+    scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
+         x = expression(N[S]),
+         y = bquote(bar(MAE)[150]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.5)),
+          legend.text = element_text(size = rel(1.5)),
+          axis.title = element_text(size = rel(1.6)),
+          axis.text = element_text(size = rel(1.5)))
+  # scale_color_manual(values = colors) +
+  # scale_fill_manual(values = colors)
+  #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
+  M_20_fig_MAE
+
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_MAE_EL_vs_EPS.png"),
+         plot = M_20_fig_MAE,
+         width = 14,
+         height = 9,
+         scale = 0.85,
+         dpi = 350)
+
+
+  ### REL -----
+  # Compute the relative error for each n_combination and repetition, and then compute mean, lower and upper values
+  strat_rel_diff = c("Paired CEL-Kernel", "Paired CEPS-Kernel")
+  strat_rel_diff_reference = c("Paired CEL-Kernel")
+
+
+  strat_rel_diff = c("Paired Imp CEL-Kernel", "Paired Imp CEPS-Kernel")
+  strat_rel_diff_reference = c("Paired Imp CEL-Kernel")
+
+  res_rel_diff = copy(res[Strategy %in% strat_rel_diff])
+  res_rel_diff = copy(res[Strategy %in% strat_rel_diff])
+  res_rel_diff[, rel_error := (MAE - MAE[Strategy == strat_rel_diff_reference]) / MAE[Strategy == strat_rel_diff_reference], by = list(Rho, N_S, Repetition)]
+  res_rel_diff_errors = res_rel_diff[, .(rel_error_mean = mean(rel_error),
+                                         rel_error_lower = quantile(rel_error, 0.025),
+                                         rel_error_upper = quantile(rel_error, 0.975)),
+                                     by = c("Rho", "N_S", "Strategy")]
+
+  ggplot(res_rel_diff_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.4, linewidth = 0.1) +
+    geom_line(linewidth = 0.65) +
+    coord_cartesian(ylim = c(-0.01, 0.01))
+
+  # Compute the bootstrap for relative difference for the MAE_mean
+  boot_repetitions = 250
+
+  res_rel_diff_boot = data.table::rbindlist(
+    lapply(seq(boot_repetitions),
+           function(b, res_rel_diff, strat_rel_diff_reference) {
+             message(b)
+
+             # Set seed for reproducibility
+             set.seed(b)
+
+             # Get the bootstrap data table
+             res_rel_diff_boot_now = res_rel_diff[, .SD[sample(n_repetitions, replace = TRUE)], by = .(Rho, N_S, Strategy)]
+
+             # Compute the average MAE
+             res_rel_diff_boot_now = res_rel_diff_boot_now[, .(MAE_mean = mean(MAE)), by = .(Rho, N_S, Strategy)]
+
+             # Compute the relative difference
+             res_rel_diff_boot_now[, rel_error := (MAE_mean - MAE_mean[Strategy == strat_rel_diff_reference]) / MAE_mean[Strategy == strat_rel_diff_reference], by = list(Rho, N_S)]
+           },
+           res_rel_diff = res_rel_diff, strat_rel_diff_reference = strat_rel_diff_reference),
+    use.names = TRUE, idcol = "id_boot")
+
+  # Compute the relative errors for the
+  res_rel_diff_boot_errors = res_rel_diff_boot[, .(rel_error_mean = mean(rel_error),
+                                                   rel_error_lower = quantile(rel_error, 0.025),
+                                                   rel_error_upper = quantile(rel_error, 0.975)),
+                                               by = .(Rho, N_S, Strategy)]
+
+
+  # Plot the results
+  M_20_fig_relative = ggplot(res_rel_diff_boot_errors, aes(x = N_S, y = rel_error_mean, color = Strategy, fill = Strategy)) +
+    facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
+    #coord_cartesian(ylim = c(-0.05, 0.05)) + # FOR REGULAR VERSION
+    coord_cartesian(ylim = c(-0.1, 0.1)) + # FOR REGULAR VERSION
+    #coord_cartesian(ylim = c(-0.15, 0.15)) + # FOR IMP VERSION
+    geom_ribbon(data = res_rel_diff_errors, aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.15, linewidth = 0.4, linetype = "dashed") +
+    geom_ribbon(aes(ymin = rel_error_lower, ymax = rel_error_upper), alpha = 0.6, linewidth = 0.1) +
+    geom_line(aes(linetype = Strategy), linewidth = 1.1) +
+    labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~CEL-Kernel}}{\bar{MAE}_{Paired~CEL-Kernel}}$)')) +
+    #labs(y = latex2exp::TeX(r'($\frac{\bar{MAE}_{Strategy} - \bar{MAE}_{Paired~CEL-Kernel}}{\bar{MAE}_{Paired~Imp~CEL-Kernel}}$)')) +
+    theme(legend.position = 'bottom') +
+    guides(col = guide_legend(nrow = 1, theme = theme(legend.byrow = FALSE)),
+           fill = guide_legend(nrow = 1, theme = theme(legend.byrow = FALSE)),
+           linetype = "none") +
+    labs(color = "Strategy:",
+         fill = "Strategy:",
+         x = expression(N[S])) +
+    scale_x_continuous(labels = scales::label_number()) +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.9)),
+          legend.text = element_text(size = rel(1.9)),
+          axis.title = element_text(size = rel(1.7)),
+          axis.text = element_text(size = rel(1.5)))
+
+  M_20_fig_relative
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_relative_EL_vs_EPS_3.png"),
+         plot = M_20_fig_relative,
+         width = 14.2,
+         height = 7,
+         scale = 1,
+         dpi = 350)
 
 
 
