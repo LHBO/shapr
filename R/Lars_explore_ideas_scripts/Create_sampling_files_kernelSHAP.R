@@ -127,7 +127,7 @@ coalition_sampling_kernelSHAP = function(m,
         message(paste0("(", id_now, "/", id_max, ") ", "Getting the coalition sizes"))
         n_features_sample <- sample(
           x = length(remaining_weight_vector),
-          size = 10000 * samples_left,
+          size = n_sample_scale * samples_left,
           replace = TRUE,
           prob = remaining_weight_vector
         ) + num_full_subsets # Add the num_full_subsets to get the correct coal sizes
