@@ -105,14 +105,17 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   weight_vector = weight_vector / sum(weight_vector)
 
   # Get the sampled coalitions for which we have to compute the frequencies
-  presampled_coal_wo_prefixed_coal = presampled_coalitions[-seq(nrow(prefixed_coalitions))]
+  if (!is.null(prefixed_coalitions)) {
+    presampled_coal_wo_prefixed_coal = presampled_coalitions[-seq(nrow(prefixed_coalitions))]
+  } else {
+    presampled_coal_wo_prefixed_coal = presampled_coalitions
+  }
 
   # String version
   # Insert all sampled coalitions into a data table and find their frequencies
   dt_freq = data.table::data.table(features = presampled_coal_wo_prefixed_coal)[, .(shapley_weight = .N), by = features]
 
   # Fix the weights according to the technique in KernelSHAP
-  print("hei1")
   if (version_scaled) {
     print(prefixed_coalitions)
     if (is.null(prefixed_coalitions)) {
@@ -125,10 +128,11 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
     dt_freq[, shapley_weight := shapley_weight * weight_left / sum(shapley_weight)]
   }
 
-  print("hei2")
   # Convert the list column to a comma-separated string for each row
-  prefixed_coalitions[, features := sapply(features, function(x) paste(unlist(x), collapse = ","))]
-  setnames(prefixed_coalitions, "w", "shapley_weight")
+  if (!is.null(prefixed_coalitions)) {
+    prefixed_coalitions[, features := sapply(features, function(x) paste(unlist(x), collapse = ","))]
+    setnames(prefixed_coalitions, "w", "shapley_weight")
+  }
 
   # Put together with the prefixed samples
   dt_freq = rbind(prefixed_coalitions, dt_freq)
@@ -136,7 +140,6 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   # Get the number of features in each coalition
   dt_freq[, n_features := stringr::str_count(features, ",") + 1]
 
-  print("hei3")
   # Add the number of coalitions of each size
   dt_freq[, N := n[n_features]]
   dt_freq[, p := p[n_features]]
@@ -158,7 +161,7 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   data.table::setorder(dt_freq, "id_combination_full")
   dt_freq[, id_combination := .I]
   data.table::setcolorder(dt_freq, c("id_combination", "id_combination_full", "features", "n_features", "N", "shapley_weight", "p"))
-  dt_freq
+  # dt_freq
 
   # Optional to match the old setup
   dt_freq[, N := as.integer(N)]
@@ -672,12 +675,12 @@ for (rho_idx in seq_along(rhos)) {
                                          dt_all_coalitions = dt_all_coalitions,
                                          version_scaled = TRUE)
 
-          # Get the X data.table
-          X_now_int = create_X_dt_KernelSHAP(m = m,
-                                         presampled_coalitions = presampled_coalitions,
-                                         prefixed_coalitions = copy(prefixed_coalitions),
-                                         dt_all_coalitions = dt_all_coalitions,
-                                         version_scaled = FALSE)
+          # # Get the X data.table
+          # X_now_int = create_X_dt_KernelSHAP(m = m,
+          #                                presampled_coalitions = presampled_coalitions,
+          #                                prefixed_coalitions = copy(prefixed_coalitions),
+          #                                dt_all_coalitions = dt_all_coalitions,
+          #                                version_scaled = FALSE)
 
           # "KernelSHAP" = NaN,
           # "KernelSHAP Average" = NaN,
