@@ -250,8 +250,8 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 } else {
   repetitions = NULL
 }
+always_pair_coalitions = as.logical(args[3])
 version_name = "KernelSHAP_sampling"
-always_pair_coalitions = TRUE
 
 # m = 20
 # n_combinations = 1048500
