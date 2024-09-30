@@ -4,7 +4,8 @@ coalition_sampling_kernelSHAP = function(m,
                                          n_sample_scale = 3,
                                          return_coalitions = TRUE,
                                          seed = NULL,
-                                         verbose = TRUE) {
+                                         verbose = TRUE,
+                                         always_pair_coalitions = TRUE) {
   if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
   if (!is.null(seed)) set.seed(seed)
 
@@ -37,12 +38,12 @@ coalition_sampling_kernelSHAP = function(m,
     n_comb_needed_now = ceiling(nsubsets / remaining_weight_vector[subset_size])
 
     # Add the number of coalitions of smaller sizes that are included
-    if (subset_size > 1) n_comb_needed_now  = n_comb_needed_now + 2 * sum(choose(M, seq(subset_size - 1)))
+    if (subset_size > 1) n_comb_needed_now = n_comb_needed_now + 2 * sum(choose(M, seq(subset_size - 1)))
 
     # Store the new values
     n_comb_needed = c(n_comb_needed, n_comb_needed_now)
 
-    # Update the probability of the remaining colaition sizes such that they sum to 1
+    # Update the probability of the remaining coalition sizes such that they sum to 1
     if (remaining_weight_vector[subset_size] < 1.0) {
       remaining_weight_vector = remaining_weight_vector / (1 - remaining_weight_vector[subset_size])
     }
@@ -62,7 +63,7 @@ coalition_sampling_kernelSHAP = function(m,
   dt_n_comb_needed_sample = data.table(N_S = seq(2, 2^M-4, 2), dt_id = sapply(seq(2, 2^M-4, 2), function(x) which.max(n_comb_needed >= x)))
 
 
-  id_now_idx = 2
+  id_now_idx = 1
   id_max = length(dt_n_comb_needed$dt_id)
   full_res = lapply(seq_along(dt_n_comb_needed$dt_id), function(id_now_idx) {
     id_now = dt_n_comb_needed$dt_id[id_now_idx]
@@ -101,7 +102,11 @@ coalition_sampling_kernelSHAP = function(m,
     if (num_full_subsets != num_subset_sizes) {
       # Get the normalized weights for the remaining coalition sizes
       remaining_weight_vector = copy(weight_vector)
-      remaining_weight_vector[seq(num_paired_subset_sizes)] = remaining_weight_vector[seq(num_paired_subset_sizes)] / 2 # because we draw two samples each below
+      if (always_pair_coalitions) {
+        remaining_weight_vector = remaining_weight_vector / 2 # because we draw two samples each below
+      } else {
+        remaining_weight_vector[seq(num_paired_subset_sizes)] = remaining_weight_vector[seq(num_paired_subset_sizes)] / 2 # because we draw two samples each below
+      }
       if (num_full_subsets > 0) remaining_weight_vector = remaining_weight_vector[-seq(num_full_subsets)] # Remove the fully sampled coalition size
       remaining_weight_vector = remaining_weight_vector / sum(remaining_weight_vector)
 
@@ -122,7 +127,7 @@ coalition_sampling_kernelSHAP = function(m,
         message(paste0("(", id_now, "/", id_max, ") ", "Getting the coalition sizes"))
         n_features_sample <- sample(
           x = length(remaining_weight_vector),
-          size = n_sample_scale * samples_left,
+          size = 10000 * samples_left,
           replace = TRUE,
           prob = remaining_weight_vector
         ) + num_full_subsets # Add the num_full_subsets to get the correct coal sizes
@@ -133,14 +138,28 @@ coalition_sampling_kernelSHAP = function(m,
 
         # Get the paired coalitions
         message(paste0("(", id_now, "/", id_max, ") ", "Making the paired"))
-        coalitions <- unlist(lapply(feature_sample, function(x, m) {
-          if (length(x) == M / 2) {
-            return(list(x))
-          } else {
-            return(list(x, seq(m)[-x]))
-          }
-        }, m = m), recursive = FALSE)
-        #coalitions
+        if (always_pair_coalitions) {
+          # Get the paired coalitions
+          feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
+
+          # Merge the coalitions in alternating fashion as we do paired sampling (i.e., first is S and second is Sbar and so on)
+          coalitions = c(rbind(feature_sample, feature_sample_paired))
+
+        } else {
+          # In python SHAP, they do not pair the coalition of M/2 for M even.
+          # This is strange as we then no longer can garante that both S and Sbar are sampled
+          coalitions <- unlist(lapply(feature_sample, function(x, m) {
+            if (length(x) == M / 2) {
+              return(list(x))
+            } else {
+              return(list(x, seq(m)[-x]))
+            }
+          }, m = m), recursive = FALSE)
+        }
+
+        # #coalitions
+        # caol_lengths = lengths(coalitions)
+        # table(caol_lengths) / length(caol_lengths) # Chech that the frequencies corresponds with the shapley kernel weights
 
         # if (M %% 2 != 0) {
         #   feature_sample_paired <- lapply(feature_sample, function(x, m) {seq(m)[-x]}, m = m)
@@ -231,6 +250,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = NULL
 }
 version_name = "KernelSHAP_sampling"
+always_pair_coalitions = TRUE
 
 # m = 20
 # n_combinations = 1048500
@@ -257,6 +277,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
 } else if (grepl("uio.no", hostname)) {
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
   folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP"
+  folder_save_paired = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
@@ -272,13 +293,19 @@ for (repetition in repetitions) {
                                       n_combinations = n_combinations,
                                       n_sample_scale = n_sample_scale,
                                       return_coalitions = TRUE,
-                                      seed = repetition + 1)
+                                      seed = repetition + 1,
+                                      always_pair_coalitions = always_pair_coalitions)
 
   # Print the size
   print(object.size(tmp), units = "MB")
 
   # Save the file
-  saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", m, "_repetition_", repetition, ".rds")))
+  if (always_pair_coalitions) {
+    saveRDS(tmp, file.path(folder_save_paired, paste0(version_name, "_paired_M_", m, "_repetition_", repetition, ".rds")))
+  } else {
+    saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", m, "_repetition_", repetition, ".rds")))
+  }
+
 
   # # Convert to integers
   # system.time({tmp$all_coalitions2 = lapply(stringr::str_split(tmp$all_coalitions, ','), as.integer)})
@@ -291,6 +318,13 @@ for (repetition in repetitions) {
   # saveRDS(tmp, file.path(folder_save, paste0(version_name, "_M_", M, "_repetition_", repetition, "_integers.rds")))
 }
 
+
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+# module load R/4.2.1-foss-2022a
+
+# Rscript Create_sampling_files_kernelSHAP.R 20 1:50
+# Rscript Create_sampling_files_kernelSHAP.R 20 51:100
+# Rscript Create_sampling_files_kernelSHAP.R 20 101:150
 
 
 
