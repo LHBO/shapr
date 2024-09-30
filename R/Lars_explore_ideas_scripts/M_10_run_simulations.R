@@ -425,7 +425,7 @@ for (rho_idx in seq_along(rhos)) {
     } else {
       presampled_coalitions_KernelSHAP = NULL
     }
-    print(presampled_coalitions_KernelSHAP)
+    # print(presampled_coalitions_KernelSHAP)
     message("Done loading presampled coalitions KernelSHAP")
 
     # Data.table to store the results for this repetition
@@ -699,12 +699,12 @@ for (rho_idx in seq_along(rhos)) {
           # Average
           {
             X_now_copy = copy(X_now)
-            plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+            #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
             X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
 
             # Average the weights on the coalition sizes
             shapley_reweighting(X = X_now_copy, reweight = "on_N")
-            plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+            #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
 
             # Compute the approximated Shapley values
             dt_kernelSHAP_average =
