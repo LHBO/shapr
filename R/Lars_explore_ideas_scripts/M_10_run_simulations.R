@@ -690,7 +690,7 @@ for (rho_idx in seq_along(rhos)) {
           # Default version
           {
             # Compute the approximated Shapley values
-            dt_kernelSHAP =
+            dt_KernelSHAP =
               compute_SV_values(X_now = X_now, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
 
             # Get the MAE between the approximated and full Shapley values
