@@ -61,7 +61,8 @@ coalition_sampling_kernelSHAP = function(m,
   # Create a look up table.
   # The idea now is that if for each value of N_S, we can get which result list to look at by looking at
   # `dt_n_comb_needed_sample[N_S == 916, dt_id]`.
-  dt_n_comb_needed_sample = data.table(N_S = seq(2, 2^M-4, 2), dt_id = sapply(seq(2, 2^M-4, 2), function(x) which.max(n_comb_needed >= x)))
+  dt_n_comb_needed_sample = data.table(N_S = seq(2, n_combinations, 2),
+                                       dt_id = sapply(seq(2, n_combinations, 2), function(x) which.max(n_comb_needed >= x)))
 
 
   id_now_idx = 1
