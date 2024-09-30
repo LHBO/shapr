@@ -52,6 +52,7 @@ coalition_sampling_kernelSHAP = function(m,
   # Create a data table with max number of coalitions before we include the smaller coalition size. Ensure even numbers
   n_comb_needed = sapply(n_comb_needed, function(x) ifelse(x %% 2 == 0, x - 2, x - 1))
   n_comb_needed[n_comb_needed >= n_combinations] = n_combinations
+  n_comb_needed[length(n_comb_needed)] = n_combinations
   dt_n_comb_needed = data.table(dt_id = seq_along(n_comb_needed), N_S = n_comb_needed)
   dt_n_comb_needed[, N_S_fixed := fifelse(dt_id == 1, 0, 2 * sapply(dt_id, function(id) sum(choose(M, seq_len(id - 1)))))]
   dt_n_comb_needed
