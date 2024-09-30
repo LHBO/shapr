@@ -112,12 +112,14 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   dt_freq = data.table::data.table(features = presampled_coal_wo_prefixed_coal)[, .(shapley_weight = .N), by = features]
 
   # Fix the weights according to the technique in KernelSHAP
+  print("hei1")
   if (version_scaled) {
     num_full_subsets = length(prefixed_coalitions[.N - 1, features][[1]]) # This relies on the list version
     weight_left = sum(weight_vector[-seq(num_full_subsets)])
     dt_freq[, shapley_weight := shapley_weight * weight_left / sum(shapley_weight)]
   }
 
+  print("hei2")
   # Convert the list column to a comma-separated string for each row
   prefixed_coalitions[, features := sapply(features, function(x) paste(unlist(x), collapse = ","))]
   setnames(prefixed_coalitions, "w", "shapley_weight")
@@ -128,6 +130,7 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   # Get the number of features in each coalition
   dt_freq[, n_features := stringr::str_count(features, ",") + 1]
 
+  print("hei3")
   # Add the number of coalitions of each size
   dt_freq[, N := n[n_features]]
   dt_freq[, p := p[n_features]]
