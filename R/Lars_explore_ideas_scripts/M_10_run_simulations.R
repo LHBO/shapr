@@ -117,7 +117,6 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
 
   # Fix the weights according to the technique in KernelSHAP
   if (version_scaled) {
-    print(prefixed_coalitions)
     if (is.null(prefixed_coalitions)) {
       num_full_subsets = 0
       weight_left = sum(weight_vector)
