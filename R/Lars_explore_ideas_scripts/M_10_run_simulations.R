@@ -115,6 +115,7 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   print("hei1")
   if (version_scaled) {
     print(prefixed_coalition)
+    print(prefixed_coalitions[.N - 1, features])
     num_full_subsets = length(prefixed_coalitions[.N - 1, features][[1]]) # This relies on the list version
     print("hei11")
     weight_left = sum(weight_vector[-seq(num_full_subsets)])
