@@ -114,7 +114,7 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   # Fix the weights according to the technique in KernelSHAP
   print("hei1")
   if (version_scaled) {
-    print(prefixed_coalition)
+    print(prefixed_coalitions)
     print(prefixed_coalitions[.N - 1, features])
     num_full_subsets = length(prefixed_coalitions[.N - 1, features][[1]]) # This relies on the list version
     print("hei11")
