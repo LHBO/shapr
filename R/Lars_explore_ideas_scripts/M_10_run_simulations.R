@@ -488,8 +488,6 @@ for (rho_idx in seq_along(rhos)) {
 
         # Get the MAE between the approximated and full Shapley values
         MAE_dt[n_combination_idx, "Unique" := mean(abs(dt_true_mat - as.matrix(dt_kshap_unique[,-1])))]
-
-
       }
 
       ## Paired ----------------------------------------------------------------------------------------------------------
@@ -664,112 +662,111 @@ for (rho_idx in seq_along(rhos)) {
           # Get the MAE between the approximated and full Shapley values
           MAE_dt[n_combination_idx, "Paired Imp CEPS-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_imp_ceps_kernel[,-1])))]
         }
+      }
 
+      ## KernelSHAP ------------------------------------------------------------------------------------------------------
+      # Paired, average, kernel, c-kernel, cel-kernel
+      if (verbose_now) message("KernelSHAP")
+      {
 
-        ## KernelSHAP ------------------------------------------------------------------------------------------------------
-        # Paired, average, kernel, c-kernel, cel-kernel
-        if (verbose_now) message("KernelSHAP")
+        # Figure out which list to look at
+        dt_id = presampled_coalitions_KernelSHAP$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+
+        # Get the n_combinations coalitions to include
+        to_this_index = presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
+        presampled_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$all_coalitions_small[seq(to_this_index)])
+        prefixed_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_res)
+
+        # Get the X data.table
+        X_now = create_X_dt_KernelSHAP(m = m,
+                                       presampled_coalitions = presampled_coalitions,
+                                       prefixed_coalitions = copy(prefixed_coalitions),
+                                       dt_all_coalitions = dt_all_coalitions,
+                                       version_scaled = TRUE)
+
+        # # Get the X data.table
+        # X_now_int = create_X_dt_KernelSHAP(m = m,
+        #                                presampled_coalitions = presampled_coalitions,
+        #                                prefixed_coalitions = copy(prefixed_coalitions),
+        #                                dt_all_coalitions = dt_all_coalitions,
+        #                                version_scaled = FALSE)
+
+        # "KernelSHAP" = NaN,
+        # "KernelSHAP Average" = NaN,
+        # "KernelSHAP C-Kernel" = NaN,
+        # "KernelSHAP CEL-Kernel" = NaN
+
+        # Default version
         {
+          # Compute the approximated Shapley values
+          dt_KernelSHAP =
+            compute_SV_values(X_now = X_now, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
 
-          # Figure out which list to look at
-          dt_id = presampled_coalitions_KernelSHAP$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
-
-          # Get the n_combinations coalitions to include
-          to_this_index = presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
-          presampled_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$all_coalitions_small[seq(to_this_index)])
-          prefixed_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_res)
-
-          # Get the X data.table
-          X_now = create_X_dt_KernelSHAP(m = m,
-                                         presampled_coalitions = presampled_coalitions,
-                                         prefixed_coalitions = copy(prefixed_coalitions),
-                                         dt_all_coalitions = dt_all_coalitions,
-                                         version_scaled = TRUE)
-
-          # # Get the X data.table
-          # X_now_int = create_X_dt_KernelSHAP(m = m,
-          #                                presampled_coalitions = presampled_coalitions,
-          #                                prefixed_coalitions = copy(prefixed_coalitions),
-          #                                dt_all_coalitions = dt_all_coalitions,
-          #                                version_scaled = FALSE)
-
-          # "KernelSHAP" = NaN,
-          # "KernelSHAP Average" = NaN,
-          # "KernelSHAP C-Kernel" = NaN,
-          # "KernelSHAP CEL-Kernel" = NaN
-
-          # Default version
-          {
-            # Compute the approximated Shapley values
-            dt_KernelSHAP =
-              compute_SV_values(X_now = X_now, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
-
-            # Get the MAE between the approximated and full Shapley values
-            MAE_dt[n_combination_idx, "KernelSHAP" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP[,-1])))]
-          }
-
-          # Average
-          {
-            X_now_copy = copy(X_now)
-            #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
-            X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
-
-            # Average the weights on the coalition sizes
-            shapley_reweighting(X = X_now_copy, reweight = "on_N")
-            #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
-
-            # Compute the approximated Shapley values
-            dt_kernelSHAP_average =
-              compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
-
-            # Get the MAE between the approximated and full Shapley values
-            MAE_dt[n_combination_idx, "KernelSHAP Average" := mean(abs(dt_true_mat - as.matrix(dt_kernelSHAP_average[,-1])))]
-          }
-
-          # # C-kernel
-          # {
-          #   X_now_copy = copy(X_now)
-          #
-          #   # Insert the corrected Shapley kernel weights
-          #   shapley_reweighting(X = X_now_copy, reweight = "on_all_cond_paired")
-          #
-          #   # Compute the approximated Shapley values
-          #   dt_kshap_paired_c_kernel =
-          #     compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
-          #
-          #   # Get the MAE between the approximated and full Shapley values
-          #   MAE_dt[n_combination_idx, "Paired C-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_c_kernel[,-1])))]
-          # }
-
-          # CEL-kernel
-          {
-            X_now_copy = copy(X_now)
-            X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
-
-            # Get the weights
-            dt_new_weights = copy(dt_new_weights_sequence)
-
-            # Find the weights of the combination closest to n_combinations
-            n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
-            dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
-            dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
-            dt_new_weights_now[, Size := .I]
-            setnames(dt_new_weights_now, "Size", "n_features")
-
-
-            # EXPECTED E[L]
-            # Update the weights with the provided weights for each coalition size
-            X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_L"))]
-
-            # Compute the approximated Shapley values
-            dt_KernelSHAP_cel_kernel =
-              compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
-
-            # Get the MAE between the approximated and full Shapley values
-            MAE_dt[n_combination_idx, "KernelSHAP CEL-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP_cel_kernel[,-1])))]
-          }
-
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "KernelSHAP" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP[,-1])))]
         }
+
+        # Average
+        {
+          X_now_copy = copy(X_now)
+          #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+          X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
+
+          # Average the weights on the coalition sizes
+          shapley_reweighting(X = X_now_copy, reweight = "on_N")
+          #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+
+          # Compute the approximated Shapley values
+          dt_kernelSHAP_average =
+            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "KernelSHAP Average" := mean(abs(dt_true_mat - as.matrix(dt_kernelSHAP_average[,-1])))]
+        }
+
+        # # C-kernel
+        # {
+        #   X_now_copy = copy(X_now)
+        #
+        #   # Insert the corrected Shapley kernel weights
+        #   shapley_reweighting(X = X_now_copy, reweight = "on_all_cond_paired")
+        #
+        #   # Compute the approximated Shapley values
+        #   dt_kshap_paired_c_kernel =
+        #     compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+        #
+        #   # Get the MAE between the approximated and full Shapley values
+        #   MAE_dt[n_combination_idx, "Paired C-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_c_kernel[,-1])))]
+        # }
+
+        # CEL-kernel
+        {
+          X_now_copy = copy(X_now)
+          X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
+
+          # Get the weights
+          dt_new_weights = copy(dt_new_weights_sequence)
+
+          # Find the weights of the combination closest to n_combinations
+          n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
+          dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
+          dt_new_weights_now[, Size := .I]
+          setnames(dt_new_weights_now, "Size", "n_features")
+
+
+          # EXPECTED E[L]
+          # Update the weights with the provided weights for each coalition size
+          X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_L"))]
+
+          # Compute the approximated Shapley values
+          dt_KernelSHAP_cel_kernel =
+            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "KernelSHAP CEL-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP_cel_kernel[,-1])))]
+        }
+
       }
 
       if (verbose_now) print(MAE_dt[n_combination_idx,])
