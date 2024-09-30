@@ -341,6 +341,7 @@ apply(masks, 1, sum)
 
 # Final version ----------
 library(data.table)
+library(shapr)
 
 verbose = TRUE
 
@@ -458,7 +459,7 @@ full_res = lapply(seq_along(dt_n_comb_needed$dt_id), function(id_now_idx) {
       message(paste0("(", id_now, "/", id_max, ") ", "Getting the coalition sizes"))
       n_features_sample <- sample(
         x = length(remaining_weight_vector),
-        size = 5 * samples_left,
+        size = 3 * samples_left,
         replace = TRUE,
         prob = remaining_weight_vector
       ) + num_full_subsets # Add the num_full_subsets to get the correct coal sizes
@@ -622,7 +623,9 @@ final_list = list(look_up = list(dt_n_comb_needed = dt_n_comb_needed, dt_n_comb_
 print(object.size(final_list), units = "MB")
 
 final_list$look_up$dt_n_comb_needed
+final_list$look_up$dt_n_comb_needed_sample
 
+final_list$samples[[1]]
 
 
 
