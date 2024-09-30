@@ -302,6 +302,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder_save_2 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   folder_save_3 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   folder_save_KernelSHAP = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_KernelSHAP_paired = "/Users/larsolsen/PhD/Paper3/Paper3_save_location_paired"
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # To be added
@@ -313,11 +314,11 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder_save_2 = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_2"
   folder_save_3 = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_3"
   folder_save_KernelSHAP = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP"
+  folder_save_KernelSHAP_paired = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
 }
-
 
 
 
@@ -431,6 +432,17 @@ for (rho_idx in seq_along(rhos)) {
     # print(presampled_coalitions_KernelSHAP)
     message("Done loading presampled coalitions KernelSHAP")
 
+    message("Loading presampled coalitions KernelSHAP_paired")
+    presampled_coalitions_KernelSHAP_paired = file.path(folder_save_KernelSHAP_paired, paste0("KernelSHAP_sampling_paired_M_", M, "_repetition_", repetition, ".rds"))
+    if (file.exists(presampled_coalitions_KernelSHAP_paired)) {
+      presampled_coalitions_KernelSHAP_paired = readRDS(presampled_coalitions_KernelSHAP_paired)
+    } else {
+      presampled_coalitions_KernelSHAP_paired = NULL
+      stop("`presampled_coalitions_KernelSHAP_paired` does not exist")
+    }
+    # print(presampled_coalitions_KernelSHAP)
+    message("Done loading presampled coalitions KernelSHAP_paired")
+
     # Data.table to store the results for this repetition
     MAE_dt = data.table("Rho" = rho,
                         "Repetition" = repetition,
@@ -448,7 +460,11 @@ for (rho_idx in seq_along(rhos)) {
                         "KernelSHAP" = NaN,
                         "KernelSHAP Average" = NaN,
                         #"KernelSHAP C-Kernel" = NaN,
-                        "KernelSHAP CEL-Kernel" = NaN)
+                        "KernelSHAP CEL-Kernel" = NaN,
+                        "Paired KernelSHAP" = NaN,
+                        "Paired KernelSHAP Average" = NaN,
+                        #"Paired KernelSHAP C-Kernel" = NaN,
+                        "Paired KernelSHAP CEL-Kernel" = NaN)
     if (only_KernelSHAP) {
       MAE_dt = data.table("Rho" = rho,
                           "Repetition" = repetition,
@@ -456,7 +472,11 @@ for (rho_idx in seq_along(rhos)) {
                           "KernelSHAP" = NaN,
                           "KernelSHAP Average" = NaN,
                           #"KernelSHAP C-Kernel" = NaN,
-                          "KernelSHAP CEL-Kernel" = NaN)
+                          "KernelSHAP CEL-Kernel" = NaN,
+                          "Paired KernelSHAP" = NaN,
+                          "Paired KernelSHAP Average" = NaN,
+                          #"Paired KernelSHAP C-Kernel" = NaN,
+                          "Paired KernelSHAP CEL-Kernel" = NaN)
     }
 
 
@@ -766,17 +786,122 @@ for (rho_idx in seq_along(rhos)) {
           # Get the MAE between the approximated and full Shapley values
           MAE_dt[n_combination_idx, "KernelSHAP CEL-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP_cel_kernel[,-1])))]
         }
-
       }
+
+      ## KernelSHAP_paired ------------------------------------------------------------------------------------------------------
+      # Paired, average, kernel, c-kernel, cel-kernel
+      if (verbose_now) message("KernelSHAP_paired")
+      {
+
+        # Figure out which list to look at
+        dt_id = presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+
+        # Get the n_combinations coalitions to include
+        to_this_index = presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
+        presampled_coalitions = copy(presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$all_coalitions_small[seq(to_this_index)])
+        prefixed_coalitions = copy(presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_res)
+
+        # Get the X data.table
+        X_now = create_X_dt_KernelSHAP(m = m,
+                                       presampled_coalitions = presampled_coalitions,
+                                       prefixed_coalitions = copy(prefixed_coalitions),
+                                       dt_all_coalitions = dt_all_coalitions,
+                                       version_scaled = TRUE)
+
+        # # Get the X data.table
+        # X_now_int = create_X_dt_KernelSHAP(m = m,
+        #                                presampled_coalitions = presampled_coalitions,
+        #                                prefixed_coalitions = copy(prefixed_coalitions),
+        #                                dt_all_coalitions = dt_all_coalitions,
+        #                                version_scaled = FALSE)
+
+        # "KernelSHAP" = NaN,
+        # "KernelSHAP Average" = NaN,
+        # "KernelSHAP C-Kernel" = NaN,
+        # "KernelSHAP CEL-Kernel" = NaN
+
+        # Default version
+        {
+          # Compute the approximated Shapley values
+          dt_KernelSHAP =
+            compute_SV_values(X_now = X_now, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "Paired KernelSHAP" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP[,-1])))]
+        }
+
+        # Average
+        {
+          X_now_copy = copy(X_now)
+          #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+          X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
+
+          # Average the weights on the coalition sizes
+          shapley_reweighting(X = X_now_copy, reweight = "on_N")
+          #plot(X_now_copy[-c(1, .N), id_combination_full], X_now_copy[-c(1, .N), shapley_weight])
+
+          # Compute the approximated Shapley values
+          dt_kernelSHAP_average =
+            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "Paired KernelSHAP Average" := mean(abs(dt_true_mat - as.matrix(dt_kernelSHAP_average[,-1])))]
+        }
+
+        # # C-kernel
+        # {
+        #   X_now_copy = copy(X_now)
+        #
+        #   # Insert the corrected Shapley kernel weights
+        #   shapley_reweighting(X = X_now_copy, reweight = "on_all_cond_paired")
+        #
+        #   # Compute the approximated Shapley values
+        #   dt_kshap_paired_c_kernel =
+        #     compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+        #
+        #   # Get the MAE between the approximated and full Shapley values
+        #   MAE_dt[n_combination_idx, "Paired C-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_kshap_paired_c_kernel[,-1])))]
+        # }
+
+        # CEL-kernel
+        {
+          X_now_copy = copy(X_now)
+          X_now_copy[, shapley_weight := as.numeric(shapley_weight)]
+
+          # Get the weights
+          dt_new_weights = copy(dt_new_weights_sequence)
+
+          # Find the weights of the combination closest to n_combinations
+          n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
+          dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
+          dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
+          dt_new_weights_now[, Size := .I]
+          setnames(dt_new_weights_now, "Size", "n_features")
+
+
+          # EXPECTED E[L]
+          # Update the weights with the provided weights for each coalition size
+          X_now_copy[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_L"))]
+
+          # Compute the approximated Shapley values
+          dt_KernelSHAP_cel_kernel =
+            compute_SV_values(X_now = X_now_copy, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+          # Get the MAE between the approximated and full Shapley values
+          MAE_dt[n_combination_idx, "Paired KernelSHAP CEL-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP_cel_kernel[,-1])))]
+        }
+      }
+
+
 
       if (verbose_now) print(MAE_dt[n_combination_idx,])
 
       # Save the results
       if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
         if (only_KernelSHAP) {
-          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
         } else {
-          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
         }
       }
 
@@ -796,15 +921,15 @@ for (rho_idx in seq_along(rhos)) {
 
     # Save the results and remove tmp file
     if (only_KernelSHAP) {
-      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP.rds")))
-      if (file.exists(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))) {
-        file.remove(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP.rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
       }
 
     } else {
-      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
-      if (file.exists(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
-        file.remove(file.path(folder_save_KernelSHAP, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
       }
     }
 
@@ -1042,9 +1167,10 @@ if (FALSE) {
 
 
   ## KernelSHAP ------------------------------------------------------------------------------------------------------
-  strat_MAE_small = c("Unique",
+  strat_MAE_small = c(
+    #"Unique",
                 "Paired",
-                "Paired Average",
+               # "Paired Average",
                 "Paired Kernel",
                 "Paired C-Kernel",
                 "KernelSHAP",
@@ -1078,6 +1204,12 @@ if (FALSE) {
   #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   M_10_fig_MAE
 
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_Kernel_fewer_strat_ribbon.png"),
+         plot = M_10_fig_MAE,
+         width = 14,
+         height = 9,
+         scale = 0.85,
+         dpi = 350)
 
 
   ## Relative diff ---------------------------------------------------------------------------------------------------
