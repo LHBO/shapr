@@ -414,6 +414,7 @@ for (rho_idx in seq_along(rhos)) {
     } else {
       presampled_coalitions_KernelSHAP = NULL
     }
+    print(presampled_coalitions_KernelSHAP)
     message("Done loading presampled coalitions KernelSHAP")
 
     # Data.table to store the results for this repetition
