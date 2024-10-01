@@ -565,6 +565,7 @@ for (rho_idx in seq_along(rhos)) {
 
     message("Loading presampled coalitions KernelSHAP_paired")
     presampled_coalitions_KernelSHAP_paired = file.path(folder_save_KernelSHAP_paired, paste0("KernelSHAP_sampling_paired_M_", M, "_repetition_", repetition, ".rds"))
+    print(presampled_coalitions_KernelSHAP_paired)
     if (file.exists(presampled_coalitions_KernelSHAP_paired)) {
       presampled_coalitions_KernelSHAP_paired = readRDS(presampled_coalitions_KernelSHAP_paired)
     } else {
@@ -573,6 +574,7 @@ for (rho_idx in seq_along(rhos)) {
     }
     # print(presampled_coalitions_KernelSHAP)
     message("Done loading presampled coalitions KernelSHAP_paired")
+
 
     message("Loading presampled coalitions KernelSHAP_paired_imp")
     presampled_coalitions_KernelSHAP_paired_imp = file.path(folder_save_KernelSHAP_paired_imp, paste0("KernelSHAP_Important_sampling_paired_M_", M, "_repetition_", repetition, ".rds"))
