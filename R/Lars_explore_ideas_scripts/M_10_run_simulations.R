@@ -1050,7 +1050,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
       ## KernelSHAP_paired_c ---------------------------------------------------------------------------------------------
-      message("Paired KernelSHAP C-Kernel")
+      if (verbose_now) message("Paired KernelSHAP C-Kernel")
       if (only_KernelSHAP_C_kernel) {
         # Figure out which list to look at
         dt_id = presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
@@ -1066,7 +1066,7 @@ for (rho_idx in seq_along(rhos)) {
                                                  prefixed_coalitions = copy(prefixed_coalitions),
                                                  dt_all_coalitions = dt_all_coalitions)
 
-        plot(X_now[-c(1,.N), id_combination_full], X_now[-c(1,.N), shapley_weight])
+        #plot(X_now[-c(1,.N), id_combination_full], X_now[-c(1,.N), shapley_weight])
 
         # Compute the approximated Shapley values
         dt_KernelSHAP =
@@ -1079,7 +1079,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
       ## KernelSHAP_imp_paired_c ---------------------------------------------------------------------------------------------
-      message("Paired KernelSHAP Imp C-Kernel")
+      if (verbose_now) message("Paired KernelSHAP Imp C-Kernel")
       if (only_KernelSHAP_C_kernel) {
         # Figure out which list to look at
         dt_id_imp = presampled_coalitions_KernelSHAP_paired_imp$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
@@ -1094,7 +1094,7 @@ for (rho_idx in seq_along(rhos)) {
                                                  presampled_coalitions = presampled_coalitions_imp,
                                                  prefixed_coalitions = copy(prefixed_coalitions_imp),
                                                  dt_all_coalitions = dt_all_coalitions)
-        plot(X_now_imp[-c(1,.N), id_combination_full], X_now[-c(1,.N), shapley_weight])
+        #plot(X_now_imp[-c(1,.N), id_combination_full], X_now[-c(1,.N), shapley_weight])
 
         # Compute the approximated Shapley values
         dt_KernelSHAP_imp =

@@ -231,7 +231,7 @@ message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
   folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
-  folder_save_paired = "/Users/larsolsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired_Imp"
+  folder_save_paired = "/Users/larsolsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired_imp"
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # To be added
@@ -239,8 +239,8 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   UiO = TRUE
 } else if (grepl("uio.no", hostname)) {
   folder = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr"
-  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_Imp"
-  folder_save_paired = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired_Imp"
+  folder_save = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_imp"
+  folder_save_paired = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired_imp"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
