@@ -266,20 +266,33 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 # Rscript M_20_run_simulations.R 0.0 FALSE 1:25 sumeru
 # Rscript M_20_run_simulations.R 0.2 FALSE 1:25 sraosha
-# Rscript M_20_run_simulations.R 0.5 FALSE 1:25 nyx
-# Rscript M_20_run_simulations.R 0.9 FALSE 1:25 metis
+# Rscript M_20_run_simulations.R 0.5 FALSE 1:25 tsenahale
+# Rscript M_20_run_simulations.R 0.9 FALSE 1:25 diktys
 
-# Rscript M_20_run_simulations.R 0.0 FALSE 26:75 belet
-# Rscript M_20_run_simulations.R 0.2 FALSE 26:75 carpo
-# Rscript M_20_run_simulations.R 0.5 FALSE 26:75 dikty
-# Rscript M_20_run_simulations.R 0.9 FALSE 26:75 ixion
+# Rscript M_20_run_simulations.R 0.0 FALSE 26:50 poseidon
+# Rscript M_20_run_simulations.R 0.2 FALSE 26:50 carpo
+# Rscript M_20_run_simulations.R 0.5 FALSE 26:50 adonis
+# Rscript M_20_run_simulations.R 0.9 FALSE 26:50 adroa
 
-# Rscript M_20_run_simulations.R 0.0 FALSE 76:124 aload
-# Rscript M_20_run_simulations.R 0.2 FALSE 76:124 bastet
-# Rscript M_20_run_simulations.R 0.5 FALSE 76:124 labbu
-# Rscript M_20_run_simulations.R 0.9 FALSE 76:124 adroa
+# Rscript M_20_run_simulations.R 0.0 FALSE 51:75 aload
+# Rscript M_20_run_simulations.R 0.2 FALSE 51:75 bastet
+# Rscript M_20_run_simulations.R 0.5 FALSE 51:75 belet
+# Rscript M_20_run_simulations.R 0.9 FALSE 51:75 ixion
 
-# Rscript M_20_run_simulations.R 0.0 FALSE 125:150 adonis
+# Rscript M_20_run_simulations.R 0.0 FALSE 76:100 mixc
+# Rscript M_20_run_simulations.R 0.2 FALSE 76:100 nyx
+# Rscript M_20_run_simulations.R 0.5 FALSE 76:100 labbu
+# Rscript M_20_run_simulations.R 0.9 FALSE 76:100 metis
+
+# Rscript M_20_run_simulations.R 0.0 FALSE 101:125
+# Rscript M_20_run_simulations.R 0.2 FALSE 101:125
+# Rscript M_20_run_simulations.R 0.5 FALSE 101:125
+# Rscript M_20_run_simulations.R 0.9 FALSE 101:125
+
+# Rscript M_20_run_simulations.R 0.0 FALSE 126:150
+# Rscript M_20_run_simulations.R 0.2 FALSE 126:150
+# Rscript M_20_run_simulations.R 0.5 FALSE 126:150
+# Rscript M_20_run_simulations.R 0.9 FALSE 126:150
 
 
 
@@ -1165,7 +1178,7 @@ if (FALSE) {
   n_cumsum = (cumsum(n) + 2) + 0.5
 
   # Number of repetitions
-  n_repetitions = 4
+  n_repetitions = 8
 
   # List the strategies to create the MAE plot for
   strat_MAE = c("Unique",
@@ -1180,7 +1193,10 @@ if (FALSE) {
                 #"Paired Imp CEPS-Kernel",
                 "KernelSHAP",
                 "KernelSHAP Average",
-                "KernelSHAP CEL-Kernel"
+                "KernelSHAP CEL-Kernel",
+                "Paired KernelSHAP",
+                "Paired KernelSHAP Average",
+                "Paired KernelSHAP CEL-Kernel"
   )
 
   strat_MAE_final = c("Unique",
@@ -1317,14 +1333,18 @@ if (FALSE) {
     "Paired C-Kernel",
     "KernelSHAP",
     "KernelSHAP Average",
-    "KernelSHAP CEL-Kernel"
+    "KernelSHAP CEL-Kernel",
+    "Paired KernelSHAP",
+    "Paired KernelSHAP Average",
+    "Paired KernelSHAP CEL-Kernel",
+    "Paired Imp CEL-Kernel"
   )
 
   M_20_fig_MAE_KernelSHAP =
     ggplot(res_MAE[Strategy %in% strat_MAE_small], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
-    geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
+    #geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
     geom_line(linewidth = 0.65) +
     scale_x_continuous(labels = scales::label_number()) +
     scale_y_log10(
@@ -1332,7 +1352,7 @@ if (FALSE) {
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
     theme(legend.position = 'bottom') +
-    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
          y = bquote(bar(MAE)[150]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
@@ -1346,7 +1366,7 @@ if (FALSE) {
   #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   M_20_fig_MAE_KernelSHAP
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_MAE_KernelSHAP.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_MAE_KernelSHAP_V_line.png"),
          plot = M_20_fig_MAE_KernelSHAP,
          width = 14,
          height = 9,

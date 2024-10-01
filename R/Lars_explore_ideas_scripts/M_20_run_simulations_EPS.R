@@ -177,37 +177,42 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 }
 
 
+# # CALLS
+# tmux new -s paper3
+# module load R/4.2.1-foss-2022a
+# cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
+#
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 1:25 bastet
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 50:26 belet
+# Rscript M_20_run_simulations_EPS.R 0.2 FALSE 1:25 diktys
+# Rscript M_20_run_simulations_EPS.R 0.2 FALSE 50:26 ixion
+# Rscript M_20_run_simulations_EPS.R 0.5 FALSE 1:25 mix
+# Rscript M_20_run_simulations_EPS.R 0.5 FALSE 50:26 nyx
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 1:25 nyx
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 50:26 sum
+#
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 51:75 bastet
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 76:100 belet TREG
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 100:76 NAM 2
+# Rscript M_20_run_simulations_EPS.R 0.2 FALSE 51:75 diktys
+# Rscript M_20_run_simulations_EPS.R 0.2 FALSE 76:100 ixion
+# Rscript M_20_run_simulations_EPS.R 0.5 FALSE 51:75 mix
+# Rscript M_20_run_simulations_EPS.R 0.5 FALSE 76:100 nyx
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 51:75 sraosh TREG
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 75:51 NAM2
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 76:100 sum TREG
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 100:76 NAM2
+#
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 101:125 labbu TREG
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 125:101 NAM2
+# Rscript M_20_run_simulations_EPS.R 0.0 FALSE 126:150 carpo
+# Rscript M_20_run_simulations_EPS.R 0.2 FALSE 101:125 tsena
+# Rscript M_20_run_simulations_EPS.R 0.2 FALSE 126:150 adroa
+# Rscript M_20_run_simulations_EPS.R 0.5 FALSE 101:125 metis
+# Rscript M_20_run_simulations_EPS.R 0.5 FALSE 126:150 aload
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 101:125 poseid
+# Rscript M_20_run_simulations_EPS.R 0.9 FALSE 126:150 adonis
 
-#Rscript M_20_run_simulations.R 0.0 6:7 ixion
-#Rscript M_20_run_simulations.R 0.0 8:10 Diktys
-
-# Rscript M_20_run_simulations.R 0.0 6:10 labbu
-# Rscript M_20_run_simulations.R 0.0 11:17 nam1
-# Rscript M_20_run_simulations.R 0.0 18:25 nam1
-
-
-# Rscript M_20_run_simulations.R 0.0 24,25,23
-# Rscript M_20_run_simulations.R 0.0 17,16
-
-# FERDIG
-# Rscript M_20_run_simulations.R 0.2 1:10 diktys
-# Rscript M_20_run_simulations.R 0.2 11:20 metis
-# Rscript M_20_run_simulations.R 0.2 16:20 carpo
-# Rscript M_20_run_simulations.R 0.2 25:21 aload
-
-# FERDIG
-# Rscript M_20_run_simulations.R 0.5 1:10 ixion
-# Rscript M_20_run_simulations.R 0.5 11:20 nyx (snart ferdig)
-# Rscript M_20_run_simulations.R 0.5 21:25 sumeru
-
-# FERDIG
-# Rscript M_20_run_simulations.R 0.9 2:5 sumeru
-# Rscript M_20_run_simulations.R 0.9 6:10 tsenahale
-# Rscript M_20_run_simulations.R 0.9 11:15 mawu
-# Rscript M_20_run_simulations.R 0.9 16:20 beleili
-# Rscript M_20_run_simulations.R 0.9 21:25 bastet
-
-# Rscript M_20_run_simulations.R 0.9 TRUE 26:50 sumeru
 
 
 
@@ -791,7 +796,7 @@ if (FALSE) {
   n_cumsum = (cumsum(n) + 2) + 0.5
 
   # Number of repetitions
-  n_repetitions = 150
+  n_repetitions = 50 # MAKS 150
 
   # List the strategies to create the MAE plot for
   strat_MAE = c("Unique",
@@ -800,10 +805,10 @@ if (FALSE) {
                 "Paired Kernel",
                 "Paired C-Kernel",
                 "Paired CEL-Kernel",
-                #"Paired CEPS-Kernel",
+                "Paired CEPS-Kernel",
                 "Paired Imp C-Kernel",
-                "Paired Imp CEL-Kernel"
-                #"Paired Imp CEPS-Kernel"
+                "Paired Imp CEL-Kernel",
+                "Paired Imp CEPS-Kernel"
   )
 
   # Strategies in the relative difference plot
@@ -840,12 +845,21 @@ if (FALSE) {
       dt_now_tmp = data.table::rbindlist(
         lapply(seq(n_repetitions), function(repetition) {
           #if (repetition %in% c(5,6)) return(NULL)
-          file_name = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
+          file_name_org = paste("M", M, "n_train", n_train, "n_test", n_test,  "rho", rho, "equi", rho_equi,
                             "betas", paste(as.character(betas), collapse = "_"), sep = "_")
-          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name, "_MAE_repetition_", repetition, ".rds"))
+          file_name = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, ".rds"))
           if (!file.exists(file_name)) return(NULL)
           print(file_name)
-          return(readRDS(file_name))
+          file_read = readRDS(file_name)
+
+
+          if (any(strat_MAE %in% c("Paired CEPS-Kernel", "Paired Imp CEPS-Kernel"))) {
+            file_name_2 = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_EPS.rds"))
+            if (file.exists(file_name_2)) {
+              file_read = rbind(file_read, readRDS(file_name_2))
+            }
+          }
+          return(file_read)
         }))
       dt_now_tmp_unique = data.table(old = unique(dt_now_tmp$Repetition))[, new := .I]
 

@@ -250,6 +250,8 @@ if (length(m_seq) > 1) {
   m_seq = as.numeric(m_seq)
 }
 
+N_s_vector_max = as.integer(args[3])
+
 # The sampling strategies
 versions = c("paired", "unique")
 
@@ -259,9 +261,17 @@ for (version in versions) {
   for (m in m_seq) {
     message(paste0("\nWorking on version = '", version, "' and m = ", m, "."))
 
+    N_s_vector = seq(2, 2^m - 2)
+    N_s_vector = N_s_vector[N_s_vector <= N_s_vector_max]
+
+
     # Compute the expected number of draws
     t1 = Sys.time()
-    analytical = expected_draws_fast(m = m, paired = ifelse(version == "paired", TRUE, FALSE), n_workers = min(future::availableCores() - 2, n_workers), return_as_character = TRUE)
+    analytical = expected_draws_fast(m = m,
+                                     N_s_vector = N_s_vector,
+                                     paired = ifelse(version == "paired", TRUE, FALSE),
+                                     n_workers = min(future::availableCores() - 2, n_workers),
+                                     return_as_character = TRUE)
     t2 = Sys.time()
     time_diff = t2 - t1
     print(time_diff)

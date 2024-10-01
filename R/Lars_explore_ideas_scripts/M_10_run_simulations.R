@@ -1202,7 +1202,7 @@ if (FALSE) {
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
     theme(legend.position = 'bottom') +
-    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
          y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
@@ -1216,7 +1216,7 @@ if (FALSE) {
   #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   M_10_fig_MAE
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_Kernel_fewer_strat_ribbon.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_KernelSHAP_V_line.png"),
          plot = M_10_fig_MAE,
          width = 14,
          height = 9,

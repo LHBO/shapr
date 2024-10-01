@@ -5,6 +5,7 @@
 # Functions -------------------------------------------------------------------------------------------------------
 library(shapr)
 library(data.table)
+library(ggplot2)
 
 
 #' Title
@@ -279,7 +280,7 @@ sum_shapley_weights <- function(m){
 
 #' Title
 #'
-#' Get the normalised ps values for each coalition size
+#' Get the normalised ps values for each coalition size or coalition
 #'
 #' @param m_seq vector of positive integers
 #'
@@ -287,13 +288,14 @@ sum_shapley_weights <- function(m){
 #' @export
 #'
 #' @examples
-get_exact_ps_values = function(m_seq, M_as_factor = TRUE) {
-
+get_exact_ps_values = function(m_seq, M_as_factor = TRUE, normalize = c("coalition_size", "coalition")) {
+  normalize = match.arg(normalize)
   tmp_list = lapply(m_seq, function(m) {
     tmp = shapr:::shapley_weights(m = m,
                                   N = sapply(seq(m - 1), choose, n = m),
                                   n_components = seq(m - 1))
-    tmp = tmp/sum(tmp)
+    if (normalize == "coalition_size") tmp = tmp/sum(tmp)
+    if (normalize == "coalition") tmp = tmp/sum_shapley_weights(m)
     data.table(N_S = 2^m,
                Size = factor(seq(ceiling((m-1)/2))),
                weight = tmp[seq(1, ceiling((m-1)/2))])
@@ -304,6 +306,51 @@ get_exact_ps_values = function(m_seq, M_as_factor = TRUE) {
   return(tmp_list)
 }
 
+
+#' Convert from normalized weights for the coalition size to the normalized weights on coalition level
+#'
+#' @param weights
+#' @param m
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' m = 10
+#' aa = get_exact_ps_values(m, normalize = "coalition")
+#' print(aa)
+#' coalition_size_scalars = c(rep(2, floor((m-1)/2)), if(m %% 2 == 0) 1)
+#' coalition_size_combinations = choose(m, seq(floor(m/2)))
+#' sum(aa[, weight] * coalition_size_scalars * coalition_size_combinations)
+#'
+#' bb = get_exact_ps_values(m, normalize = "coalition_size")
+#' print(bb)
+#' sum(bb[, weight] * coalition_size_scalars)
+#'
+#' all.equal(correct_normalization(weights = bb[, weight], m = m), aa[, weight])
+correct_normalization = function(weights, m) {
+  coalition_size_scalars = c(rep(2, floor((m-1)/2)), if(m %% 2 == 0) 1)
+  coalition_size_combinations = choose(m, seq(floor(m/2)))
+  weights / sum(weights * coalition_size_scalars * coalition_size_combinations)
+}
+
+
+m = 20
+aa = get_exact_ps_values(m, normalize = "coalition")
+print(aa)
+coalition_size_scalars = c(rep(2, floor((m-1)/2)), if(m %% 2 == 0) 1)
+coalition_size_combinations = choose(m, seq(floor(m/2)))
+sum(aa[, weight] * coalition_size_scalars * coalition_size_combinations)
+
+bb = get_exact_ps_values(m, normalize = "coalition_size")
+print(bb)
+sum(bb[, weight] * coalition_size_scalars)
+
+all.equal(correct_normalization(weights = bb[, weight], m = m), aa[, weight])
+
+
+
+# dt_combined[M == "M = 10" & type == "upper" & version == "mean ps" & N_S == 104, correct_normalization(Ps_tilde, m = 10)]
 
 
 #' Title
@@ -608,10 +655,11 @@ if (FALSE) {
 
   # Load data and compute mean, lower, and upper quantiles.
   dt_extended = data.table(M = numeric(), N_S = integer(), L_avg = numeric(), lower = numeric(), median = numeric(), upper = numeric())
+  m_idx = 1
   for (m_idx in seq_along(m_seq)) {
     m = m_seq[m_idx]
     message(paste0("Working on m = ", m, " (", m_idx, " of ", length(m_seq)  ,")."))
-    if (file.exists(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_L_mean_upper_lower.rds"))) next
+    #if (file.exists(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_L_mean_upper_lower.rds"))) next
 
     # Read in the file
     file = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, ".rds"))
@@ -635,6 +683,20 @@ if (FALSE) {
   )
   dt_extended = copy(dt_extended2)
 
+  # Read the file
+  dt_analytical2 = data.table::rbindlist(
+    lapply(7:10, function(m) {
+      dt_tmp = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_version_paired_analytical.rds"))$res_dt
+      dt_tmp[, N_draws := gmp::asNumeric(gmp::as.bigq(N_draws))]
+      return(dt_tmp)
+      }), use.names = TRUE, idcol = "M"
+  )
+  setnames(dt_analytical2, "N_s", "N_S")
+  dt_analytical2[, N_S := as.integer(N_S)]
+  dt_analytical2[, M := paste0("M = ", M + 6)]
+  dt_analytical2[, M := factor(M)]
+  dt_analytical = copy(dt_analytical2)
+
   # Remove extra N_S
   dt_extended = dt_combined_short_fun(dt_extended, m_seq_reduce = 15:20)
   dt_extended[M %in% 15:20, .N, by = M]
@@ -644,29 +706,80 @@ if (FALSE) {
   # Make the plot
   fig_L = ggplot(dt_extended, aes(x = N_S, y = L_avg)) +
     geom_line() +
+    geom_line(data =  dt_analytical, aes(x = N_S, y = N_draws),  col = "red", linetype = "dashed", linewidth = 0.75) +
     geom_ribbon(aes(x = N_S, ymin = lower, ymax = upper), alpha = 0.4, linewidth = 0.1) +
     scale_x_continuous(labels = scales::label_number()) +
     facet_wrap("M ~ .", ncol = 2, scales = "free") +
-    labs(x = expression(N[S]), y = "E[L] with 95% CI") +
+    labs(x = expression(N[S]), y = bquote(E*"[L] and"~bar(L)~"with 95% confidence bands for L")) +
     theme(legend.position="bottom", legend.box = "horizontal") +
     theme(strip.text = element_text(size = rel(1.5)),
           legend.title = element_text(size = rel(1.5)),
           legend.text = element_text(size = rel(1.5)),
           axis.title = element_text(size = rel(1.5)),
-          axis.text = element_text(size = rel(1.4))) +
-    #scale_y_continuous(labels = scales::label_number()) +
+          axis.text = element_text(size = rel(1.35))) +
+    scale_y_continuous(labels = scales::label_number())
     scale_y_log10(
       breaks = scales::trans_breaks("log10", function(x) 10^x),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     )
+  fig_L
 
   # Save the figure
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Expected_L_v4.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Expected_L_v5_reg.png",
          plot = fig_L,
          width = 14.2,
-         height = 20,
+         height = 18,
          scale = 0.85,
          dpi = 350)
+
+  # Largest values
+  dt_extended_largest = dt_extended[,.SD[.N], by = M][,c("M", "N_S", "L_avg")]
+  dt_extended_largest[, ratio := L_avg / shift(L_avg, type = "lag")]
+  dt_extended_largest
+  dt_extended_largest[, mean(ratio, na.rm = TRUE)]
+
+
+  # Difference
+  dt_extended[, `:=` ("new_lower" = lower - L_avg, "new_upper" = upper - L_avg, "new_L_avg" = L_avg - L_avg)]
+  dt_extended
+  dt_analytical3 = merge(dt_analytical, dt_extended, by = c("M", "N_S"), sort = FALSE, all.y = TRUE)
+  dt_analytical3[, new_N_draws := N_draws - L_avg]
+
+  dt_analytical4 = dt_analytical3[M %in% paste0("M = ", 7:10),]
+  dt_analytical4[, M := factor(M, labels = paste0("M = ", 7:10), levels = paste0("M = ", 7:10))]
+
+  library(ggallin)
+  fig_L_diff = ggplot(dt_analytical4, aes(x = N_S, y = new_L_avg)) +
+    geom_line() +
+    geom_line(aes(x = N_S, y = new_N_draws),  col = "red", linetype = "dashed", linewidth = 0.75) +
+    geom_ribbon(aes(x = N_S, ymin = new_lower, ymax = new_upper), alpha = 0.4, linewidth = 0.1) +
+    scale_x_continuous(labels = scales::label_number()) +
+    facet_wrap("M ~ .", ncol = 4, scales = "free") +
+    labs(x = expression(N[S]), y = bquote("Difference between"~bar(L)~"and"~E*"[L] and quantiles")) +
+    theme(legend.position="bottom", legend.box = "horizontal") +
+    theme(strip.text = element_text(size = rel(1.5)),
+          legend.title = element_text(size = rel(1.4)),
+          legend.text = element_text(size = rel(1.4)),
+          axis.title = element_text(size = rel(1.3)),
+          axis.text = element_text(size = rel(1.3))) +
+    scale_y_continuous(labels = scales::label_number())
+    # scale_y_continuous(trans = pseudolog10_trans,
+    #                    labels = scales::label_number())
+    # scale_y_log10(
+    #   breaks = scales::trans_breaks("log10", function(x) 10^x),
+    #   labels = scales::trans_format("log10", scales::math_format(10^.x))
+    # )
+  fig_L_diff
+
+  # Save the figure
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Expected_L_diff_Some.png",
+         plot = fig_L_diff,
+         width = 16,
+         height = 5,
+         scale = 0.85,
+         dpi = 350)
+
+
 
 
   # Plot the denominator
@@ -807,6 +920,9 @@ if (FALSE) {
   ## Create the files ------------------------------------------------------------------------------------------------
   m_seq = 7:20
 
+  normalize_version = "coalition"
+  normalize_version = "coalition_size"
+
   dt_avg_L = data.table(M = numeric(), N_S = numeric(), type = character(), Size = numeric(), Ps_tilde = numeric())
   dt_avg_ps = data.table(M = numeric(), N_S = numeric(), type = character(), Size = numeric(), Ps_tilde = numeric())
   dt_combined = data.table(M = numeric(), N_S = numeric(), type = character(), Size = numeric(), Ps_tilde = numeric(), version = factor())
@@ -820,20 +936,25 @@ if (FALSE) {
 
     # Create the ps values
     n_features <- seq(m - 1)
-    n <- sapply(n_features, choose, n = m)
+    n <- choose(n = m, k = seq(m-1))
     ps = shapr:::shapley_weights(m = m, N = n, n_features) / sum_shapley_weights(m)
 
     # Read in the file
-    file = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, ".rds"))
+    file = readRDS(file.path(folder_save, paste0("Sequence_length_M_", m, ".rds")))
     dt = copy(file$dt)
     dt_avg = copy(file$dt_avg)
+    print(object.size(dt), units = "GB")
+
+    # values needed for normalizing
+
 
     ### Get the pstilde valued when using the average L
     dt_L_avg = data.table(N_S = dt_avg$N_S[dt_avg$N_S %% 2 == 0],
                           type = "mean",
                           t(sapply(dt_avg$L_avg[seq(2, length(dt_avg$L_avg), 2)], function(L) {
                             pstilde = 2*ps / (1 - (1 - 2*ps)^(L/2))
-                            pstilde = pstilde / sum(pstilde)
+                            if (normalize_version == "coalition") pstilde = pstilde / sum(pstilde * n)
+                            if (normalize_version == "coalition_size") pstilde = pstilde / sum(pstilde)
                             pstilde
                           })))
     setnames(dt_L_avg, old = paste0("V", n_features), new = paste(n_features))
@@ -854,11 +975,13 @@ if (FALSE) {
 
     ### Get the average pstilde values
     dt_ps = rbindlist(lapply(seq(2, dt[, max(N_S)], 2), function(N_S_now) {
+      message(N_S_now)
       if (N_S_now %% 10000 == 0) message(N_S_now)
       # Iterate over all values of L and compute the corresponding ps values
       ps_hat = t(sapply(dt[N_S == N_S_now, L], function(L_now) {
         pstilde = 2*ps / (1 - (1 - 2*ps)^(L_now/2))
-        pstilde = pstilde / sum(pstilde)
+        if (normalize_version == "coalition") pstilde = pstilde / sum(pstilde * n)
+        if (normalize_version == "coalition_size") pstilde = pstilde / sum(pstilde)
         pstilde
       }))
       # Create a data table with the mean, 2.5% percentile, median, and 97.5% percentile
@@ -908,21 +1031,24 @@ if (FALSE) {
     dt_diff = rbind(dt_diff, dt_diff_now)
 
     # Save to disk
-    saveRDS(dt_combined_ps, paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_combined.rds"))
-    saveRDS(dt_diff_now, paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_diff.rds"))
+    saveRDS(dt_combined_ps, paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_normalized_", normalize_version, "_combined.rds"))
+    saveRDS(dt_diff_now, paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_normalized_", normalize_version, "_diff.rds"))
   }
 
 
 
   # Load the data files ---------------------------------------------------------------------------------------------
   m_seq = 7:20
-  m_seq = 19:20
+  #m_seq = 19:20
   folder = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  normalize_version = "coalition_size"
+  normalize_version = "coalition"
+
   dt_combined3 =
-    rbindlist(lapply(m_seq, function(m) readRDS(file.path(folder, paste0("Sequence_length_M_", m, "_combined.rds")))))
+    rbindlist(lapply(m_seq, function(m) readRDS(file.path(folder, paste0("Sequence_length_M_", m, "_normalized_", normalize_version, "_combined.rds")))))
 
   dt_diff3 =
-    rbindlist(lapply(m_seq, function(m) readRDS(file.path(folder, paste0("Sequence_length_M_", m, "_diff.rds")))))
+    rbindlist(lapply(m_seq, function(m) readRDS(file.path(folder, paste0("Sequence_length_M_", m, "_normalized_", normalize_version, "_diff.rds")))))
 
   dt_combined = copy(dt_combined3)
   dt_diff = copy(dt_diff3)
@@ -936,6 +1062,8 @@ if (FALSE) {
   dt_combined[M %in% m_seq_reduce, .N, by = M]
   dt_combined = dt_combined_short_fun(dt_combined = dt_combined, m_seq_reduce = m_seq_reduce)
   dt_combined[M %in% m_seq_reduce, .N, by = M]
+
+  # Convert
   dt_combined[, type := factor(type)]
   dt_combined[, M := factor(M, levels = m_seq, labels = paste0("M = ", m_seq))]
   dt_combined[, N_S := N_S + 2]
@@ -945,7 +1073,10 @@ if (FALSE) {
   #data_ribbon[, M := factor(M, levels = m_seq, labels = paste0("M = ", m_seq))]
 
   # data table with the final ps values for each coal size
-  dt_exact_ps = get_exact_ps_values(m_seq)
+  dt_exact_ps = get_exact_ps_values(m_seq, normalize = normalize_version)
+
+
+
 
 
 
@@ -983,8 +1114,9 @@ if (FALSE) {
           axis.title = element_text(size = rel(1.5)),
           axis.text = element_text(size = rel(1.4))) +
     scale_x_continuous(labels = scales::label_number())
+  fig_ps_bands
 
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_confidence_bands_v7.png",
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_confidence_bands_v9.png",
          plot = fig_ps_bands,
          width = 14.2,
          height = 20,
@@ -1010,7 +1142,9 @@ if (FALSE) {
 
 
 
-  dt_exact_ps = get_exact_ps_values(m_seq)
+  # data table with the final ps values for each coal size
+  dt_exact_ps = get_exact_ps_values(m_seq, normalize = normalize_version)
+
 
   dt_paired_imp_c_kernel = data.table(
     rbindlist(
@@ -1025,10 +1159,9 @@ if (FALSE) {
         data.table(rbindlist(
           lapply(unique(round(seq(2, 2^m, length.out = 1000))),
                  function(L, m, n_cumsum, remove_non_added_sizes) {
-                   shapley_weight = shapr:::shapley_weights(m = m,
-                                                            N = sapply(seq(m - 1), choose, n = m),
-                                                            n_components = seq(m - 1))
-                   shapley_weight = shapley_weight / sum_shapley_weights(m)
+                   n_features <- seq(m - 1)
+                   n <- choose(n = m, k = seq(m-1))
+                   shapley_weight = shapr:::shapley_weights(m = m, N = n, n_features) / sum_shapley_weights(m)
                    #shapley_weight = shapley_weight/sum(shapley_weight)
 
                    dt_tmp = data.table(
@@ -1038,7 +1171,8 @@ if (FALSE) {
                      Ps_tilde = 2*shapley_weight / (1-(1-2*shapley_weight)^(L/2))
                    )
 
-                   dt_tmp[, Ps_tilde := Ps_tilde / sum(Ps_tilde)]
+                   if (normalize_version == "coalition") dt_tmp[, Ps_tilde := Ps_tilde / sum(Ps_tilde * n)]
+                   if (normalize_version == "coalition_size") dt_tmp[, Ps_tilde := Ps_tilde / sum(Ps_tilde)]
                    dt_tmp = dt_tmp[Size <= floor(m/2),]
                    dt_tmp
 
@@ -1077,12 +1211,16 @@ if (FALSE) {
              color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1, order = 1),
              linetype = guide_legend(title = "Version: ", order = 2)) +
       labs(x = expression(N[S]), y = "Normalized weights") +
+      # scale_linetype_manual(values = c("solid", "dotted", "dashed"),
+      #                       labels = c(expression(bar(p)["|"*S*"|"](L)),
+      #                                  expression(p["|"*S*"|"](bar(L))),
+      #                                  expression(p["|"*S*"|"](N[S]))),
+      #                       guide = guide_legend(override.aes = list(c("solid", "solid", "solid"),
+      #                                                                lwd = c(0.5,0.1,0.4)))) +
       scale_linetype_manual(values = c("solid", "dotted", "dashed"),
-                            labels = c(expression(bar(p)["|"*S*"|"](L)),
-                                       expression(p["|"*S*"|"](bar(L))),
-                                       expression(p["|"*S*"|"](N[S]))),
-                            guide = guide_legend(override.aes = list(c("solid", "solid", "solid"),
-                                                                     lwd = c(0.5,0.1,0.4)))) +
+                            labels = c(expression(bar(p)[S](L)),
+                                       expression(p[S](bar(L))),
+                                       expression(p[S](N[S])))) +
       theme(legend.position = "bottom",
             legend.box = "horizontal",
             legend.justification = "right",
@@ -1092,9 +1230,9 @@ if (FALSE) {
             axis.title = element_text(size = rel(1.5)),
             axis.text = element_text(size = rel(1.4))) +
       scale_x_continuous(labels = scales::label_number())
+    fig_ps_all_strategies
 
-
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_all_strategies_v4.png",
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_all_strategies_v6.png",
            plot = fig_ps_all_strategies,
            width = 14.2,
            height = 20,
@@ -1130,12 +1268,15 @@ if (FALSE) {
              color = guide_legend(title = expression("Coalition size |"*S*"|: "), nrow = 1, order = 1),
              linetype = guide_legend(title = "Version: ", order = 2, nrow = 1)) +
       labs(x = expression(N[S]), y = "Normalized weights") +
+
+      # scale_linetype_manual(values = c("solid", "dotted", "dashed"),
+      #                       labels = c(expression(bar(p)["|"*S*"|"](L)),
+      #                                  expression(p["|"*S*"|"](bar(L))),
+      #                                  expression(p["|"*S*"|"](N[S])))) +
       scale_linetype_manual(values = c("solid", "dotted", "dashed"),
-                            labels = c(expression(bar(p)["|"*S*"|"](L)),
-                                       expression(p["|"*S*"|"](bar(L))),
-                                       expression(p["|"*S*"|"](N[S])))) + #,
-                            # guide = guide_legend(override.aes = list(c("solid", "solid", "solid"),
-                            #                                          lwd = c(0.5,0.1,0.4)))) +
+                            labels = c(expression(bar(p)[S](L)),
+                                       expression(p[S](bar(L))),
+                                       expression(p[S](N[S])))) +
       theme(legend.position = "bottom",
             legend.box = "horizontal",
             plot.margin = margin(t = 5.5,  # Top margin
@@ -1143,20 +1284,31 @@ if (FALSE) {
                                  b = 5.5,  # Bottom margin
                                  l = 5.5),
             strip.text = element_text(size = rel(1.5)),
-            legend.title = element_text(size = rel(1.9)),
-            legend.text = element_text(size = rel(1.9)),
+            legend.title = element_text(size = rel(1.85)),
+            legend.text = element_text(size = rel(1.85)),
             axis.title = element_text(size = rel(1.5)),
             axis.text = element_text(size = rel(1.33))) +
       scale_x_continuous(labels = scales::label_number())
+    fig_ps_all_strategies_some_M
 
-
-
-    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_all_strategies_some_M_v99.png",
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_all_strategies_some_M_V4.png",
            plot = fig_ps_all_strategies_some_M,
            width = 16.85,
            height = 7,
            scale = 0.85,
            dpi = 350)
+
+
+    fig_ps_all_strategies_some_M2 = fig_ps_all_strategies_some_M + theme(legend.key.size = unit(0.96, "cm"))
+
+    ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Ps_tilde_all_strategies_some_M_V3.png",
+           plot = fig_ps_all_strategies_some_M2,
+           width = 16.85,
+           height = 7,
+           scale = 0.85,
+           dpi = 350)
+
+
 
 
   }

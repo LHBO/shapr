@@ -1827,7 +1827,15 @@ if (FALSE) {
            dpi = 350)
 
 
-
+    samps = c(
+      # "Unique",
+      # "Paired",
+      # "Paired Average",
+      # "Paired Kernel",
+      "Paired C-Kernel",
+      "C-Kernel",
+      "Paired Imp C-Kernel",
+      "Imp C-Kernel")
 
 
 
@@ -1872,7 +1880,29 @@ if (FALSE) {
         scale_color_hue() + #added as we want ordered
         scale_fill_hue()
 
-      fig_wo_bands
+      # Without bands and with dotted lines
+      ggplot(dt_all2[n_combinations <= 50,], aes(x = n_combinations, y = mean, col = sampling, fill = sampling, linetype = sampling)) +
+       # geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
+        #ggplot2::geom_ribbon(ggplot2::aes(ymin = CI_lower, ymax = CI_upper), alpha = 0.4, linewidth = 0) +
+        geom_line(linewidth = 0.65) +
+        facet_wrap(.~rho, labeller = label_bquote(cols = rho ==.(rho)), scales="free_y") +
+        # scale_y_log10(
+        #   breaks = scales::trans_breaks("log10", function(x) 10^x),
+        #   labels = scales::trans_format("log10", scales::math_format(10^.x))
+        # ) +
+        scale_x_continuous(labels = scales::label_number()) +
+        theme(legend.position = 'bottom') +
+        guides(col = guide_legend(nrow = 2, theme = theme(legend.byrow = FALSE)),
+               fill = guide_legend(nrow = 2, theme = theme(legend.byrow = FALSE)),
+               linetype = "none") +
+        labs(color = "Strategy:", fill = "Strategy:", x = expression(N[S]), y = bquote(bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+        theme(strip.text = element_text(size = rel(1.6)),
+              legend.title = element_text(size = rel(1.37)),
+              legend.text = element_text(size = rel(1.37)),
+              axis.title = element_text(size = rel(1.6)),
+              axis.text = element_text(size = rel(1.5))) +
+        scale_color_hue() + #added as we want ordered
+        scale_fill_hue()
 
       ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_4_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2", ext_str, "_FINAL_wo_bands.png"),
              plot = fig_wo_bands,
@@ -1917,6 +1947,27 @@ if (FALSE) {
              dpi = 350)
     }
 
+    {
+      samps = c(
+        # "Unique",
+        # "Paired",
+        # "Paired Average",
+        # "Paired Kernel",
+        "Paired C-Kernel",
+        "C-Kernel",
+        "Paired Imp C-Kernel",
+        "Imp C-Kernel")
+      fig_rel = relative_difference(dt = dt_all,
+                                    m = 10,
+                                    strat_ref = "Paired C-Kernel",
+                                    strat_other = c("Paired C-Kernel", "C-Kernel"),
+                                    # y_breaks = c(-1, -0.4, -0.1, 0, 0.1, 0.4, 1, 2, 4),
+                                    y_limits = c(-0.001, 0.001),
+                                    scale = FALSE,
+                                    include_coal_size_lines = TRUE,
+                                    y_lab_frac = TRUE)
+      fig_rel
+    }
 
 
 
@@ -2030,12 +2081,24 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
-version = "Paper3"
+version = "Paper3_final"
 if (version == "NSM") {
   sampling_methods = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights", "paired_coalitions_weights_direct_equal_weights")
 } else if (version == "Paper3") {
   ll = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1.rds")
   sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "unique_paired_new_weights_empirical", "largest_weights_random_new_weights_empirical")
+} else if (version == "Paper3_final") {
+  ll2 = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1.rds")
+  ll = copy(ll2)
+  ll = c(ll, readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1_on_all_cond_paired.rds")) # Paired C-Kernel
+  #ll = c(ll, readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1_on_all_cond_paired_unique_paired_mean_L.rds")) # Paired CEL-Kernel
+  # ll = c(ll, readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1_on_all_cond_paired_largest_weights_random.rds")) # Paired Imp C-kernel
+  # ll = c(ll, readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Gompertz_Xgboost_M_10_n_train_1000_n_test_1000_rho_0.5_equi_TRUE_betas_2_10_0.25_-3_-1_1.5_-0.5_10_1.25_1.5_-2_estimated_repetition_1_on_all_cond_paired_largest_weights_random_mean_L.rds")) # Paired Imp CEL-kernel
+
+  # sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "unique_paired_new_weights_empirical", "largest_weights_random_new_weights_empirical", "on_all_cond_paired", "on_all_cond_paired_largest_weights_random_mean_L", "on_all_cond_paired_unique_paired_mean_L")
+  # sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "on_all_cond_paired", "on_all_cond_paired_largest_weights_random_mean_L", "on_all_cond_paired_unique_paired_mean_L")
+  sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "on_all_cond_paired", "on_all_cond_paired_unique_paired_mean_L")
+  sampling_methods = c("unique", "unique_paired", "unique_paired_equal_weights", "unique_paired_SW", "on_all_cond_paired")
 } else {
   stop("Unknown version.")
 }
@@ -2043,13 +2106,16 @@ if (version == "NSM") {
 
 n_combinations_vec = c(104, 254, 754, 1004)
 
+n_combinations = 104
+sampling_method = "on_all_cond_paired_largest_weights_random_analytical"
 dt_list = data.table::rbindlist(
   lapply(n_combinations_vec, function(n_combinations) {
     rbind(data.table(type = "kernel", n_combinations =  n_combinations-4, id = X_true$id_combination, weight = X_true$shapley_weight),
           data.table::rbindlist(
             lapply(sampling_methods, function(sampling_method) {
-              X_tmp = ll[[sampling_method]]$repetition_1[[paste0("n_combinations_", n_combinations)]]$only_save$X
-              S_tmp = ll[[sampling_method]]$repetition_1[[paste0("n_combinations_", n_combinations)]]$only_save$S
+              message(sampling_method)
+              X_tmp = ll[[sampling_method]][[1]][[paste0("n_combinations_", n_combinations)]]$only_save$X
+              S_tmp = ll[[sampling_method]][[1]][[paste0("n_combinations_", n_combinations)]]$only_save$S
 
               correct_order = order_feature_list(X_tmp$features)
               X = X_tmp[correct_order,]
@@ -2115,32 +2181,9 @@ if (version == "NSM") {
 
 } else if (version == "paper3") {
   dt[, type := factor(type,
-                              levels = c("unique_paired_unif_V2", "unique", "unique_paired", "unique_paired_equal_weights",  "unique_paired_SW",
-                                         "unique_paired_new_weights_empirical", "unique_paired_new_weights_gompertz",
-                                         "paired_coalitions_weights_direct_equal_weights",
-                                         "paired_coalitions_weights_direct_equal_weights_new_weights_empirical",
-                                         "paired_coalitions_weights_direct_equal_weights_new_weights_gompertz",
-                                         "paired_coalitions",
-                                         "paired_coalitions_new_weights_empirical",
-                                         "paired_coalitions_new_weights_gompertz",
-                                         "largest_weights",
-                                         "largest_weights_combination_size",
-                                         "largest_weights_new_weights_empirical",
-                                         "largest_weights_combination_size_new_weights_empirical",
-                                         "largest_weights_random", "largest_weights_random_new_weights_empirical",
-                                         "MAD", "MAD_new_weights_empirical", "kernel"
-                              ),
-                              labels = c("Uniform", "Unique", "Paired", "Paired Average", "Paired Kernel",
-                                         "Paired Empirical", "Paired Gompertz",
-                                         "Pilot Average", "Pilot Sample Empirical", "Pilot Sample Gompertz",
-                                         "Pilot Kernel",  "Pilot Order Empirical", "Pilot Order Gompertz",
-                                         "Largest", "Largest Coalition",
-                                         "Largest Order Empirical", "Largest Order Coalition Empirical",
-                                         "Paired Largest", "Paired Largest Empirical",
-                                         "MAD", "MAD Empirical",
-                                         "Shapley Kernel Weights"
-                              ),
-                              ordered = FALSE)]
+                      levels = dt_strategy_names$Original,
+                      labels = dt_strategy_names$New,
+                      ordered = FALSE)]
 
   fig = ggplot(dt[type != "Shapley Kernel Weights"], aes(x = id, y = weight, col = type)) +
     geom_vline(xintercept = 512.5, color = "darkgrey", linetype = "dashed", linewidth = 0.9) +
@@ -2153,21 +2196,24 @@ if (version == "NSM") {
                ncol = 2) +
     theme(legend.position = 'bottom') +
     guides(col = guide_legend(nrow = 1)) +
-    labs(color = "Strategy:", x = "Coalition index", y = "Normalized Shapley kernel weight/sampling frequency") +
+    labs(color = "Strategy:", x = "Coalition index", y = "Normalized weights") +
     theme(strip.text = element_text(size = rel(1.6)),
-          legend.title = element_text(size = rel(1.4)),
-          legend.text = element_text(size = rel(1.4)),
-          axis.title = element_text(size = rel(1.4)),
-          axis.title.y = element_text(size = rel(1.1)),
+          legend.title = element_text(size = rel(1.6)),
+          legend.text = element_text(size = rel(1.6)),
+          axis.title = element_text(size = rel(1.6)),
           axis.text = element_text(size = rel(1.5)))
+
     #geom_step(data = dt[type == "Shapley Kernel Weights"]) +
     #scale_color_manual(values = c(gg_color_hue(3), "#000000", "#000000"))
 
+
+  #"#000000", "#F8766D" "#7CAE00" "#00BFC4" "#C77CFF"
+
   fig
-  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights_4.png", # Saving 14.2 x 9.98 in image
+  ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights_6.png", # Saving 14.2 x 9.98 in image
          plot = fig,
          width = 14.2,
-         height = 9.98,
+         height = 9.5,
          scale = 0.85,
          dpi = 350)
 } else {

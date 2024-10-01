@@ -1082,7 +1082,10 @@ if (FALSE) {
                 #"Paired Imp CEPS-Kernel",
                 "KernelSHAP",
                 "KernelSHAP Average",
-                "KernelSHAP CEL-Kernel"
+                "KernelSHAP CEL-Kernel",
+                "Paired KernelSHAP",
+                "Paired KernelSHAP Average",
+                "Paired KernelSHAP CEL-Kernel"
   )
 
   strat_MAE_final = c("Unique",

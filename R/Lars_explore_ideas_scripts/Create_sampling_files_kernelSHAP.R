@@ -324,10 +324,18 @@ for (repetition in repetitions) {
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 # module load R/4.2.1-foss-2022a
 
-# Rscript Create_sampling_files_kernelSHAP.R 20 1:50
-# Rscript Create_sampling_files_kernelSHAP.R 20 51:100
-# Rscript Create_sampling_files_kernelSHAP.R 20 101:150
+# Rscript Create_sampling_files_kernelSHAP.R 20 1:50 FALSE
 
+# Rscript Create_sampling_files_kernelSHAP.R 20 50:1 TRUE LABBU
+# Rscript Create_sampling_files_kernelSHAP.R 20 50:1 FALSE diktys
+# Rscript Create_sampling_files_kernelSHAP.R 20 51:100 TRUE Sraosha
+# Rscript Create_sampling_files_kernelSHAP.R 20 51:100 FALSE Sumeru
+# Rscript Create_sampling_files_kernelSHAP.R 20 100:51 FALSE carpo
+# Rscript Create_sampling_files_kernelSHAP.R 20 100:51 TRUE aload
+# Rscript Create_sampling_files_kernelSHAP.R 20 101:150 TRUE nyx
+# Rscript Create_sampling_files_kernelSHAP.R 20 101:150 FALSE metis
+# Rscript Create_sampling_files_kernelSHAP.R 20 150:101 TRUE adroa
+# Rscript Create_sampling_files_kernelSHAP.R 20 150:101 FALSE adonis
 
 
 # final_list$look_up$dt_n_comb_needed
