@@ -93,6 +93,8 @@ coalition_sampling_kernelSHAP = function(m,
     }
 
     dt_res
+    # Convert to string
+    dt_res_features_string = sapply(dt_res$features, paste, collapse = ",")
 
     # Then we need to sample the remaining features
     # add random samples from what is left of the subset space
@@ -174,9 +176,6 @@ coalition_sampling_kernelSHAP = function(m,
         # # Merge the coalitions in alternating fashion as we do paired sampling (i.e., first is S and second is Sbar and so on)
         # coalitions = c(rbind(feature_sample, feature_sample_paired))
 
-        # Add the fixed
-        if (nfixed_samples > 0) coalitions = c(dt_res$features, coalitions)
-
         # Convert the coalitions to strings such that we can compare them
         message(paste0("(", id_now, "/", id_max, ") ", "Converting to strings"))
         coalitions = sapply(coalitions, paste, collapse = ",")
@@ -184,9 +183,16 @@ coalition_sampling_kernelSHAP = function(m,
         # Add the new coalitions to the previously sampled coalitions
         all_coalitions = c(all_coalitions, coalitions)
 
-        # Get the cumulative number of unique coalitions for each coalition in all_coalitions
+        # Add the fixed coalitions
+        if (nfixed_samples > 0) {
+          all_coalitions_added = c(dt_res_features_string, all_coalitions)
+        } else {
+          all_coalitions_added = all_coalitions
+        }
+
+        # Get the cumulative number of unique coalitions for each coalition in all_coalitions_added
         message(paste0("(", id_now, "/", id_max, ") ", "Getting cumsum"))
-        dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)))[, L := .I]
+        dt_cumsum = data.table(coalitions = all_coalitions_added, N_S = cumsum(!duplicated(all_coalitions_added)))[, L := .I]
         dt_cumsum
 
         # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
@@ -211,7 +217,7 @@ coalition_sampling_kernelSHAP = function(m,
       # Stop at next limit
       dt_N_S_and_L[N_S == N_S_now]
       dt_N_S_and_L_small = dt_N_S_and_L[N_S <= N_S_now]
-      all_coalitions_small = all_coalitions[seq(dt_N_S_and_L_small[.N, L])]
+      all_coalitions_small = all_coalitions_added[seq(dt_N_S_and_L_small[.N, L])]
     }
 
     # Return

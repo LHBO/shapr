@@ -39,7 +39,7 @@ coalition_sampling_largest_SHAP = function(m,
                                        dt_id = sapply(seq(2, n_combinations, 2), function(x) which.max(n_comb_needed >= x)))
 
 
-  id_now_idx = 1
+  id_now_idx = 5
   id_max = length(dt_n_comb_needed$dt_id)
   full_res = lapply(seq_along(dt_n_comb_needed$dt_id), function(id_now_idx) {
     id_now = dt_n_comb_needed$dt_id[id_now_idx]
@@ -66,7 +66,8 @@ coalition_sampling_largest_SHAP = function(m,
       }
     }
 
-    dt_res
+    # Convert to string
+    dt_res_features_string = sapply(dt_res$features, paste, collapse = ",")
 
     # Then we need to sample the remaining features
     # add random samples from what is left of the subset space
@@ -85,7 +86,6 @@ coalition_sampling_largest_SHAP = function(m,
       }
       if (num_full_subsets > 0) remaining_weight_vector = remaining_weight_vector[-seq(num_full_subsets)] # Remove the fully sampled coalition size
       remaining_weight_vector = remaining_weight_vector / sum(remaining_weight_vector)
-
 
       # List to store all the sampled coalitions
       all_coalitions = c()
@@ -133,9 +133,6 @@ coalition_sampling_largest_SHAP = function(m,
           }, m = m), recursive = FALSE)
         }
 
-        # Add the fixed
-        if (nfixed_samples > 0) coalitions = c(dt_res$features, coalitions)
-
         # Convert the coalitions to strings such that we can compare them
         message(paste0("(", id_now, "/", id_max, ") ", "Converting to strings"))
         coalitions = sapply(coalitions, paste, collapse = ",")
@@ -143,9 +140,16 @@ coalition_sampling_largest_SHAP = function(m,
         # Add the new coalitions to the previously sampled coalitions
         all_coalitions = c(all_coalitions, coalitions)
 
+        # Add the fixed coalitions
+        if (nfixed_samples > 0) {
+          all_coalitions_added = c(dt_res_features_string, all_coalitions)
+        } else {
+          all_coalitions_added = all_coalitions
+        }
+
         # Get the cumulative number of unique coalitions for each coalition in all_coalitions
         message(paste0("(", id_now, "/", id_max, ") ", "Getting cumsum"))
-        dt_cumsum = data.table(coalitions = all_coalitions, N_S = cumsum(!duplicated(all_coalitions)))[, L := .I]
+        dt_cumsum = data.table(coalitions = all_coalitions_added, N_S = cumsum(!duplicated(all_coalitions_added)))[, L := .I]
         dt_cumsum
 
         # Extract rows where the N_S value increases (i.e., where we sample a new unique coalition)
@@ -170,7 +174,7 @@ coalition_sampling_largest_SHAP = function(m,
       # Stop at next limit
       # dt_N_S_and_L[N_S == N_S_now]
       dt_N_S_and_L_small = dt_N_S_and_L[N_S <= N_S_now]
-      all_coalitions_small = all_coalitions[seq(dt_N_S_and_L_small[.N, L])]
+      all_coalitions_small = all_coalitions_added[seq(dt_N_S_and_L_small[.N, L])]
     }
 
     # Return
@@ -219,7 +223,7 @@ version_name = "KernelSHAP_Important_sampling"
 # n_sample_scale = 35
 
 n_combinations = 2^m - 2
-n_sample_scale = 3
+n_sample_scale = 5
 
 if (m == 20) n_combinations = 1048500
 
