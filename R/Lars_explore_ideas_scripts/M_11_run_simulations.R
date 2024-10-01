@@ -1177,16 +1177,20 @@ if (FALSE) {
     "KernelSHAP",
     "KernelSHAP Average",
     "KernelSHAP CEL-Kernel",
+    #"Paired KernelSHAP",
+    "Paired KernelSHAP Average",
+    "Paired KernelSHAP CEL-Kernel",
     "Paired Imp CEL-Kernel"
   )
 
+  res_MAE_now = res_MAE
   res_MAE_now = res_MAE[!(N_S %in% c(2038, 2040, 2042, 2044) & Strategy == "KernelSHAP CEL-Kernel")]
   res_MAE_now = res_MAE_now[!(N_S %in% c(2042, 2044) & Strategy == "KernelSHAP Average")]
   Wine_fig_MAE_KernelSHAP =
     ggplot(res_MAE_now[Strategy %in% strat_MAE_small,],
            aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
-    geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
+    #geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
     geom_line(linewidth = 0.65) +
     scale_x_continuous(labels = scales::label_number()) +
     scale_y_log10(
@@ -1194,7 +1198,7 @@ if (FALSE) {
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
     theme(legend.position = 'bottom') +
-    guides(col = guide_legend(nrow = 2), fill = guide_legend(nrow = 2)) +
+    guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
          y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
@@ -1206,8 +1210,9 @@ if (FALSE) {
     # scale_color_manual(values = colors) +
     # scale_fill_manual(values = colors) +
     coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
+  Wine_fig_MAE_KernelSHAP
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Wine_fig_MAE_KernelSHAP_ribbon.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Wine_fig_MAE_KernelSHAP_V_line.png"),
          plot = Wine_fig_MAE_KernelSHAP,
          width = 14.5,
          height = 8,
