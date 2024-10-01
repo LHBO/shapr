@@ -1,10 +1,10 @@
 coalition_sampling_largest_SHAP = function(m,
-                                         n_combinations = 2^m - 2,
-                                         n_sample_scale = 3,
-                                         return_coalitions = TRUE,
-                                         seed = NULL,
-                                         verbose = TRUE,
-                                         always_pair_coalitions = TRUE) {
+                                           n_combinations = 2^m - 2,
+                                           n_sample_scale = 3,
+                                           return_coalitions = TRUE,
+                                           seed = NULL,
+                                           verbose = TRUE,
+                                           always_pair_coalitions = TRUE) {
   if (n_combinations > 2^m - 2) stop("n_combinations is larger than 2^m.")
   if (!is.null(seed)) set.seed(seed)
 
@@ -231,6 +231,7 @@ message(sprintf("We are working on '%s'.", R.utils::System$getHostname()))
 if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder = "/Users/larsolsen/PhD/Paper3/shapr"
   folder_save = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_paired = "/Users/larsolsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired_Imp"
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # To be added
@@ -251,12 +252,12 @@ for (repetition in repetitions) {
   message(paste0("Working on version '", version_name, "' and repetition ", repetition, "."))
 
   # Generate the coalitions
-  tmp = coalition_sampling_kernelSHAP(m = m,
-                                      n_combinations = n_combinations,
-                                      n_sample_scale = n_sample_scale,
-                                      return_coalitions = TRUE,
-                                      seed = repetition + 1,
-                                      always_pair_coalitions = always_pair_coalitions)
+  tmp = coalition_sampling_largest_SHAP(m = m,
+                                        n_combinations = n_combinations,
+                                        n_sample_scale = n_sample_scale,
+                                        return_coalitions = TRUE,
+                                        seed = repetition + 1,
+                                        always_pair_coalitions = always_pair_coalitions)
 
   # Print the size
   print(object.size(tmp), units = "MB")
