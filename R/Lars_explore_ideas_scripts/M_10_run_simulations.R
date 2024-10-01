@@ -406,7 +406,7 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 
 
 # Rscript M_10_run_simulations.R 0.0 TRUE 1:500
-# Rscript M_10_run_simulations.R 0.2 TRUE 1:500
+# Rscript M_10_run_simulations.R 0.2 TRUE 1:500 sumeru
 # Rscript M_10_run_simulations.R 0.5 TRUE 1:500 adonis
 # Rscript M_10_run_simulations.R 0.9 TRUE 1:500 labbu
 
@@ -463,7 +463,7 @@ n_train = 1000
 n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)[seq(M+1)]
 weight_zero_m = 10^6
-n_combinations_array = seq(4, 2^M-4, 2)
+n_combinations_array = seq(4, 2^M-2, 2)
 verbose_now = FALSE
 only_KernelSHAP = FALSE
 only_KernelSHAP_C_kernel = TRUE
@@ -1061,6 +1061,7 @@ for (rho_idx in seq_along(rhos)) {
       if (only_KernelSHAP_C_kernel) {
         # Figure out which list to look at
         dt_id = presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+        #presampled_coalitions_KernelSHAP_paired = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/KernelSHAP_sampling_paired_M_10_repetition_9.rds")
 
         # Get the n_combinations coalitions to include
         to_this_index = presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
