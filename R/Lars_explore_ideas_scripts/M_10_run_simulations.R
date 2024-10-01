@@ -98,9 +98,9 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   p <- w / sum(w)
 
   # Weight the different coalition sizes (KernelSHAP version)
-  num_subset_sizes = as.integer(ceiling((M - 1) / 2))
-  num_paired_subset_sizes = as.integer(floor((M - 1) / 2))
-  weight_vector = sapply(seq(num_subset_sizes), function(i) (M - 1.0) / (i * (M - i)))
+  num_subset_sizes = as.integer(ceiling((m - 1) / 2))
+  num_paired_subset_sizes = as.integer(floor((m - 1) / 2))
+  weight_vector = sapply(seq(num_subset_sizes), function(i) (m - 1.0) / (i * (m - i)))
   weight_vector[seq(num_paired_subset_sizes)] = 2*weight_vector[seq(num_paired_subset_sizes)]
   weight_vector = weight_vector / sum(weight_vector)
 
@@ -169,6 +169,127 @@ create_X_dt_KernelSHAP = function(m, presampled_coalitions, prefixed_coalitions,
   # plot(dt_freq[-c(1, .N), id_combination_full], dt_freq[-c(1, .N), shapley_weight])
   #
   # dt_freq[, sum(shapley_weight), by = N][-1]
+  return(dt_freq)
+}
+
+create_X_dt_KernelSHAP_corrected = function(m,
+                                            presampled_coalitions,
+                                            prefixed_coalitions,
+                                            dt_all_coalitions,
+                                            weight_zero_m = 10^6) {
+
+  # Find weights for given number of features
+  n_features <- seq(m - 1)
+  n <- sapply(n_features, choose, n = m)
+  w <- shapr:::shapley_weights(m = m, N = n, n_features) * n
+  p <- w / sum(w)
+
+  # Weight the different coalition sizes (KernelSHAP version)
+  num_subset_sizes = as.integer(ceiling((m - 1) / 2))
+  num_paired_subset_sizes = as.integer(floor((m - 1) / 2))
+  weight_vector = sapply(seq(num_subset_sizes), function(i) (m - 1.0) / (i * (m - i)))
+  weight_vector[seq(num_paired_subset_sizes)] = 2*weight_vector[seq(num_paired_subset_sizes)]
+  weight_vector = weight_vector / sum(weight_vector)
+
+  # Get the sampled coalitions for which we have to compute the frequencies
+  if (!is.null(prefixed_coalitions)) {
+    presampled_coal_wo_prefixed_coal = presampled_coalitions[-seq(nrow(prefixed_coalitions))]
+    num_full_subsets = length(prefixed_coalitions[.N - 1, features][[1]]) # This relies on the list version
+    weights_remaining = weight_vector[-seq(num_full_subsets)]
+    weight_left = sum(weights_remaining)
+  } else {
+    presampled_coal_wo_prefixed_coal = presampled_coalitions
+    num_full_subsets = 0
+    weights_remaining = weight_vector
+    weight_left = sum(weight_vector)
+  }
+
+  # Get the number of coalitions of all sizes
+  n_coal_of_each_size = choose(m, seq(m-1))
+
+  # Get the number of coalitions in the sizes that are not deterministically included
+  if (num_full_subsets >= floor(m/2)) stop("Too many full subsets. No sampling is done.")
+  n_coal_of_each_size_reamaining = n_coal_of_each_size[seq(num_full_subsets + 1, m - 1 - num_full_subsets)]
+
+  # Get the shapley kernel weights for the remaining coalition sizes
+  p_reamaining = p[seq(num_full_subsets + 1, m - 1 - num_full_subsets)]
+  p_reamaining = p_reamaining / sum(p_reamaining)
+
+  # Get the shapley kernel weight for each coalition
+  shapley_kernel_weight_reweighted = p_reamaining / n_coal_of_each_size_reamaining
+
+  # Pad it such that index corresponds to caolition size
+  shapley_kernel_weight_reweighted = c(rep(0, num_full_subsets), shapley_kernel_weight_reweighted, rep(0, num_full_subsets))
+
+  # Convert the list column to a comma-separated string for each row
+  if (!is.null(prefixed_coalitions)) {
+    prefixed_coalitions[, features := sapply(features, function(x) paste(unlist(x), collapse = ","))]
+    setnames(prefixed_coalitions, "w", "shapley_weight")
+
+    # Add that these coalitions are NOT sampled
+    prefixed_coalitions[, sampled := FALSE]
+  }
+
+  # String version
+  # Insert all sampled coalitions into a data table and find their frequencies
+  dt_freq = data.table::data.table(features = presampled_coal_wo_prefixed_coal)[, .(shapley_weight = .N), by = features]
+
+  # Add that these coalitions are sampled
+  dt_freq[, sampled := TRUE]
+
+  # Put together with the prefixed samples
+  dt_freq = rbind(prefixed_coalitions, dt_freq)
+
+  # Get the number of features in each coalition
+  dt_freq[, n_features := stringr::str_count(features, ",") + 1]
+
+  # Add the number of coalitions of each size
+  dt_freq[, N := n[n_features]]
+  dt_freq[, p := p[n_features]]
+
+  # Get the id_combination if we had used all combinations and sort it
+  dt_freq[, id_combination_full := dt_all_coalitions[dt_freq, id, on = "features"]]
+  data.table::setorder(dt_freq, "id_combination_full")
+
+  # Get the number of samples it took the sample the `dt_freq[sampled == TRUE, .N]` unique
+  # coalitions for those coalitions that are not deterministically included.
+  K <- dt_freq[sampled == TRUE, sum(shapley_weight)]
+
+  # Ensure that the shapley weight column is numeric, as it is int when prefixed_coalitions is NULL
+  dt_freq[, shapley_weight := as.numeric(shapley_weight)]
+
+  # Add the reweighted Shapley kernel weights
+  dt_freq[sampled == TRUE, shapley_weight := shapley_kernel_weight_reweighted[n_features]]
+
+  # Compute the corrected values shapley weights (see paper)
+  dt_freq[sampled == TRUE, shapley_weight := 2*shapley_weight / (1 - (1 - 2*shapley_weight)^(K/2))]
+
+  # Reweight the weights such that they sums to the remaining weight
+  dt_freq[sampled == TRUE, shapley_weight := weight_left * shapley_weight / sum(shapley_weight)]
+
+  # Convert from string to list of integer vectors. stringr is faster than base and stringi
+  dt_freq[, features := lapply(stringr::str_split(features, ','), as.integer)]
+
+  # Remove the sampled column as we no longer need it
+  dt_freq[, sampled := NULL]
+
+  # Add the empty and grand coalitions
+  dt_freq = rbindlist(
+    list(
+      data.table(features = list(integer(0)), shapley_weight = weight_zero_m, n_features = 0L, N = 1L, p = NA, id_combination_full = 1),
+      dt_freq,
+      data.table(features = list(1:m), shapley_weight = weight_zero_m, n_features = as.integer(m), N = 1L,  p = NA, id_combination_full = 2^m)
+    )
+  )
+
+  # Create new id column and reorder the columns
+  dt_freq[, id_combination := .I]
+  data.table::setcolorder(dt_freq, c("id_combination", "id_combination_full", "features", "n_features", "N", "shapley_weight", "p"))
+
+  # Optional to match the old setup
+  dt_freq[, N := as.integer(N)]
+  dt_freq[, n_features := as.integer(n_features)]
+
   return(dt_freq)
 }
 
@@ -307,7 +428,8 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder_save_2 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   folder_save_3 = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   folder_save_KernelSHAP = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
-  folder_save_KernelSHAP_paired = "/Users/larsolsen/PhD/Paper3/Paper3_save_location_paired"
+  folder_save_KernelSHAP_paired = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
+  folder_save_KernelSHAP_paired_imp = "/Users/larsolsen/PhD/Paper3/Paper3_save_location"
   UiO = FALSE
 } else if (grepl("hpc.uio.no", hostname)) {
   # To be added
@@ -320,6 +442,7 @@ if (hostname == "Larss-MacBook-Pro.local" || Sys.info()[[7]] == "larsolsen") {
   folder_save_3 = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_3"
   folder_save_KernelSHAP = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP"
   folder_save_KernelSHAP_paired = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired"
+  folder_save_KernelSHAP_paired_imp = "/mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/Paper3_save_location_KernelSHAP_paired_imp"
   UiO = TRUE
 } else {
   stop("We do not recongize the system at which the code is run (not Lars's MAC, HPC, nor UiO).")
@@ -335,7 +458,8 @@ betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 
 weight_zero_m = 10^6
 n_combinations_array = seq(4, 2^M-2, 2)
 verbose_now = FALSE
-only_KernelSHAP = TRUE
+only_KernelSHAP = FALSE
+only_KernelSHAP_C_kernel = TRUE
 
 # Create list of all feature combinations
 all_coalitions = unlist(lapply(0:M, utils::combn, x = M, simplify = FALSE), recursive = FALSE)
@@ -397,7 +521,7 @@ for (rho_idx in seq_along(rhos)) {
 
 
 
-    if (!only_KernelSHAP) {
+    if (!only_KernelSHAP && !only_KernelSHAP_C_kernel) {
       message("Loading presampled coalitions unique")
       presampled_coalitions_unique = file.path(folder_save_2, paste0("Unique_sampling_M_", M, "_repetition_", repetition, ".rds"))
       if (file.exists(presampled_coalitions_unique)) {
@@ -426,6 +550,7 @@ for (rho_idx in seq_along(rhos)) {
       message("Done loading presampled coalitions largest")
     }
 
+    if (!only_KernelSHAP_C_kernel) {
     message("Loading presampled coalitions KernelSHAP")
     presampled_coalitions_KernelSHAP = file.path(folder_save_KernelSHAP, paste0("KernelSHAP_sampling_M_", M, "_repetition_", repetition, ".rds"))
     if (file.exists(presampled_coalitions_KernelSHAP)) {
@@ -436,6 +561,7 @@ for (rho_idx in seq_along(rhos)) {
     }
     # print(presampled_coalitions_KernelSHAP)
     message("Done loading presampled coalitions KernelSHAP")
+    }
 
     message("Loading presampled coalitions KernelSHAP_paired")
     presampled_coalitions_KernelSHAP_paired = file.path(folder_save_KernelSHAP_paired, paste0("KernelSHAP_sampling_paired_M_", M, "_repetition_", repetition, ".rds"))
@@ -447,6 +573,20 @@ for (rho_idx in seq_along(rhos)) {
     }
     # print(presampled_coalitions_KernelSHAP)
     message("Done loading presampled coalitions KernelSHAP_paired")
+
+    message("Loading presampled coalitions KernelSHAP_paired_imp")
+    presampled_coalitions_KernelSHAP_paired_imp = file.path(folder_save_KernelSHAP_paired_imp, paste0("KernelSHAP_Important_sampling_paired_M_", M, "_repetition_", repetition, ".rds"))
+    if (file.exists(presampled_coalitions_KernelSHAP_paired_imp)) {
+      presampled_coalitions_KernelSHAP_paired_imp = readRDS(presampled_coalitions_KernelSHAP_paired_imp)
+    } else {
+      presampled_coalitions_KernelSHAP_paired_imp = NULL
+      stop("`presampled_coalitions_KernelSHAP_paired_imp` does not exist")
+    }
+    # print(presampled_coalitions_KernelSHAP)
+    message("Done loading presampled coalitions KernelSHAP_paired_imp")
+
+
+
 
     # Data.table to store the results for this repetition
     MAE_dt = data.table("Rho" = rho,
@@ -468,8 +608,9 @@ for (rho_idx in seq_along(rhos)) {
                         "KernelSHAP CEL-Kernel" = NaN,
                         "Paired KernelSHAP" = NaN,
                         "Paired KernelSHAP Average" = NaN,
-                        #"Paired KernelSHAP C-Kernel" = NaN,
-                        "Paired KernelSHAP CEL-Kernel" = NaN)
+                        "Paired KernelSHAP C-Kernel" = NaN,
+                        "Paired KernelSHAP CEL-Kernel" = NaN,
+                        "Paired KernelSHAP Imp C-Kernel" = NaN)
     if (only_KernelSHAP) {
       MAE_dt = data.table("Rho" = rho,
                           "Repetition" = repetition,
@@ -480,8 +621,16 @@ for (rho_idx in seq_along(rhos)) {
                           "KernelSHAP CEL-Kernel" = NaN,
                           "Paired KernelSHAP" = NaN,
                           "Paired KernelSHAP Average" = NaN,
-                          #"Paired KernelSHAP C-Kernel" = NaN,
-                          "Paired KernelSHAP CEL-Kernel" = NaN)
+                          "Paired KernelSHAP C-Kernel" = NaN,
+                          "Paired KernelSHAP CEL-Kernel" = NaN,
+                          "Paired KernelSHAP Imp C-Kernel" = NaN)
+    }
+    if (only_KernelSHAP_C_kernel) {
+      MAE_dt = data.table("Rho" = rho,
+                          "Repetition" = repetition,
+                          "N_S" = n_combinations_array,
+                          "Paired KernelSHAP C-Kernel" = NaN,
+                          "Paired KernelSHAP Imp C-Kernel" = NaN)
     }
 
 
@@ -497,7 +646,7 @@ for (rho_idx in seq_along(rhos)) {
 
       ## Unique ----------------------------------------------------------------------------------------------------------
       if (verbose_now) message("Unique")
-      if (!only_KernelSHAP) {
+      if (!only_KernelSHAP && !only_KernelSHAP_C_kernel) {
 
         # sampling_methods = "unique" #c("unique", "unique_SW", "unique_equal_weights", "unique_equal_weights_symmetric", "unique_unif_V2")
         # Get the n_combinations coalitions to include
@@ -518,7 +667,7 @@ for (rho_idx in seq_along(rhos)) {
       ## Paired ----------------------------------------------------------------------------------------------------------
       # Paired, average, kernel, c-kernel, cel-kernel
       if (verbose_now) message("Paired")
-      if (!only_KernelSHAP) {
+      if (!only_KernelSHAP && !only_KernelSHAP_C_kernel) {
 
         # Get the n_combinations coalitions to include
         presampled_coalitions =
@@ -626,7 +775,7 @@ for (rho_idx in seq_along(rhos)) {
 
       ## Paired Imp ------------------------------------------------------------------------------------------------------
       if (verbose_now) message("Paired Imp")
-      if (!only_KernelSHAP) {
+      if (!only_KernelSHAP && !only_KernelSHAP_C_kernel) {
         # Get the features to include
         presampled_coalitions = all_coalitions[sort(presampled_coalitions_largest[seq(n_combination)])]
 
@@ -692,7 +841,7 @@ for (rho_idx in seq_along(rhos)) {
       ## KernelSHAP ------------------------------------------------------------------------------------------------------
       # Paired, average, kernel, c-kernel, cel-kernel
       if (verbose_now) message("KernelSHAP")
-      {
+      if (!only_KernelSHAP_C_kernel) {
 
         # Figure out which list to look at
         dt_id = presampled_coalitions_KernelSHAP$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
@@ -796,7 +945,7 @@ for (rho_idx in seq_along(rhos)) {
       ## KernelSHAP_paired ------------------------------------------------------------------------------------------------------
       # Paired, average, kernel, c-kernel, cel-kernel
       if (verbose_now) message("KernelSHAP_paired")
-      {
+      if (!only_KernelSHAP_C_kernel) {
 
         # Figure out which list to look at
         dt_id = presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
@@ -898,15 +1047,72 @@ for (rho_idx in seq_along(rhos)) {
       }
 
 
+      ## KernelSHAP_paired_c ---------------------------------------------------------------------------------------------
+      message("Paired KernelSHAP C-Kernel")
+      if (only_KernelSHAP_C_kernel) {
+        # Figure out which list to look at
+        dt_id = presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+
+        # Get the n_combinations coalitions to include
+        to_this_index = presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
+        presampled_coalitions = copy(presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$all_coalitions_small[seq(to_this_index)])
+        prefixed_coalitions = copy(presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_res)
+
+        # Get the X data.table
+        X_now = create_X_dt_KernelSHAP_corrected(m = m,
+                                                 presampled_coalitions = presampled_coalitions,
+                                                 prefixed_coalitions = copy(prefixed_coalitions),
+                                                 dt_all_coalitions = dt_all_coalitions)
+
+        plot(X_now[-c(1,.N), id_combination_full], X_now[-c(1,.N), shapley_weight])
+
+        # Compute the approximated Shapley values
+        dt_KernelSHAP =
+          compute_SV_values(X_now = X_now, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+        # Get the MAE between the approximated and full Shapley values
+        MAE_dt[n_combination_idx, "Paired KernelSHAP C-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP[,-1])))]
+
+      }
+
+
+      ## KernelSHAP_imp_paired_c ---------------------------------------------------------------------------------------------
+      message("Paired KernelSHAP Imp C-Kernel")
+      if (only_KernelSHAP_C_kernel) {
+        # Figure out which list to look at
+        dt_id_imp = presampled_coalitions_KernelSHAP_paired_imp$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+
+        # Get the n_combinations coalitions to include
+        to_this_index_imp = presampled_coalitions_KernelSHAP_paired_imp$samples[[dt_id_imp]]$dt_N_S_and_L_small[N_S == n_combination, L]
+        presampled_coalitions_imp = copy(presampled_coalitions_KernelSHAP_paired_imp$samples[[dt_id_imp]]$all_coalitions_small[seq(to_this_index_imp)])
+        prefixed_coalitions_imp = copy(presampled_coalitions_KernelSHAP_paired_imp$samples[[dt_id_imp]]$dt_res)
+
+        # Get the X data.table
+        X_now_imp = create_X_dt_KernelSHAP_corrected(m = m,
+                                                 presampled_coalitions = presampled_coalitions_imp,
+                                                 prefixed_coalitions = copy(prefixed_coalitions_imp),
+                                                 dt_all_coalitions = dt_all_coalitions)
+        plot(X_now_imp[-c(1,.N), id_combination_full], X_now[-c(1,.N), shapley_weight])
+
+        # Compute the approximated Shapley values
+        dt_KernelSHAP_imp =
+          compute_SV_values(X_now = X_now_imp, dt_all_coalitions = dt_all_coalitions, dt_vS = dt_vS, shap_names = shap_names)
+
+        # Get the MAE between the approximated and full Shapley values
+        MAE_dt[n_combination_idx, "Paired KernelSHAP Imp C-Kernel" := mean(abs(dt_true_mat - as.matrix(dt_KernelSHAP_imp[,-1])))]
+
+      }
+
+
 
       if (verbose_now) print(MAE_dt[n_combination_idx,])
 
       # Save the results
       if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
         if (only_KernelSHAP) {
-          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp_tmp.rds")))
         } else {
-          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+          saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
         }
       }
 
@@ -926,15 +1132,15 @@ for (rho_idx in seq_along(rhos)) {
 
     # Save the results and remove tmp file
     if (only_KernelSHAP) {
-      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP.rds")))
-      if (file.exists(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))) {
-        file.remove(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_tmp.rds")))
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp.rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp_tmp.rds")))
       }
 
     } else {
-      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
-      if (file.exists(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
-        file.remove(file.path(folder_save_KernelSHAP_paired, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
+      saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, ".rds")))
+      if (file.exists(file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))) {
+        file.remove(file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
       }
     }
 
