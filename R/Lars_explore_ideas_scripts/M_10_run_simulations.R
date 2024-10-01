@@ -404,6 +404,13 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 # Rscript M_10_run_simulations.R 0.9 TRUE 500:330 carpo
 
 
+
+# Rscript M_10_run_simulations.R 0.0 TRUE 1:500
+# Rscript M_10_run_simulations.R 0.2 TRUE 1:500
+# Rscript M_10_run_simulations.R 0.5 TRUE 1:500 adonis
+# Rscript M_10_run_simulations.R 0.9 TRUE 1:500 labbu
+
+
 # Rscript M_10_run_simulations.R 0.0 TRUE 1:250 sumeru X
 # Rscript M_10_run_simulations.R 0.0 TRUE 251:500 nyx
 #
@@ -456,7 +463,7 @@ n_train = 1000
 n_test = 1000
 betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 2, 5, -0.5, -1, -2)[seq(M+1)]
 weight_zero_m = 10^6
-n_combinations_array = seq(4, 2^M-2, 2)
+n_combinations_array = seq(4, 2^M-4, 2)
 verbose_now = FALSE
 only_KernelSHAP = FALSE
 only_KernelSHAP_C_kernel = TRUE
@@ -577,7 +584,7 @@ for (rho_idx in seq_along(rhos)) {
 
     message("Loading presampled coalitions KernelSHAP_paired_imp")
     presampled_coalitions_KernelSHAP_paired_imp = file.path(folder_save_KernelSHAP_paired_imp, paste0("KernelSHAP_Important_sampling_paired_M_", M, "_repetition_", repetition, ".rds"))
-    print(presampled_coalitions_KernelSHAP_paired_imp)
+    # print(presampled_coalitions_KernelSHAP_paired_imp)
     if (file.exists(presampled_coalitions_KernelSHAP_paired_imp)) {
       presampled_coalitions_KernelSHAP_paired_imp = readRDS(presampled_coalitions_KernelSHAP_paired_imp)
     } else {
