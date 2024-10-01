@@ -1119,7 +1119,7 @@ for (rho_idx in seq_along(rhos)) {
 
       # Save the results
       if (n_combination_idx %% floor((length(n_combinations_array)/10)) == 0) {
-        if (only_KernelSHAP) {
+        if (only_KernelSHAP_C_kernel) {
           saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp_tmp.rds")))
         } else {
           saveRDS(MAE_dt, file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_tmp.rds")))
@@ -1141,7 +1141,7 @@ for (rho_idx in seq_along(rhos)) {
     #   )
 
     # Save the results and remove tmp file
-    if (only_KernelSHAP) {
+    if (only_KernelSHAP_C_kernel) {
       saveRDS(MAE_dt_long, file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp.rds")))
       if (file.exists(file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp_tmp.rds")))) {
         file.remove(file.path(folder_save_KernelSHAP_paired_imp, paste0(file_name, "_MAE_repetition_", repetition, "_KernelSHAP_imp_tmp.rds")))
