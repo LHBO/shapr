@@ -584,7 +584,6 @@ for (rho_idx in seq_along(rhos)) {
 
     message("Loading presampled coalitions KernelSHAP_paired_imp")
     presampled_coalitions_KernelSHAP_paired_imp = file.path(folder_save_KernelSHAP_paired_imp, paste0("KernelSHAP_Important_sampling_paired_M_", M, "_repetition_", repetition, ".rds"))
-    # print(presampled_coalitions_KernelSHAP_paired_imp)
     if (file.exists(presampled_coalitions_KernelSHAP_paired_imp)) {
       presampled_coalitions_KernelSHAP_paired_imp = readRDS(presampled_coalitions_KernelSHAP_paired_imp)
     } else {
@@ -1256,6 +1255,7 @@ if (FALSE) {
   n_cumsum = (cumsum(n) + 2) + 0.5
 
   # Number of repetitions
+  n_repetitions = 15
   n_repetitions = 500
 
   # List the strategies to create the MAE plot for
@@ -1274,7 +1274,9 @@ if (FALSE) {
                 "KernelSHAP CEL-Kernel",
                 "Paired KernelSHAP",
                 "Paired KernelSHAP Average",
-                "Paired KernelSHAP CEL-Kernel"
+                "Paired KernelSHAP CEL-Kernel",
+                "Paired KernelSHAP C-Kernel",
+                "Paired KernelSHAP Imp C-Kernel"
   )
 
   strat_MAE_final = c("Unique",
@@ -1319,18 +1321,20 @@ if (FALSE) {
                                 "betas", paste(as.character(betas), collapse = "_"), sep = "_")
           file_name = file.path(folder_save, "M_10_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, ".rds"))
           file_name_2 = file.path(folder_save, "M_10_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_KernelSHAP.rds"))
+          file_name_3 = file.path(folder_save, "M_10_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_KernelSHAP_imp.rds"))
           if (!file.exists(file_name)) return(NULL)
           if (!file.exists(file_name_2)) return(NULL)
+          if (!file.exists(file_name_3)) return(NULL)
           print(file_name)
           file_read = readRDS(file_name)
+          file_read = rbind(file_read, readRDS(file_name_3))
 
 
           if (any(strat_MAE %in% c("KernelSHAP",
                                    "KernelSHAP Average",
                                    "KernelSHAP CEL-Kernel"))) {
-            if (file.exists(file_name_2)) {
               file_read = rbind(file_read, readRDS(file_name_2))
-            }
+
           }
           return(file_read)
         }))
@@ -1394,16 +1398,18 @@ if (FALSE) {
   strat_MAE_small = c(
     #"Unique",
                 "Paired",
-               # "Paired Average",
-                "Paired Kernel",
+               # # "Paired Average",
+               "Paired Kernel",
                 "Paired C-Kernel",
-               "Paired Imp CEL-Kernel",
-                "KernelSHAP",
-                "KernelSHAP Average",
-                "KernelSHAP CEL-Kernel",
-               "Paired KernelSHAP",
-               "Paired KernelSHAP Average",
-               "Paired KernelSHAP CEL-Kernel"
+              #  "Paired Imp CEL-Kernel",
+              "KernelSHAP",
+              #  #  "KernelSHAP Average",
+              #  #  "KernelSHAP CEL-Kernel",
+              "Paired KernelSHAP",
+              #  "Paired KernelSHAP Average",
+              #  "Paired KernelSHAP CEL-Kernel",
+              "Paired KernelSHAP C-Kernel",
+               "Paired KernelSHAP Imp C-Kernel"
   )
 
   M_10_fig_MAE =
