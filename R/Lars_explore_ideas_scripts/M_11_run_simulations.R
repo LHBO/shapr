@@ -564,7 +564,7 @@ betas = c(2, 10, 0.25, -3, -1, 1.5, -0.5, 10, 1.25, 1.5, -2, 3, -1, -5, 4, -10, 
 weight_zero_m = 10^6
 n_combinations_array = seq(4, 2^M-2, 2)
 verbose_now = FALSE
-only_KernelSHAP = TRUE
+only_KernelSHAP = FALSE
 only_KernelSHAP_C_kernel = TRUE
 
 # Create list of all feature combinations
