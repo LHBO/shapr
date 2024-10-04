@@ -147,18 +147,6 @@ dt_all_coalitions = data.table(features = sapply(all_coalitions, function(x) pas
 
 
 
-presampled_coalitions_KernelSHAP_paired
-
-for (n_combination in n_combinations) {
-
-
-
-
-
-
-}
-
-
 
 cat(paste("Rscript M_20_run_simulations.R 0.9 FALSE", 43:50, "\n"))
 Rscript M_20_run_simulations.R 0.5 FALSE 99:83
@@ -166,6 +154,7 @@ Rscript M_20_run_simulations.R 0.5 FALSE 99:83
 presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed
 n_combination = 970
 n_combinations = seq(4, 2^m-4, 10)
+n_combinations = c(100, 250, 750, 1000)
 
 dt_list_animate = data.table::rbindlist(
   lapply(n_combinations, function(n_combination) {
@@ -225,6 +214,8 @@ dt_list_animate[, n_comb := as.integer(n_combinations[n_comb])]
 dt_list_animate[, id := as.integer(id)]
 dt_list_animate
 
+
+
 # Melt
 dt_list_animate2 = melt(dt_list_animate, id.vars = c("n_comb", "id"), variable.name = "strategy", value.name = "weight")
 
@@ -232,6 +223,21 @@ library(ggplot2)
 library(gganimate)
 ggplot(dt_list_animate2[n_comb == 104,], aes(x = id, y = weight, col = strategy)) +
   geom_point()
+
+ggplot() +
+
+  geom_point(data = dt_list_animate2[n_comb == 514 & strategy == "KernelSHAP",],
+             aes(x = id, y = weight, lty = strategy, col = strategy)) +
+  geom_line(data = dt_list_animate2[n_comb == 514 & strategy != "KernelSHAP",],
+            aes(x = id, y = weight, col = strategy, lty = strategy), lwd = 1) +
+  scale_colour_manual(values = c("gray50", "#F8766D", "#00BFC4")) +
+  scale_y_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  labs(x = 'Coalition index', y = 'Normalized weights',
+       col = "Strategy", lty = "Strategy")
+
 
 
 ggplot() +
@@ -280,4 +286,129 @@ anim_save("/Users/larsolsen/PhD/Paper3/Paper3_save_location/animated.gif",
 
 
 
+
+# Plot ------------------------------------------------------------------------------------------------------------
+m = M = 10
+presampled_coalitions_KernelSHAP = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/KernelSHAP_sampling_M_10_repetition_1.rds")
+presampled_coalitions_KernelSHAP_paired = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/KernelSHAP_sampling_paired_M_10_repetition_1.rds")
+dt_new_weights_sequence = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Sequence_length_M_", m, "_combined.rds"))
+dt_new_weights_sequence = dcast(dt_new_weights_sequence[type == "mean"], M + N_S + Size ~ version, value.var = "Ps_tilde")
+
+# Which N_S values to plot
+n_combinations = c(100, 250, 750, 1000)
+
+# Create the data table
+dt_plot = data.table::rbindlist(
+  lapply(n_combinations, function(n_combination) {
+    message(n_combination)
+    ### PySHAP
+    # Figure out which list to look at
+    dt_id = presampled_coalitions_KernelSHAP$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+
+    # Get the n_combinations coalitions to include
+    to_this_index = presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
+    presampled_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$all_coalitions_small[seq(to_this_index)])
+    prefixed_coalitions = copy(presampled_coalitions_KernelSHAP$samples[[dt_id]]$dt_res)
+
+    # Work on the PySHAP* strategy
+    X_now_PySHAP = create_X_dt_KernelSHAP(m = m,
+                                           presampled_coalitions = presampled_coalitions,
+                                           prefixed_coalitions = copy(prefixed_coalitions),
+                                           dt_all_coalitions = dt_all_coalitions,
+                                           version_scaled = TRUE)
+
+    dt_res_PySHAP = data.table("id" = X_now_PySHAP[-c(1, .N), id_combination_full],
+                               "Strategy" = "PySHAP",
+                               "weight" = X_now_PySHAP[-c(1, .N), shapley_weight])
+
+    ### PySHAP*
+    # Figure out which list to look at
+    dt_id = presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
+
+    # Get the n_combinations coalitions to include
+    to_this_index = presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
+    presampled_coalitions = copy(presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$all_coalitions_small[seq(to_this_index)])
+    prefixed_coalitions = copy(presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_res)
+
+    # Work on the PySHAP* strategy
+    X_now_PySHAPs = create_X_dt_KernelSHAP(m = m,
+                                           presampled_coalitions = presampled_coalitions,
+                                           prefixed_coalitions = copy(prefixed_coalitions),
+                                           dt_all_coalitions = dt_all_coalitions,
+                                           version_scaled = TRUE)
+
+    # Work on the PySHAP* Average strategy
+    X_now_PySHAPs_avg = copy(X_now_PySHAPs)
+    X_now_PySHAPs_avg[, shapley_weight := as.numeric(shapley_weight)]
+    shapley_reweighting(X = X_now_PySHAPs_avg, reweight = "on_N") # Average the weights on the coalition sizes
+
+    # Work on the PySHAP* C-Kernel strategy
+    X_now_PySHAPs_c_kernel = create_X_dt_KernelSHAP_corrected(m = m,
+                                                              presampled_coalitions = presampled_coalitions,
+                                                              prefixed_coalitions = copy(prefixed_coalitions),
+                                                              dt_all_coalitions = dt_all_coalitions)
+
+    # Work on the PySHAP* CEL-Kernel strategy
+    X_now_PySHAPs_cel_kernel = copy(X_now_PySHAPs)
+    X_now_PySHAPs_cel_kernel[, shapley_weight := as.numeric(shapley_weight)]
+
+    # Get the weights
+    dt_new_weights = copy(dt_new_weights_sequence)
+
+    # Find the weights of the combination closest to n_combinations
+    n_comb_use = dt_new_weights$N_S[which.min(abs(dt_new_weights$N_S - n_combination))]
+    dt_new_weights_now = dt_new_weights[N_S == n_comb_use]
+    dt_new_weights_now <- rbind(dt_new_weights_now, dt_new_weights_now[(.N - ifelse(M[1] %% 2 == 1, 0, 1)):1])
+    dt_new_weights_now[, Size := .I]
+    setnames(dt_new_weights_now, "Size", "n_features")
+
+    # Update the weights with the provided weights for each coalition size
+    X_now_PySHAPs_cel_kernel[dt_new_weights_now, on = "n_features", shapley_weight := get(gsub("_", " ", "mean_L"))]
+    X_now_PySHAPs_cel_kernel[-c(1,.N), shapley_weight := shapley_weight / sum(shapley_weight)]
+
+    # Extract and combine the sampled coalition indices
+    dt_res_PySHAPs = melt(data.table(
+      "id" = X_now_PySHAPs[-c(1, .N), id_combination_full],
+      "PySHAP*" = X_now_PySHAPs[-c(1, .N), shapley_weight],
+      "PySHAP* Average" = X_now_PySHAPs_avg[-c(1, .N), shapley_weight],
+      "PySHAP* C-Kernel" = X_now_PySHAPs_c_kernel[-c(1, .N), shapley_weight],
+      "PySHAP* CEL-Kernel" = X_now_PySHAPs_cel_kernel[-c(1, .N), shapley_weight]
+    ), id.vars = "id", variable.name = "Strategy", value.name = "weight")
+
+    dt_res = rbind(dt_res_PySHAP, dt_res_PySHAPs)
+    return(dt_res)
+
+  }), use.names = TRUE, idcol = "N_S")
+
+# update n_comb
+dt_plot[, N_S := as.integer(n_combinations[N_S])]
+dt_plot[, id := as.integer(id)]
+dt_plot
+
+# Lag ggplottet
+
+fig = ggplot(dt_plot, aes(x = id, y = weight, col = Strategy)) +
+  geom_vline(xintercept = 512.5, color = "darkgrey", linetype = "dashed", linewidth = 0.9) +
+  geom_point(alpha = 0.4) +
+  scale_y_log10(
+    breaks = scales::trans_breaks("log10", function(x) 10^x),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  facet_wrap(. ~ N_S, labeller = label_bquote(cols = N[S] ==.(N_S)), ncol = 2) +
+  theme(legend.position = 'bottom') +
+  guides(col = guide_legend(nrow = 1)) +
+  labs(color = "Strategy:", x = "Coalition index", y = "Normalized weights") +
+  theme(strip.text = element_text(size = rel(1.6)),
+        legend.title = element_text(size = rel(1.6)),
+        legend.text = element_text(size = rel(1.55)),
+        axis.title = element_text(size = rel(1.6)),
+        axis.text = element_text(size = rel(1.5)))
+fig
+
+ggsave("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Paper3_N_combinations_weights_appendix.png", # Saving 14.2 x 9.98 in image
+       plot = fig,
+       width = 14.2,
+       height = 9.5,
+       scale = 0.85,
+       dpi = 350)
 

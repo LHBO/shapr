@@ -85,6 +85,7 @@ m_seq = 4:20
 normalize_version = "coalition_size"
 normalize_version = "coalition"
 digits = ifelse(normalize_version == "coalition_size", 7, 8)
+digits = -3
 
 # data table with the final ps values for each coal size
 dt_exact_ps = get_exact_ps_values(m_seq, normalize = normalize_version)
@@ -96,8 +97,8 @@ sum(dt_exact_ps_cast[.N,-1] * choose(20, seq(10)) * c(rep(2, 9), 1))
 
 
 # Create the xtable object
-xtable_dt <- xtable::xtable(dt_exact_ps_cast, caption = "", label = "", digits = -digits)
-xtable_dt <- xtable::xtable(dt_exact_ps_cast[M %in% c(10, 11, 20)], caption = "", label = "", digits = -2)
+xtable_dt <- xtable::xtable(dt_exact_ps_cast, caption = "", label = "", digits = digits)
+xtable_dt <- xtable::xtable(dt_exact_ps_cast[M %in% c(10, 11, 20)], caption = "", label = "", digits = digits)
 
 # Print the LaTeX code for the table
 print(xtable_dt, type = "latex", include.rownames = FALSE, math.style.exponents = TRUE, NA.string = "---")

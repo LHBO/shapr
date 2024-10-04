@@ -111,14 +111,14 @@ create_X_dt_KernelSHAP_corrected = function(m,
   if (num_full_subsets >= floor(m/2)) stop("Too many full subsets. No sampling is done.")
   n_coal_of_each_size_reamaining = n_coal_of_each_size[seq(num_full_subsets + 1, m - 1 - num_full_subsets)]
 
-  # Get the shapley kernel weights for the remaining coalition sizes
+  # Get the Shapley kernel weights for the remaining coalition sizes
   p_reamaining = p[seq(num_full_subsets + 1, m - 1 - num_full_subsets)]
   p_reamaining = p_reamaining / sum(p_reamaining)
 
-  # Get the shapley kernel weight for each coalition
+  # Get the Shapley kernel weight for each coalition
   shapley_kernel_weight_reweighted = p_reamaining / n_coal_of_each_size_reamaining
 
-  # Pad it such that index corresponds to caolition size
+  # Pad it such that index corresponds to coalition size
   shapley_kernel_weight_reweighted = c(rep(0, num_full_subsets), shapley_kernel_weight_reweighted, rep(0, num_full_subsets))
 
   # Convert the list column to a comma-separated string for each row
@@ -479,8 +479,10 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
   repetitions = seq(10)
 }
 
-# Rscript M_11_run_simulations.R 1:250 labbu
-# Rscript M_11_run_simulations.R 251:500 metis
+# Rscript M_11_run_simulations.R 1:125 labbu
+# Rscript M_11_run_simulations.R 126:250
+# Rscript M_11_run_simulations.R 251:375 metis
+# Rscript M_11_run_simulations.R 376:500
 
 # Rscript M_11_run_simulations.R 1:100
 # Rscript M_11_run_simulations.R 101:200
@@ -1137,7 +1139,7 @@ for (repetition_idx in seq_along(repetitions)) {
     if (only_KernelSHAP_C_kernel) {
       # Figure out which list to look at
       dt_id = presampled_coalitions_KernelSHAP_paired$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
-      #presampled_coalitions_KernelSHAP_paired = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/KernelSHAP_sampling_paired_M_10_repetition_9.rds")
+      #presampled_coalitions_KernelSHAP_paired = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/KernelSHAP_sampling_paired_M_11_repetition_1.rds")
 
       # Get the n_combinations coalitions to include
       to_this_index = presampled_coalitions_KernelSHAP_paired$samples[[dt_id]]$dt_N_S_and_L_small[N_S == n_combination, L]
@@ -1166,6 +1168,7 @@ for (repetition_idx in seq_along(repetitions)) {
     if (verbose_now) message("Paired KernelSHAP Imp C-Kernel")
     if (only_KernelSHAP_C_kernel) {
       # Figure out which list to look at
+      #presampled_coalitions_KernelSHAP_paired_imp = readRDS("/Users/larsolsen/PhD/Paper3/Paper3_save_location/KernelSHAP_Important_sampling_paired_M_11_repetition_1.rds")
       dt_id_imp = presampled_coalitions_KernelSHAP_paired_imp$look_up$dt_n_comb_needed_sample[N_S == n_combination, dt_id]
 
       # Get the n_combinations coalitions to include
@@ -1287,7 +1290,9 @@ if (FALSE) {
                 "KernelSHAP CEL-Kernel",
                 "Paired KernelSHAP",
                 "Paired KernelSHAP Average",
-                "Paired KernelSHAP CEL-Kernel"
+                "Paired KernelSHAP C-Kernel",
+                "Paired KernelSHAP CEL-Kernel",
+                "Paired KernelSHAP Imp C-Kernel"
   )
 
   strat_MAE_final = c("Unique",
@@ -1321,10 +1326,12 @@ if (FALSE) {
         file_name_org = paste0("Wine_data_set_M_", M)
         file_name_1 = file.path(folder_save, "Wine_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, ".rds"))
         file_name_2 = file.path(folder_save, "Wine_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_KernelSHAP.rds"))
+        file_name_3 = file.path(folder_save, "Wine_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_KernelSHAP_imp.rds"))
         if (!file.exists(file_name_1)) return(NULL)
         if (!file.exists(file_name_2)) return(NULL)
+        if (!file.exists(file_name_3)) return(NULL)
         # print(file_name)
-        return(rbind(readRDS(file_name_1), readRDS(file_name_2)))
+        return(rbind(readRDS(file_name_1), readRDS(file_name_2), readRDS(file_name_3)))
       }))
 
   # Ensure the same number of repetitions
@@ -1340,6 +1347,8 @@ if (FALSE) {
                                            MAE_lower = quantile(MAE, 0.025),
                                            MAE_upper = quantile(MAE, 0.975)),
                 by = c("N_S", "Strategy")]
+  #saveRDS(copy(res_MAE)[, M := 11L], file = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_11_res_MAE.rds")
+
 
   Wine_fig_MAE =
     ggplot(res_MAE[Strategy %in% strat_MAE_final], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
@@ -1370,27 +1379,59 @@ if (FALSE) {
 
 
   ## KernelSHAP ------------------------------------------------------------------------------------------------------
+  # Update the strategy names
+  dt_strategy_names = rbindlist(list(
+    list("KernelSHAP", "PySHAP"),
+    list("KernelSHAP Average", "PySHAP Average"),
+    list("KernelSHAP C-Kernel", "PySHAP C-Kernel"),
+    list("KernelSHAP CEL-Kernel", "PySHAP CEL-Kernel"),
+    list("Paired KernelSHAP", "PySHAP*"),
+    list("Paired KernelSHAP Average", "PySHAP* Average"),
+    list("Paired KernelSHAP C-Kernel", "PySHAP* C-Kernel"),
+    list("Paired KernelSHAP CEL-Kernel", "PySHAP* CEL-Kernel"),
+    list("Paired KernelSHAP Imp C-Kernel", "PySHAP* Imp C-Kernel")
+  ))
+  data.table::setnames(dt_strategy_names, c("Original", "New"))
+  res_MAE_PySHAP = copy(res_MAE)
+  res_MAE_PySHAP_levels = res_MAE_PySHAP[, levels(Strategy)]
+  res_MAE_PySHAP_levels_non_pyshap = res_MAE_PySHAP_levels[!res_MAE_PySHAP_levels %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels_pyshap = res_MAE_PySHAP_levels[res_MAE_PySHAP_levels %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels_pyshap = dt_strategy_names$Original[res_MAE_PySHAP_levels_pyshap %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels = c(res_MAE_PySHAP_levels_non_pyshap, res_MAE_PySHAP_levels_pyshap)
+  dt_strategy_names_org = data.table(Original = res_MAE_PySHAP_levels, New = res_MAE_PySHAP_levels)
+  dt_strategy_names_org[dt_strategy_names, on = "Original", New := i.New]
+  dt_strategy_names_org
+
+  # Change the names of the levels in the factor column based on the mapping
+  tt = sapply(levels(res_MAE_PySHAP$Strategy), function(x) dt_strategy_names_org[Original == x, New])
+  levels(res_MAE_PySHAP$Strategy) = tt[levels(res_MAE_PySHAP$Strategy)] # Update by reference
+  res_MAE_PySHAP[, Strategy := factor(Strategy, levels = dt_strategy_names_org$New)]
+
   strat_MAE_small = c(
     "Unique",
     "Paired",
-    # "Paired Average",
+    #"Paired Average",
     "Paired Kernel",
     "Paired C-Kernel",
-    "KernelSHAP",
-    "KernelSHAP Average",
-    "KernelSHAP CEL-Kernel",
-    #"Paired KernelSHAP",
-    "Paired KernelSHAP Average",
-    "Paired KernelSHAP CEL-Kernel",
-    "Paired Imp CEL-Kernel"
+    "Paired Imp CEL-Kernel",
+    "PySHAP",
+    #"PySHAP Average",
+    #"PySHAP C-Kernel",
+    #"PySHAP CEL-Kernel",
+    "PySHAP*",
+    "PySHAP* Average",
+    "PySHAP* C-Kernel",
+    "PySHAP* CEL-Kernel"
+    #"PySHAP* Imp C-Kernel"
   )
 
-  res_MAE_now = res_MAE
-  res_MAE_now = res_MAE[!(N_S %in% c(2038, 2040, 2042, 2044) & Strategy == "KernelSHAP CEL-Kernel")]
-  res_MAE_now = res_MAE_now[!(N_S %in% c(2042, 2044) & Strategy == "KernelSHAP Average")]
+  res_MAE_PySHAP[, lty := ifelse(!Strategy %in% c("PySHAP* C-Kernel"), "dashed", "solid")]
+  res_MAE_now = copy(res_MAE_PySHAP)
+  res_MAE_now = res_MAE_now[!(N_S %in% c(2038, 2040, 2042, 2044) & Strategy == "PySHAP* CEL-Kernel")]
+  res_MAE_now = res_MAE_now[!(N_S %in% c(2042, 2044) & Strategy == "PySHAP* Average")]
   Wine_fig_MAE_KernelSHAP =
     ggplot(res_MAE_now[Strategy %in% strat_MAE_small,],
-           aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+           aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy, linetype = lty)) +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     #geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
     geom_line(linewidth = 0.65) +
@@ -1400,7 +1441,9 @@ if (FALSE) {
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
     theme(legend.position = 'bottom') +
-    guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
+    guides(col = guide_legend(nrow = 2, theme = theme(legend.byrow = TRUE)),
+           fill = guide_legend(nrow = 2, theme = theme(legend.byrow = TRUE)),
+           lty = "none") +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
          y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
@@ -1414,7 +1457,7 @@ if (FALSE) {
     coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   Wine_fig_MAE_KernelSHAP
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Wine_fig_MAE_KernelSHAP_V_line.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Wine_fig_MAE_PySHAP_Dashed.png"),
          plot = Wine_fig_MAE_KernelSHAP,
          width = 14.5,
          height = 8,

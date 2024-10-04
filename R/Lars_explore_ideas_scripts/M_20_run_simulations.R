@@ -385,25 +385,25 @@ if (!(repetitions %in% c("NULL", "NA", "NaN"))) {
 # cd /mn/kadingir/biginsight_000000/lholsen/PhD/Paper3/shapr/R/Lars_explore_ideas_scripts
 # module load R/4.2.1-foss-2022a
 
-# Rscript M_20_run_simulations.R 0.0 FALSE 1:25 sumeru
-# Rscript M_20_run_simulations.R 0.2 FALSE 1:25 sraosha
-# Rscript M_20_run_simulations.R 0.5 FALSE 1:25 tsenahale
-# Rscript M_20_run_simulations.R 0.9 FALSE 1:25 diktys
+# Rscript M_20_run_simulations.R 0.0 FALSE 1:25 mix
+# Rscript M_20_run_simulations.R 0.2 FALSE 1:25 diktys
+# Rscript M_20_run_simulations.R 0.5 FALSE 1:25 clotho
+# Rscript M_20_run_simulations.R 0.9 FALSE 1:25 carpo
 
-# Rscript M_20_run_simulations.R 0.0 FALSE 26:50 poseidon
-# Rscript M_20_run_simulations.R 0.2 FALSE 26:50 carpo
-# Rscript M_20_run_simulations.R 0.5 FALSE 26:50 adonis
-# Rscript M_20_run_simulations.R 0.9 FALSE 26:50 adroa
+# Rscript M_20_run_simulations.R 0.0 FALSE 26:50 bastet
+# Rscript M_20_run_simulations.R 0.2 FALSE 26:50 aload
+# Rscript M_20_run_simulations.R 0.5 FALSE 26:50 adroa
+# Rscript M_20_run_simulations.R 0.9 FALSE 26:50 adonis
 
-# Rscript M_20_run_simulations.R 0.0 FALSE 51:75 aload
-# Rscript M_20_run_simulations.R 0.2 FALSE 51:75 bastet
+# Rscript M_20_run_simulations.R 0.0 FALSE 51:75 sraosha
+# Rscript M_20_run_simulations.R 0.2 FALSE 51:75 ixion
 # Rscript M_20_run_simulations.R 0.5 FALSE 51:75 belet
-# Rscript M_20_run_simulations.R 0.9 FALSE 51:75 ixion
+# Rscript M_20_run_simulations.R 0.9 FALSE 51:75 labbu
 
-# Rscript M_20_run_simulations.R 0.0 FALSE 76:100 mixc
-# Rscript M_20_run_simulations.R 0.2 FALSE 76:100 nyx
-# Rscript M_20_run_simulations.R 0.5 FALSE 76:100 labbu
-# Rscript M_20_run_simulations.R 0.9 FALSE 76:100 metis
+# Rscript M_20_run_simulations.R 0.0 FALSE 76:100 sumeru
+# Rscript M_20_run_simulations.R 0.2 FALSE 76:100 metis
+# Rscript M_20_run_simulations.R 0.5 FALSE 76:100 tsena
+# Rscript M_20_run_simulations.R 0.9 FALSE 76:100 poseidon
 
 # Rscript M_20_run_simulations.R 0.0 FALSE 101:125
 # Rscript M_20_run_simulations.R 0.2 FALSE 101:125
@@ -1381,7 +1381,7 @@ if (FALSE) {
   n_cumsum = (cumsum(n) + 2) + 0.5
 
   # Number of repetitions
-  n_repetitions = 8
+  n_repetitions = 100
 
   # List the strategies to create the MAE plot for
   strat_MAE = c("Unique",
@@ -1399,7 +1399,9 @@ if (FALSE) {
                 "KernelSHAP CEL-Kernel",
                 "Paired KernelSHAP",
                 "Paired KernelSHAP Average",
-                "Paired KernelSHAP CEL-Kernel"
+                "Paired KernelSHAP C-Kernel",
+                "Paired KernelSHAP CEL-Kernel",
+                "Paired KernelSHAP Imp C-Kernel"
   )
 
   strat_MAE_final = c("Unique",
@@ -1452,10 +1454,15 @@ if (FALSE) {
                                 "betas", paste(as.character(betas), collapse = "_"), sep = "_")
           file_name = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, ".rds"))
           file_name_KernelSHAP = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_KernelSHAP.rds"))
+          file_name_KernelSHAP_imp = file.path(folder_save, "M_20_MAE", paste0(file_name_org, "_MAE_repetition_", repetition, "_KernelSHAP_imp.rds"))
+
           if (!file.exists(file_name)) return(NULL)
           if (!file.exists(file_name_KernelSHAP)) return(NULL)
+          if (!file.exists(file_name_KernelSHAP_imp)) return(NULL)
           print(file_name)
-          file_read = rbind(readRDS(file_name), readRDS(file_name_KernelSHAP))
+          file_read = readRDS(file_name)
+          file_read = rbind(file_read, readRDS(file_name_KernelSHAP))
+          file_read = rbind(file_read, readRDS(file_name_KernelSHAP_imp))
 
 
           if (any(strat_MAE %in% c("Paired CEPS-Kernel", "Paired Imp CEPS-Kernel"))) {
@@ -1491,7 +1498,7 @@ if (FALSE) {
                                            MAE_lower = quantile(MAE, 0.025),
                                            MAE_upper = quantile(MAE, 0.975)),
                 by = c("Rho", "N_S", "Strategy")]
-
+  saveRDS(copy(res_MAE)[, M := 20L], file = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_res_MAE.rds")
 
   M_20_fig_MAE =
     ggplot(res_MAE[Strategy %in% strat_MAE_final], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
@@ -1528,23 +1535,59 @@ if (FALSE) {
 
 
   ## KernelSHAP ------------------------------------------------------------------------------------------------------
+  # Update the strategy names
+  dt_strategy_names = rbindlist(list(
+    list("KernelSHAP", "PySHAP"),
+    list("KernelSHAP Average", "PySHAP Average"),
+    list("KernelSHAP C-Kernel", "PySHAP C-Kernel"),
+    list("KernelSHAP CEL-Kernel", "PySHAP CEL-Kernel"),
+    list("Paired KernelSHAP", "PySHAP*"),
+    list("Paired KernelSHAP Average", "PySHAP* Average"),
+    list("Paired KernelSHAP C-Kernel", "PySHAP* C-Kernel"),
+    list("Paired KernelSHAP CEL-Kernel", "PySHAP* CEL-Kernel"),
+    list("Paired KernelSHAP Imp C-Kernel", "PySHAP* Imp C-Kernel")
+  ))
+  data.table::setnames(dt_strategy_names, c("Original", "New"))
+  res_MAE_PySHAP = copy(res_MAE)
+  res_MAE_PySHAP_levels = res_MAE_PySHAP[, levels(Strategy)]
+  res_MAE_PySHAP_levels_non_pyshap = res_MAE_PySHAP_levels[!res_MAE_PySHAP_levels %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels_pyshap = res_MAE_PySHAP_levels[res_MAE_PySHAP_levels %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels_pyshap = dt_strategy_names$Original[res_MAE_PySHAP_levels_pyshap %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels = c(res_MAE_PySHAP_levels_non_pyshap, res_MAE_PySHAP_levels_pyshap)
+  dt_strategy_names_org = data.table(Original = res_MAE_PySHAP_levels, New = res_MAE_PySHAP_levels)
+  dt_strategy_names_org[dt_strategy_names, on = "Original", New := i.New]
+  dt_strategy_names_org
+
+  # Change the names of the levels in the factor column based on the mapping
+  tt = sapply(levels(res_MAE_PySHAP$Strategy), function(x) dt_strategy_names_org[Original == x, New])
+  levels(res_MAE_PySHAP$Strategy) = tt[levels(res_MAE_PySHAP$Strategy)] # Update by reference
+  res_MAE_PySHAP[, Strategy := factor(Strategy, levels = dt_strategy_names_org$New)]
+
   strat_MAE_small = c(
-    #"Unique",
+    "Unique",
     "Paired",
-    # "Paired Average",
+    #"Paired Average",
     "Paired Kernel",
     "Paired C-Kernel",
-    "KernelSHAP",
-    "KernelSHAP Average",
-    "KernelSHAP CEL-Kernel",
-    "Paired KernelSHAP",
-    "Paired KernelSHAP Average",
-    "Paired KernelSHAP CEL-Kernel",
-    "Paired Imp CEL-Kernel"
+    "Paired Imp CEL-Kernel",
+    "PySHAP",
+    #"PySHAP Average",
+    #"PySHAP C-Kernel",
+    #"PySHAP CEL-Kernel",
+    "PySHAP*",
+    "PySHAP* Average",
+    "PySHAP* C-Kernel",
+    "PySHAP* CEL-Kernel"
+    #"PySHAP* Imp C-Kernel"
   )
 
+  res_MAE_PySHAP2 = res_MAE_PySHAP[!(Strategy == "PySHAP* CEL-Kernel" & N_S == 1048500)]
+  res_MAE_PySHAP2 = res_MAE_PySHAP2[!(Strategy == "PySHAP* Average" & N_S == 1048500)]
+  res_MAE_PySHAP2 = res_MAE_PySHAP2[!(Strategy == "PySHAP*" & N_S == 1048500)]
+  res_MAE_PySHAP2[, lty := ifelse(!Strategy %in% c("PySHAP* C-Kernel"), "dashed", "solid")]
+
   M_20_fig_MAE_KernelSHAP =
-    ggplot(res_MAE[Strategy %in% strat_MAE_small], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+    ggplot(res_MAE_PySHAP2[Strategy %in% strat_MAE_small], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy, linetype = lty)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     #geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
@@ -1555,7 +1598,9 @@ if (FALSE) {
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
     theme(legend.position = 'bottom') +
-    guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
+    guides(col = guide_legend(nrow = 2, theme = theme(legend.byrow = TRUE)),
+           fill = guide_legend(nrow = 2, theme = theme(legend.byrow = TRUE)),
+           lty = "none") +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
          y = bquote(bar(MAE)[150]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
@@ -1569,7 +1614,7 @@ if (FALSE) {
   #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   M_20_fig_MAE_KernelSHAP
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_MAE_KernelSHAP_V_line.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_20_fig_MAE_PySHAP_Dashed.png"),
          plot = M_20_fig_MAE_KernelSHAP,
          width = 14,
          height = 9,

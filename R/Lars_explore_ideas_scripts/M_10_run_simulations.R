@@ -1274,8 +1274,8 @@ if (FALSE) {
                 "KernelSHAP CEL-Kernel",
                 "Paired KernelSHAP",
                 "Paired KernelSHAP Average",
-                "Paired KernelSHAP CEL-Kernel",
                 "Paired KernelSHAP C-Kernel",
+                "Paired KernelSHAP CEL-Kernel",
                 "Paired KernelSHAP Imp C-Kernel"
   )
 
@@ -1360,6 +1360,8 @@ if (FALSE) {
                                            MAE_upper = quantile(MAE, 0.975)),
                 by = c("Rho", "N_S", "Strategy")]
 
+  # saveRDS(copy(res_MAE)[, M := 10L], file = "/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_res_MAE.rds")
+
   M_10_fig_MAE =
     ggplot(res_MAE[Strategy %in% strat_MAE_final], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
@@ -1395,25 +1397,55 @@ if (FALSE) {
 
 
   ## KernelSHAP ------------------------------------------------------------------------------------------------------
+  # Update the strategy names
+  dt_strategy_names = rbindlist(list(
+    list("KernelSHAP", "PySHAP"),
+    list("KernelSHAP Average", "PySHAP Average"),
+    list("KernelSHAP C-Kernel", "PySHAP C-Kernel"),
+    list("KernelSHAP CEL-Kernel", "PySHAP CEL-Kernel"),
+    list("Paired KernelSHAP", "PySHAP*"),
+    list("Paired KernelSHAP Average", "PySHAP* Average"),
+    list("Paired KernelSHAP C-Kernel", "PySHAP* C-Kernel"),
+    list("Paired KernelSHAP CEL-Kernel", "PySHAP* CEL-Kernel"),
+    list("Paired KernelSHAP Imp C-Kernel", "PySHAP* Imp C-Kernel")
+  ))
+  data.table::setnames(dt_strategy_names, c("Original", "New"))
+  res_MAE_PySHAP = copy(res_MAE)
+  res_MAE_PySHAP_levels = res_MAE_PySHAP[, levels(Strategy)]
+  res_MAE_PySHAP_levels_non_pyshap = res_MAE_PySHAP_levels[!res_MAE_PySHAP_levels %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels_pyshap = res_MAE_PySHAP_levels[res_MAE_PySHAP_levels %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels_pyshap = dt_strategy_names$Original[res_MAE_PySHAP_levels_pyshap %in% dt_strategy_names$Original]
+  res_MAE_PySHAP_levels = c(res_MAE_PySHAP_levels_non_pyshap, res_MAE_PySHAP_levels_pyshap)
+  dt_strategy_names_org = data.table(Original = res_MAE_PySHAP_levels, New = res_MAE_PySHAP_levels)
+  dt_strategy_names_org[dt_strategy_names, on = "Original", New := i.New]
+  dt_strategy_names_org
+
+  # Change the names of the levels in the factor column based on the mapping
+  tt = sapply(levels(res_MAE_PySHAP$Strategy), function(x) dt_strategy_names_org[Original == x, New])
+  levels(res_MAE_PySHAP$Strategy) = tt[levels(res_MAE_PySHAP$Strategy)] # Update by reference
+  res_MAE_PySHAP[, Strategy := factor(Strategy, levels = dt_strategy_names_org$New)]
+
   strat_MAE_small = c(
-    #"Unique",
-                "Paired",
-               # # "Paired Average",
-               "Paired Kernel",
-                "Paired C-Kernel",
-              #  "Paired Imp CEL-Kernel",
-              "KernelSHAP",
-              #  #  "KernelSHAP Average",
-              #  #  "KernelSHAP CEL-Kernel",
-              "Paired KernelSHAP",
-              #  "Paired KernelSHAP Average",
-              #  "Paired KernelSHAP CEL-Kernel",
-              "Paired KernelSHAP C-Kernel",
-               "Paired KernelSHAP Imp C-Kernel"
+    "Unique",
+    "Paired",
+    #"Paired Average",
+    "Paired Kernel",
+    "Paired C-Kernel",
+    "Paired Imp CEL-Kernel",
+    "PySHAP",
+    #"PySHAP Average",
+    #"PySHAP C-Kernel",
+    #"PySHAP CEL-Kernel",
+    "PySHAP*",
+    "PySHAP* Average",
+    "PySHAP* C-Kernel",
+    "PySHAP* CEL-Kernel"
+    #"PySHAP* Imp C-Kernel"
   )
 
+  res_MAE_PySHAP[, lty := ifelse(!Strategy %in% c("PySHAP* C-Kernel"), "dashed", "solid")]
   M_10_fig_MAE =
-    ggplot(res_MAE[Strategy %in% strat_MAE_small], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy)) +
+    ggplot(res_MAE_PySHAP[Strategy %in% strat_MAE_small], aes(x = N_S, y = MAE_mean, col = Strategy, fill = Strategy, linetype = lty)) +
     facet_wrap( . ~ Rho, labeller = label_bquote(cols = rho ==.(Rho)), scales = "free_y") +
     geom_vline(xintercept = n_cumsum, col = "gray50", linetype = "dashed", linewidth = 0.4) +
     #geom_ribbon(aes(ymin = MAE_lower, ymax = MAE_upper), alpha = 0.4, linewidth = 0.0) +
@@ -1424,7 +1456,9 @@ if (FALSE) {
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
     theme(legend.position = 'bottom') +
-    guides(col = guide_legend(nrow = 3), fill = guide_legend(nrow = 3)) +
+    guides(col = guide_legend(nrow = 2, theme = theme(legend.byrow = TRUE)),
+           fill = guide_legend(nrow = 2, theme = theme(legend.byrow = TRUE)),
+           lty = "none") +
     labs(color = "Strategy:", fill = "Strategy:", linetype = "Strategy:",
          x = expression(N[S]),
          y = bquote(bar(MAE)[500]*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
@@ -1438,12 +1472,89 @@ if (FALSE) {
   #coord_cartesian(ylim = c(10^(-4.1), 10^(-0.7)))
   M_10_fig_MAE
 
-  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_KernelSHAP_V_line.png"),
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_10_fig_MAE_PySHAP_Dashed.png"),
          plot = M_10_fig_MAE,
          width = 14,
          height = 9,
          scale = 0.85,
          dpi = 350)
+
+  ## N_s comparison ----------------
+  # Function to find the closest N_S for each MAE value within each Rho
+  find_closest_N_S <- function(reference_strategy, dt) {
+    # Filter the dt for the reference strategy
+    reference_dt <- dt[Strategy == reference_strategy]
+
+    # Filter out the reference from the original dt, leaving only other strategies
+    other_strategies_dt <- dt[Strategy != reference_strategy]
+
+    # Perform cross join by Rho
+    merged_dt <- merge(reference_dt, other_strategies_dt, by = c("Rho"), suffixes = c(".ref", ""), allow.cartesian = TRUE)
+
+    # Calculate the absolute differences
+    merged_dt[, diff := abs(MAE.ref - MAE)]
+
+    # Find the N_S with the closest MAE for each combination of reference Strategy MAE and other Strategy within each Rho
+    closest_dt <- merged_dt[, .SD[which.min(diff)], by = .(Rho, N_S, Strategy)]
+
+    # Return the relevant columns and rename them for clarity
+    result_dt <- closest_dt[, .(Rho, Strategy, N_S, N_S_closest =  N_S.ref)]
+
+    # Get the fraction of coalitions needed by the reference strategy to recieve the same accuracy as the other strategies
+    result_dt[, N_S_fraction := N_S_closest / N_S]
+
+    return(result_dt)
+  }
+
+  M_now = 11
+  result = rbindlist(lapply(c(10, 11, 20), function(M_now) {
+    res_MAE_now = readRDS(paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/M_", M_now, "_res_MAE.rds"))
+    if (M_now == 11) res_MAE_now[, Rho := "Not Relevant"]
+    res_MAE_now = res_MAE_now[Strategy %in% c("Paired C-Kernel", "Unique", "Paired"), c("M", "Rho", "N_S", "Strategy", "MAE_mean")]
+    res_MAE_now[, Rho := as.factor(Rho)]
+    res_MAE_now[, M := factor(paste("M =", M))]
+    setnames(res_MAE_now, c("MAE_mean"), c("MAE"))
+    reference_strategy = "Paired C-Kernel"
+
+    res_MAE_now
+
+    # Find the closest N_S for each MAE value of the specified reference strategy
+    result_now <- find_closest_N_S(reference_strategy, res_MAE_now)
+    result_now[, M := factor(paste("M =", M_now))]
+    setcolorder(result_now, "M")
+    return(result_now)
+  }), use.names = TRUE, idcol = FALSE)
+
+
+  fig_fraction_N_S =
+    ggplot(result, aes(x = N_S, y = N_S_fraction, color = Rho)) +
+    facet_wrap( . ~ M, scales = "free_x") +
+    geom_line(aes(linetype = Strategy), lwd = 1) +
+    scale_x_continuous(labels = scales::label_number()) +
+    coord_cartesian(ylim = c(0,1)) +
+    theme(legend.position = 'bottom') +
+    labs(color = bquote(rho*": "),
+         linetype = "Strategy: ",
+         x = expression(N[S]),
+         y = bquote("Fraction of "*N[S]*" needed by Paired C-Kernel for same "*bar(MAE)*"("*bold(phi)*", "*bold(phi)[italic(D)]*")")) +
+    theme(strip.text = element_text(size = rel(2.1)),
+          legend.title = element_text(size = rel(1.9)),
+          legend.text = element_text(size = rel(1.9)),
+          axis.title.x = element_text(size = rel(1.4)),
+          axis.title.y = element_text(hjust = 0.6, size = rel(1.4)),
+          axis.text = element_text(size = rel(1.5)))
+
+  fig_fraction_N_S
+  ggsave(filename = paste0("/Users/larsolsen/PhD/Paper3/Paper3_save_location/Figure_fraction_N_S_paired_c_kernel_2.png"),
+         plot = fig_fraction_N_S ,
+         width = 22,
+         height = 9,
+         scale = 0.73,
+         dpi = 350)
+
+
+  plot(dt_2$x, dt_2$rel, type = "l")
+  plot(dt_2$x, dt_2$closest_x, type = "l")
 
 
   ## Relative diff ---------------------------------------------------------------------------------------------------
